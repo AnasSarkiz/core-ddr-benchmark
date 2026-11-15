@@ -15,9 +15,9 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  pendingsites:
+  h3repro:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -29,9 +29,20 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
       - run: cd solver && git rev-parse HEAD && bun install
-      - name: Via sites left for pending pads
+      - name: Overlay, format, typecheck
         run: |
           cd solver
-          for n in after-byte0 after-byte1 exp-after-byte1; do
-            bun ../harness-repo/harness/diag/pending-sites.ts ../harness-repo/harness/diag/h3-$n.json.gz 2>&1 | grep -E "^(==|SITES|TIME)|rror" | cut -c1-300
-          done
+          cp -r ../harness-repo/harness/overlay/. .
+          bunx biome format --write tests/h3-pending-pad-escapes.test.ts tests/fixtures/pad-escapes.ts
+          bun run typecheck 2>&1 | tail -20
+      - name: Test and write snapshots
+        run: |
+          cd solver
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/h3-pending-pad-escapes.test.ts --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)|H3 TRAPPED|Writing|pass$|fail$|rror|Expected|Received" | cut -c1-6000 | head -40
+      - name: Emit
+        if: always()
+        run: |
+          cd solver
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - tests/h3-pending-pad-escapes.test.ts tests/fixtures/pad-escapes.ts $(ls tests/__snapshots__/h3-pending-pad-escapes* 2>/dev/null) | base64 -w 160
+          echo "=====TARBALL-END====="
