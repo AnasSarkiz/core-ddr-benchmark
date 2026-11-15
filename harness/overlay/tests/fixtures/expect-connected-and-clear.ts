@@ -32,11 +32,11 @@ export function expectConnectedAndClear(params: {
   const connectivity = validateOriginalEndpointConnectivity(context)
   expect(connectivity.valid).toBe(true)
   expect(connectivity.connectedConnectionCount).toBe(connections.length)
-  const drc = validateRoutedCopperDrc({
-    ...context,
-    clearance: request.minTraceToPadEdgeClearance!,
-    allowBlindAndBuriedVias: request.allowBlindAndBuriedVias ?? false,
-  })
-  if (!drc.valid) console.log(`H3 DRC ${JSON.stringify(drc).slice(0, 3000)}`)
-  expect(drc.valid).toBe(true)
+  expect(
+    validateRoutedCopperDrc({
+      ...context,
+      clearance: request.minTraceToPadEdgeClearance!,
+      allowBlindAndBuriedVias: request.allowBlindAndBuriedVias ?? false,
+    }).valid,
+  ).toBe(true)
 }

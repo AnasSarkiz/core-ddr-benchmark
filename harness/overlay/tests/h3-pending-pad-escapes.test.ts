@@ -56,7 +56,7 @@ const svgOptions = {
 
 // Board coordinates in mm, +X right, +Y up. The H3 CPU is on the left and the
 // DDR3 RAM on the right of this two-layer board.
-test("H3 byte 1 leaves pending CPU balls without an escape", async (): Promise<void> => {
+test("H3 byte 1 leaves pads of later connections without an escape", async (): Promise<void> => {
   // Core hands each phase request to the solver without options.
   const input = fixture.byte1Request
   const original = structuredClone(input)
@@ -76,7 +76,8 @@ test("H3 byte 1 leaves pending CPU balls without an escape", async (): Promise<v
   })
 
   // A pad is trapped when it had a via site or a surface exit before this
-  // request and has neither afterwards.
+  // request and has neither afterwards. Via sites are those within the
+  // solver's own escape reach.
   const after = getPendingPads({ ...input, traces })
   const trappedPorts = after
     .filter((pad, index) => before[index].escape && !pad.escape)
@@ -106,11 +107,23 @@ test("H3 byte 1 leaves pending CPU balls without an escape", async (): Promise<v
   }
   for (const connection of fixture.pendingConnections) {
     const [first, second] = connection.pointsToConnect
-    for (const [pad, other] of [
-      [first, second],
-      [second, first],
-    ]) {
-      if (!trappedPorts.includes(pad.pcb_port_id!)) continue
+    const trappedPads = [first, second].filter((pad) =>
+      trappedPorts.includes(pad.pcb_port_id!),
+    )
+    if (!trappedPads.length) continue
+    circuit.push({
+      type: "pcb_note_line",
+      pcb_note_line_id: `pending_${connection.name}`,
+      layer: "top",
+      x1: first.x,
+      y1: first.y,
+      x2: second.x,
+      y2: second.y,
+      stroke_width: 0.06,
+      color: "#1d4ed8",
+      is_dashed: true,
+    })
+    for (const pad of trappedPads) {
       const half = 0.26
       const corners = [
         { x: pad.x - half, y: pad.y - half },
@@ -132,21 +145,9 @@ test("H3 byte 1 leaves pending CPU balls without an escape", async (): Promise<v
           color: "#1d4ed8",
         })
       }
-      circuit.push({
-        type: "pcb_note_line",
-        pcb_note_line_id: `pending_${pad.pcb_port_id}`,
-        layer: "top",
-        x1: pad.x,
-        y1: pad.y,
-        x2: other.x,
-        y2: other.y,
-        stroke_width: 0.06,
-        color: "#1d4ed8",
-        is_dashed: true,
-      })
     }
   }
-  const caption = `FAILED: byte 1 routed 8/8 beside byte 0, but ${trappedPorts.length} pads of later connections are left with no via site and no surface exit (boxed)`
+  const caption = `FAILED: byte 1 routed 8/8 beside byte 0, but ${trappedPorts.length} pads of later connections are left with no reachable via site and no surface exit (boxed)`
   await expect([
     ...circuit,
     {
@@ -154,10 +155,10 @@ test("H3 byte 1 leaves pending CPU balls without an escape", async (): Promise<v
       pcb_note_text_id: "routing_status_board",
       pcb_group_id: "routing_status",
       text: caption,
-      anchor_position: { x: 0, y: 8.3 },
+      anchor_position: { x: 0, y: 9.3 },
       font: "tscircuit2024",
       layer: "top",
-      font_size: 0.36,
+      font_size: 0.38,
       anchor_alignment: "center",
     },
   ]).toMatchPcbSnapshot({
@@ -166,7 +167,7 @@ test("H3 byte 1 leaves pending CPU balls without an escape", async (): Promise<v
       ...svgOptions,
       width: 1500,
       height: 1100,
-      viewport: { minX: -12.5, maxX: 12.5, minY: -9.2, maxY: 9.2 },
+      viewport: { minX: -14, maxX: 14, minY: -10.3, maxY: 10.3 },
     },
   })
   await expect([
@@ -193,8 +194,23 @@ test("H3 byte 1 leaves pending CPU balls without an escape", async (): Promise<v
     },
   })
 
-  console.log(
-    `H3 TRAPPED ${JSON.stringify(trappedPorts)} BEFORE ${JSON.stringify(before.filter((pad) => !pad.escape).map((pad) => pad.pcbPortId))} AFTER ${JSON.stringify(after.map((pad) => `${pad.pcbPortId}:${pad.escape}`))}`,
-  )
-  expect(trappedPorts).toContain("pcb_port_260")
+  expect(trappedPorts).toEqual([
+    "pcb_port_391",
+    "pcb_port_345",
+    "pcb_port_329",
+    "pcb_port_361",
+    "pcb_port_69",
+    "pcb_port_407",
+    "pcb_port_408",
+    "pcb_port_409",
+    "pcb_port_381",
+    "pcb_port_51",
+    "pcb_port_27",
+    "pcb_port_20",
+    "pcb_port_226",
+    "pcb_port_364",
+    "pcb_port_32",
+    "pcb_port_363",
+    "pcb_port_260",
+  ])
 }, 900_000)

@@ -29,20 +29,24 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
       - run: cd solver && git rev-parse HEAD && bun install
-      - name: Overlay, format, typecheck
+      - name: Overlay, format check, typecheck
         run: |
           cd solver
           cp -r ../harness-repo/harness/overlay/. .
-          bunx biome format --write tests/h3-pending-pad-escapes.test.ts tests/fixtures/pad-escapes.ts tests/fixtures/expect-connected-and-clear.ts
+          bun run format:check 2>&1 | tail -25
           bun run typecheck 2>&1 | tail -20
-      - name: Test and write snapshots
+      - name: Test and write snapshots, then run against them
         run: |
           cd solver
-          BUN_UPDATE_SNAPSHOTS=1 bun test tests/h3-pending-pad-escapes.test.ts --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)|H3 TRAPPED|H3 DRC|Writing|pass$|fail$|rror|Expected|Received" | cut -c1-6000 | head -40
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/h3-pending-pad-escapes.test.ts --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)|Writing|pass$|fail$|rror|Expected|Received" | head -40
+          sha256sum tests/__snapshots__/h3-pending-pad-escapes*
+          bun test tests/h3-pending-pad-escapes.test.ts --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)|pass$|fail$|rror|Expected|Received" | head -40
+          sha256sum tests/__snapshots__/h3-pending-pad-escapes*
+          ls tests/__snapshots__ | grep diff || true
       - name: Emit
         if: always()
         run: |
           cd solver
           echo "=====TARBALL-BEGIN====="
-          tar -czf - tests/h3-pending-pad-escapes.test.ts tests/fixtures/pad-escapes.ts tests/fixtures/expect-connected-and-clear.ts $(ls tests/__snapshots__/h3-pending-pad-escapes* 2>/dev/null) | base64 -w 160
+          tar -czf - $(ls tests/__snapshots__/h3-pending-pad-escapes*.svg) | base64 -w 160
           echo "=====TARBALL-END====="
