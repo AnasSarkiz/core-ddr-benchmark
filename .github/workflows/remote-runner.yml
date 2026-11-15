@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h3, a64, stmp157, a13]
+        circuit: [h3]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -57,7 +57,6 @@ jobs:
           cat ddr-benchmark-results/report.md | sed -n '/Per-circuit/,/Dependency/p'
           find ddr-benchmark-results -type f | xargs ls -la
           cd ddr-benchmark-results/${{ matrix.circuit }}
-          last=$(ls phase-*-start.srj.json | sort -V | tail -1)
           echo "=====TARBALL-BEGIN====="
-          tar -czf - $last $(ls ${last/-start/-error} ${last/-start/-end} 2>/dev/null) progress.json assessment.json findings.json render.log circuit.json 2>/dev/null | base64 -w 160
+          tar -czf - phase-*.srj.json progress.json assessment.json findings.json render.log | base64 -w 160
           echo "=====TARBALL-END====="
