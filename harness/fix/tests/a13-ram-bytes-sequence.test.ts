@@ -109,11 +109,7 @@ test("A13 RAM byte 1 routes after RAM byte 0", async (): Promise<void> => {
   expect(traces.slice(0, 24)).toEqual(afterByte0)
   expectConnectedAndClear(
     second,
-    [
-      ...fixture.fixedConnections,
-      ...first.connections,
-      ...second.connections,
-    ],
+    [...fixture.fixedConnections, ...first.connections, ...second.connections],
     traces,
   )
 
