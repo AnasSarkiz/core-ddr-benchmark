@@ -1,0 +1,49 @@
+# Temporary: measures A13 on tscircuit/core with the old and the new benchmark pin.
+# Lives only on the ci/a13-validation branch of this fork; not part of any PR.
+name: A13 source clearance validation
+
+on:
+  push:
+    branches: [ci/a13-validation]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  a13:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: old-pin-0.2mm
+            core_ref: 680a11f4b1e7212e0e64d549a4ada7cf6b6134c7
+          - label: new-pin-0.1249mm
+            core_ref: chore/pin-ddr-benchmark-a13-source-clearance
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/core
+          ref: ${{ matrix.core_ref }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - run: bun install --ignore-scripts
+      - name: Show the benchmark pin and A13 rule in use
+        run: |
+          grep core-ddr-benchmark package.json
+          bun -e 'const f=JSON.parse(require("node:zlib").gunzipSync(require("node:fs").readFileSync("node_modules/@tscircuit/core-ddr-benchmark/circuits/a13.json.gz")));console.log("A13 appliedGlobalClearance:",f.rules.appliedGlobalClearance)'
+      - name: Route A13
+        run: bun run benchmark:ddr --circuit a13 --timeout 900
+      - name: Summary
+        if: always()
+        run: cat ddr-benchmark-results/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a13-${{ matrix.label }}
+          path: ddr-benchmark-results/
+          retention-days: 14
