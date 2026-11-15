@@ -15,27 +15,52 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  h3diag:
+  exp:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
-          repository: tscircuit/bus-lanes-solver
-          ref: main
-          path: solver
+          repository: tscircuit/core
+          ref: aeb7e465abc1680051e06f1c84ddc1e9166be07d
+          path: core
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
-      - run: cd solver && git rev-parse HEAD && bun install
-      - name: Which lane search routes each H3 byte
+        with:
+          bun-version: '1.4.3'
+      - run: cd core && bun install --ignore-scripts
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: main
+          path: solver-src
+          persist-credentials: false
+      - name: Build the experimental solver and place it in Core
         run: |
-          cd solver
-          python3 ../harness-repo/harness/diag/instrument.py
-          for n in byte0 byte1; do
-            bun ../harness-repo/harness/diag/h3diag.ts ../harness-repo/harness/diag/h3-$n-request.json.gz out-$n.json 2>&1 | grep -E "^(LANES|PHASE|RESULT)" | cut -c1-700
-          done
+          cd solver-src
+          git rev-parse HEAD
+          git apply ../harness-repo/harness/exp/negotiation.patch && git status --short
+          bun install
+          bun run build
+          cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js
+      - name: Route
+        run: |
+          cd core
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 2>&1 | tail -15
+      - name: Print the report
+        if: always()
+        run: |
+          cd core
+          echo "=====REPORT====="
+          cat ddr-benchmark-results/report.md
+          echo "=====END-REPORT====="
+          cd ddr-benchmark-results/${{ matrix.circuit }}
           echo "=====TARBALL-BEGIN====="
-          tar -czf - out-*.json | base64 -w 160
+          tar -czf - $(ls phase-*-end.srj.json phase-*-error.srj.json 2>/dev/null | sort -V | head -4) progress.json assessment.json findings.json render.log | base64 -w 160
           echo "=====TARBALL-END====="

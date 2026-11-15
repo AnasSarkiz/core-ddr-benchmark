@@ -1,0 +1,53 @@
+diff --git a/lib/negotiate-lanes.ts b/lib/negotiate-lanes.ts
+index fff945e..432ea71 100644
+--- a/lib/negotiate-lanes.ts
++++ b/lib/negotiate-lanes.ts
+@@ -1,7 +1,10 @@
+ import { maximumCarrierLength } from "./route-lengths"
+ import { refineRouteCandidates } from "./refine-route-candidates"
+ import { routeViaWaypoint } from "./route-via-waypoint"
+-import { pendingLaneCertificates } from "./pending-lane-certificates"
++import {
++  pendingLaneCertificates,
++  pendingPackageExits,
++} from "./pending-lane-certificates"
+ import { RouteCandidatePool } from "./select-route-candidates"
+ import { routeCoupledPair } from "./coupled-pair-routing"
+ import { GridHistoryProjector, GridVisibilitySearch } from "./grid-visibility"
+@@ -32,6 +35,18 @@ export function* negotiateLanes(
+     (connection) => (terminalLayers.get(connection.name)?.length ?? 1) > 1,
+   )
+   const routed = new Map<string, Trace>()
++  // Pads of nets that a later request still has to route keep their exits
++  // as soft copper, exactly as in the ordered lane search.
++  let packageExits: Copper[] = []
++  if (input.buses?.length) {
++    const exitSearch = pendingPackageExits(input, fixed)
++    let exitStep = exitSearch.next()
++    while (!exitStep.done) {
++      yield paired
++      exitStep = exitSearch.next()
++    }
++    packageExits = exitStep.value
++  }
+   const histories = new Map<string, Float32Array>()
+   const searches = new Map<string, GridHistoryProjector>()
+   const clearance =
+@@ -295,7 +310,7 @@ export function* negotiateLanes(
+         scene,
+         connection.pointsToConnect[0],
+         connection.pointsToConnect[1],
+-        [...routedCopper, ...pendingCopper],
++        [...routedCopper, ...pendingCopper, ...packageExits],
+         congestionPenalty,
+         histories.get(layer),
+         {
+@@ -326,7 +341,7 @@ export function* negotiateLanes(
+                 candidateScene,
+                 connection.pointsToConnect[0],
+                 connection.pointsToConnect[1],
+-                [...routedCopper, ...pendingCopper],
++                [...routedCopper, ...pendingCopper, ...packageExits],
+                 congestionPenalty,
+                 histories.get(candidateLayer),
+                 {
