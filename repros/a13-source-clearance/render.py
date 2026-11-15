@@ -54,8 +54,8 @@ def main():
     circuit = next(c for c in manifest["circuits"] if c["id"] == CIRCUIT_ID)
     fixture = json.loads(gzip.decompress((ROOT / circuit["file"]).read_bytes()))
     board = load_source_board(circuit)
-    findings, pair_gaps = measure(fixture, board)
-    summary = summarize(fixture, findings, pair_gaps)
+    findings, pair_gaps, unmeasured_pads = measure(fixture, board)
+    summary = summarize(fixture, findings, pair_gaps, unmeasured_pads)
     applied = summary["appliedGlobalClearanceMm"]
     nets = {trace["nativeNet"] for trace in fixture["traces"]}
     refs = {part["name"] for part in fixture["parts"]}
@@ -112,8 +112,8 @@ def main():
         margin, 98,
         "Closer than applied: "
         + ", ".join(f"{checks[kind]['belowApplied']} {label}" for kind, label in (
-            ("traceToRoundPad", "trace-to-ball"), ("traceToTrace", "trace-to-trace"),
-            ("viaToRoundPad", "via-to-ball"), ("viaToTrace", "via-to-trace"),
+            ("traceToPad", "trace-to-pad"), ("traceToTrace", "trace-to-trace"),
+            ("viaToPad", "via-to-pad"), ("viaToTrace", "via-to-trace"),
         ))
         + f". Coupled differential-pair gaps ({summary['differentialPairGaps']['measuredPairs']} pairs) are excluded.",
         15,
@@ -139,6 +139,12 @@ def main():
         x, y = overview_px(via["x"], via["y"])
         out.append(f'<circle cx="{n(x)}" cy="{n(y)}" r="{n(via["diameter"] / 2 * OVERVIEW_PX_PER_MM)}" fill="{RED if i in red_vias else "#7b8794"}"/>')
     out += [draw_segment(s, overview_px, OVERVIEW_PX_PER_MM, RED) for i, s in signal_segments if i in red_segments]
+    tightest = min(findings, key=lambda f: (f["clearance"], f["net"], f["against"]))
+    tx, ty = overview_px(*tightest["at"])
+    label = f"tightest source gap: {tightest['clearance']:.4f} mm, {tightest['net'].split('/')[-1]} past {tightest['against']}"
+    out.append(f'<circle cx="{n(tx)}" cy="{n(ty)}" r="11" fill="none" stroke="{INK}" stroke-width="2"/>')
+    out.append(f'<rect x="{n(tx + 16)}" y="{n(ty - 13)}" width="{n(len(label) * 7.1 + 10)}" height="20" fill="white" fill-opacity="0.92" stroke="#cbd2d9"/>')
+    out.append(text(tx + 21, ty + 2, label, 13, "bold"))
     x1, y1 = overview_px(detail[0], detail[1])
     out.append(f'<rect x="{n(x1)}" y="{n(y1)}" width="{n((detail[2] - detail[0]) * OVERVIEW_PX_PER_MM)}" height="{n((detail[3] - detail[1]) * OVERVIEW_PX_PER_MM)}" fill="none" stroke="{INK}" stroke-width="1.5" stroke-dasharray="6 4"/>')
     out.append(f'<rect x="{n(x1)}" y="{n(y1 - 21)}" width="96" height="18" fill="white" fill-opacity="0.9"/>')

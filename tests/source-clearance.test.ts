@@ -9,6 +9,8 @@ type SourceClearanceBoard = {
   sourceCopperBelowApplied: number
   sourceCopperKeepsAppliedClearance: boolean
   sourceSha256: string
+  unmeasuredCopperPads: Record<string, number>
+  checks: Record<string, { tightest: { clearanceMm: number; net: string; against: string; atMm: number[] }[] }>
 }
 type Manifest = {
   circuits: { id: string; file: string; source: { sourceSha256: string } }[]
@@ -34,7 +36,7 @@ test("the applied clearance is compared with each board's manufactured DDR coppe
   }
 
   // Nine boards are routed under a rule their own manufactured copper keeps.
-  // A13 is asked for 0.2 mm although its original DDR routing goes down to 0.1271 mm.
+  // A13 is asked for 0.2 mm although its original DDR routing goes down to 0.1249 mm.
   const stricterThanSource = audit.boards.filter((board) => !board.sourceCopperKeepsAppliedClearance)
   expect(
     stricterThanSource.map((board) => ({
@@ -43,10 +45,21 @@ test("the applied clearance is compared with each board's manufactured DDR coppe
       sourceMinimum: board.sourceCopperMinimumClearanceMm,
       sourceCopperBelowApplied: board.sourceCopperBelowApplied,
     })),
-  ).toEqual([{ id: "a13", applied: 0.2, sourceMinimum: 0.1271, sourceCopperBelowApplied: 268 }])
+  ).toEqual([{ id: "a13", applied: 0.2, sourceMinimum: 0.1249, sourceCopperBelowApplied: 308 }])
+
+  // No copper pad on A13 is left unmeasured, and the tightest gap is against a
+  // rounded-rectangle CPU pad, not a RAM ball.
+  const a13 = audit.boards.find((board) => board.id === "a13")!
+  expect(a13.unmeasuredCopperPads).toEqual({})
+  expect(a13.checks.traceToPad.tightest[0]).toEqual({
+    clearanceMm: 0.1249,
+    net: "/DDR3 Memory/cke",
+    against: "U100.46",
+    atMm: [147.627, 82.777],
+  })
 
   const snapshot = readFileSync(new URL("../repros/a13-source-clearance/board.snap.svg", import.meta.url), "utf8")
   expect(snapshot).toContain(
-    "The original board does not keep the applied 0.200 mm clearance: 268 copper pairs on the 96 requested nets are closer, down to 0.1271 mm.",
+    "The original board does not keep the applied 0.200 mm clearance: 308 copper pairs on the 96 requested nets are closer, down to 0.1249 mm.",
   )
 })

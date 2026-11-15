@@ -4,7 +4,9 @@ Every benchmark circuit removes the original routing and asks Core to route the
 same nets under `rules.appliedGlobalClearance`. This audit measures the
 edge-to-edge clearance the original board's own copper keeps for those nets, so
 a rule stricter than the manufactured reference is visible before it is
-benchmarked.
+benchmarked. It measures tracks, vias and circle, oval, rectangle and
+rounded-rectangle pads; copper pads of any other shape are reported as
+unmeasured rather than assumed clear.
 
 All geometry is in KiCad board coordinates: mm, +X right, +Y down.
 
@@ -80,6 +82,7 @@ def read_board(tree):
                 "width": float(size[0]),
                 "height": float(size[1]),
                 "angle": float(pad_at[2]) if len(pad_at) > 2 else 0.0,
+                "cornerRatio": float(one(pad, "roundrect_rratio", ["0"])[0]),
                 "layers": one(pad, "layers", []),
             })
     segments = []
@@ -122,6 +125,55 @@ def segment_to_segment(a, b):
     )
 
 
+MEASURED_PAD_SHAPES = ("circle", "oval", "rect", "roundrect")
+
+
+def pad_outline(pad):
+    """A measured pad as a core rectangle (half extents, pad-local mm) grown by a radius.
+
+    circle: a point grown by the radius. oval: a line grown by half the short
+    side. roundrect: the rectangle inset by its corner radius. rect: radius 0.
+    """
+    half_w, half_h = pad["width"] / 2, pad["height"] / 2
+    if pad["shape"] in ("circle", "oval"):
+        radius = min(half_w, half_h)
+    elif pad["shape"] == "roundrect":
+        radius = pad["cornerRatio"] * min(pad["width"], pad["height"])
+    else:
+        radius = 0.0
+    return half_w - radius, half_h - radius, radius
+
+
+def to_pad_frame(pad, x, y):
+    """Board point -> pad-local point. KiCad pad angles are absolute, counter-clockwise on screen."""
+    angle = math.radians(pad["angle"])
+    dx, dy = x - pad["x"], y - pad["y"]
+    return dx * math.cos(angle) - dy * math.sin(angle), dx * math.sin(angle) + dy * math.cos(angle)
+
+
+def pad_to_segment(pad, segment):
+    """Distance from the pad's copper edge to the segment centre line; 0 when they touch."""
+    half_w, half_h, radius = pad_outline(pad)
+    x1, y1 = to_pad_frame(pad, segment["x1"], segment["y1"])
+    x2, y2 = to_pad_frame(pad, segment["x2"], segment["y2"])
+    local = {"x1": x1, "y1": y1, "x2": x2, "y2": y2}
+    if any(abs(x) <= half_w and abs(y) <= half_h for x, y in ((x1, y1), (x2, y2))):
+        return 0.0
+    corners = [(-half_w, -half_h), (half_w, -half_h), (half_w, half_h), (-half_w, half_h)]
+    core = min(
+        segment_to_segment(local, {"x1": a[0], "y1": a[1], "x2": b[0], "y2": b[1]})
+        for a, b in zip(corners, corners[1:] + corners[:1])
+    )
+    return max(0.0, core - radius)
+
+
+def pad_to_point(pad, x, y):
+    """Distance from the pad's copper edge to a board point; 0 when the point is on the pad."""
+    half_w, half_h, radius = pad_outline(pad)
+    u, v = to_pad_frame(pad, x, y)
+    return max(0.0, math.hypot(max(abs(u) - half_w, 0.0), max(abs(v) - half_h, 0.0)) - radius)
+
+
 def pad_is_on_layer(pad, layer):
     return any(name in (layer, "*.Cu") or (name == "F&B.Cu" and layer in ("F.Cu", "B.Cu")) for name in pad["layers"])
 
@@ -137,18 +189,23 @@ def are_differential_partners(first, second):
 def measure(fixture, board):
     """Clearance findings between the fixture nets' source copper and foreign copper.
 
-    Round pads, tracks and vias are measured exactly. Non-round pads are not
-    measured, and coupled differential-pair gaps are counted separately because
-    they follow the pair gap rule instead of the clearance rule.
+    Tracks, vias and circle, oval, rectangle and rounded-rectangle pads are
+    measured exactly. Pads of any other shape are not measured and are counted
+    in `unmeasuredCopperPads`. Coupled differential-pair gaps are counted separately
+    because they follow the pair gap rule instead of the clearance rule.
     """
     nets = {trace["nativeNet"] for trace in fixture["traces"]}
     segments = board["segments"]
     if not any(segment["net"] in nets for segment in segments):
         raise ValueError(f"{fixture['id']}: the source board has no copper on the fixture nets")
-    round_pads = [pad for pad in board["pads"] if pad["shape"] == "circle" and pad["width"] == pad["height"]]
+    measured_pads = [pad for pad in board["pads"] if pad["shape"] in MEASURED_PAD_SHAPES]
+    # A pad is filed under every grid cell its bounding circle touches.
     pad_grid = collections.defaultdict(list)
-    for pad in round_pads:
-        pad_grid[(int(pad["x"] // GRID_MM), int(pad["y"] // GRID_MM))].append(pad)
+    for pad in measured_pads:
+        reach = math.hypot(pad["width"], pad["height"]) / 2
+        for gx in range(int((pad["x"] - reach) // GRID_MM), int((pad["x"] + reach) // GRID_MM) + 1):
+            for gy in range(int((pad["y"] - reach) // GRID_MM), int((pad["y"] + reach) // GRID_MM) + 1):
+                pad_grid[(gx, gy)].append(pad)
     segment_grid = collections.defaultdict(list)
     for index, segment in enumerate(segments):
         for gx in range(int(min(segment["x1"], segment["x2"]) // GRID_MM), int(max(segment["x1"], segment["x2"]) // GRID_MM) + 1):
@@ -166,13 +223,15 @@ def measure(fixture, board):
             for gx in range(int(min(segment["x1"], segment["x2"]) // GRID_MM) - 1, int(max(segment["x1"], segment["x2"]) // GRID_MM) + 2)
             for gy in range(int(min(segment["y1"], segment["y2"]) // GRID_MM) - 1, int(max(segment["y1"], segment["y2"]) // GRID_MM) + 2)
         }
+        measured_here = set()
         for cell in sorted(cells):
             for pad in pad_grid.get(cell, []):
-                if pad["net"] == segment["net"] or not pad_is_on_layer(pad, segment["layer"]):
+                if id(pad) in measured_here or pad["net"] == segment["net"] or not pad_is_on_layer(pad, segment["layer"]):
                     continue
-                clearance = point_to_segment(pad["x"], pad["y"], segment) - pad["width"] / 2 - segment["width"] / 2
+                measured_here.add(id(pad))
+                clearance = pad_to_segment(pad, segment) - segment["width"] / 2
                 if clearance < SEARCH_RADIUS_MM:
-                    findings.append({"kind": "traceToRoundPad", "clearance": clearance, "net": segment["net"], "against": f"{pad['ref']}.{pad['pin']}", "segments": [index], "vias": []})
+                    findings.append({"kind": "traceToPad", "clearance": clearance, "net": segment["net"], "against": f"{pad['ref']}.{pad['pin']}", "at": (pad["x"], pad["y"]), "segments": [index], "vias": []})
             for other_index in segment_grid.get(cell, []):
                 other = segments[other_index]
                 if other["net"] == segment["net"] or other["layer"] != segment["layer"]:
@@ -187,38 +246,45 @@ def measure(fixture, board):
                 if are_differential_partners(segment["net"], other["net"]):
                     pair_gaps.append(clearance)
                     continue
-                findings.append({"kind": "traceToTrace", "clearance": clearance, "net": segment["net"], "against": other["net"] or "(no net)", "segments": [i for i in pair if segments[i]["net"] in nets], "vias": []})
+                findings.append({"kind": "traceToTrace", "clearance": clearance, "net": segment["net"], "against": other["net"] or "(no net)", "at": ((segment["x1"] + segment["x2"]) / 2, (segment["y1"] + segment["y2"]) / 2), "segments": [i for i in pair if segments[i]["net"] in nets], "vias": []})
     for via_index, via in enumerate(board["vias"]):
         if via["net"] not in nets:
             continue
         home = (int(via["x"] // GRID_MM), int(via["y"] // GRID_MM))
+        measured_here = set()
         for cell in sorted((home[0] + gx, home[1] + gy) for gx in (-1, 0, 1) for gy in (-1, 0, 1)):
             for pad in pad_grid.get(cell, []):
-                if pad["net"] == via["net"] or not any(pad_is_on_layer(pad, layer) for layer in via["layers"]):
+                if id(pad) in measured_here or pad["net"] == via["net"] or not any(pad_is_on_layer(pad, layer) for layer in via["layers"]):
                     continue
-                clearance = math.hypot(via["x"] - pad["x"], via["y"] - pad["y"]) - via["diameter"] / 2 - pad["width"] / 2
+                measured_here.add(id(pad))
+                clearance = pad_to_point(pad, via["x"], via["y"]) - via["diameter"] / 2
                 if clearance < SEARCH_RADIUS_MM:
-                    findings.append({"kind": "viaToRoundPad", "clearance": clearance, "net": via["net"], "against": f"{pad['ref']}.{pad['pin']}", "segments": [], "vias": [via_index]})
+                    findings.append({"kind": "viaToPad", "clearance": clearance, "net": via["net"], "against": f"{pad['ref']}.{pad['pin']}", "at": (via["x"], via["y"]), "segments": [], "vias": [via_index]})
             for other_index in segment_grid.get(cell, []):
                 other = segments[other_index]
                 if other["net"] == via["net"] or other["layer"] not in via["layers"]:
                     continue
                 clearance = point_to_segment(via["x"], via["y"], other) - via["diameter"] / 2 - other["width"] / 2
                 if clearance < SEARCH_RADIUS_MM:
-                    findings.append({"kind": "viaToTrace", "clearance": clearance, "net": via["net"], "against": other["net"] or "(no net)", "segments": [other_index] if other["net"] in nets else [], "vias": [via_index]})
-    return findings, pair_gaps
+                    findings.append({"kind": "viaToTrace", "clearance": clearance, "net": via["net"], "against": other["net"] or "(no net)", "at": (via["x"], via["y"]), "segments": [other_index] if other["net"] in nets else [], "vias": [via_index]})
+    # Only copper pads can be a clearance finding; paste-only apertures are not counted.
+    unmeasured = collections.Counter(
+        pad["shape"] for pad in board["pads"]
+        if pad["shape"] not in MEASURED_PAD_SHAPES and any(pad_is_on_layer(pad, layer) for layer in board["copper"])
+    )
+    return findings, pair_gaps, dict(sorted(unmeasured.items()))
 
 
-def summarize(fixture, findings, pair_gaps):
+def summarize(fixture, findings, pair_gaps, unmeasured_pads):
     applied = fixture["rules"]["appliedGlobalClearance"]
     checks = {}
-    for kind in ("traceToRoundPad", "traceToTrace", "viaToRoundPad", "viaToTrace"):
+    for kind in ("traceToPad", "traceToTrace", "viaToPad", "viaToTrace"):
         rows = sorted((f for f in findings if f["kind"] == kind), key=lambda f: (f["clearance"], f["net"], f["against"]))
         checks[kind] = {
             "measuredPairs": len(rows),
             "minimumMm": round(rows[0]["clearance"], 4) if rows else None,
             "belowApplied": sum(1 for f in rows if f["clearance"] < applied - TOLERANCE_MM),
-            "tightest": [{"clearanceMm": round(f["clearance"], 4), "net": f["net"], "against": f["against"]} for f in rows[:3]],
+            "tightest": [{"clearanceMm": round(f["clearance"], 4), "net": f["net"], "against": f["against"], "atMm": [round(f["at"][0], 3), round(f["at"][1], 3)]} for f in rows[:3]],
         }
     minimum = min(check["minimumMm"] for check in checks.values() if check["minimumMm"] is not None)
     return {
@@ -228,6 +294,7 @@ def summarize(fixture, findings, pair_gaps):
         "sourceCopperBelowApplied": sum(check["belowApplied"] for check in checks.values()),
         "sourceCopperKeepsAppliedClearance": minimum >= applied - TOLERANCE_MM,
         "differentialPairGaps": {"measuredPairs": len(pair_gaps), "minimumMm": round(min(pair_gaps), 4) if pair_gaps else None},
+        "unmeasuredCopperPads": unmeasured_pads,
         "checks": checks,
     }
 
@@ -237,8 +304,8 @@ def audit_all():
     boards = []
     for circuit in manifest["circuits"]:
         fixture = json.loads(gzip.decompress((ROOT / circuit["file"]).read_bytes()))
-        findings, pair_gaps = measure(fixture, load_source_board(circuit))
-        boards.append({**summarize(fixture, findings, pair_gaps), "sourceSha256": circuit["source"]["sourceSha256"]})
+        findings, pair_gaps, unmeasured_pads = measure(fixture, load_source_board(circuit))
+        boards.append({**summarize(fixture, findings, pair_gaps, unmeasured_pads), "sourceSha256": circuit["source"]["sourceSha256"]})
     return {"schemaVersion": 1, "toleranceMm": TOLERANCE_MM, "boards": boards}
 
 
