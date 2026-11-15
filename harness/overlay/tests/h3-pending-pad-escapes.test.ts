@@ -9,7 +9,7 @@ import {
   type Connection,
   type SimpleRouteJson,
 } from "../lib"
-import { expectCompletedRouting } from "./fixtures/expect-completed-routing"
+import { expectConnectedAndClear } from "./fixtures/expect-connected-and-clear"
 import { type PadEscape, getPadEscape } from "./fixtures/pad-escapes"
 
 type Fixture = {
@@ -66,10 +66,14 @@ test("H3 byte 1 leaves pending CPU balls without an escape", async (): Promise<v
   expect(input).toEqual(original)
   expect(solver.error).toBeNull()
   expect(solver.solved).toBe(true)
-  expectCompletedRouting(solver, original)
   const traces = solver.getOutput().traces
   expect(traces).toHaveLength(16)
   expect(traces.slice(0, 8)).toEqual(original.traces!)
+  expectConnectedAndClear({
+    request: input,
+    connections: [...fixture.fixedConnections, ...input.connections],
+    traces,
+  })
 
   // A pad is trapped when it had a via site or a surface exit before this
   // request and has neither afterwards.
