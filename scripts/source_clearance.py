@@ -12,6 +12,7 @@ All geometry is in KiCad board coordinates: mm, +X right, +Y down.
 
     python3 scripts/source_clearance.py            # writes provenance/source-clearance.json
     python3 scripts/source_clearance.py --check    # fails if the committed audit is stale
+    python3 scripts/source_clearance.py --apply    # rewrites fixtures stricter than their source
 """
 import collections
 import gzip
@@ -299,18 +300,40 @@ def summarize(fixture, findings, pair_gaps, unmeasured_pads):
     }
 
 
-def audit_all():
+def source_kept_clearance(fixture, findings, summary):
+    """The applied clearance, capped at the tightest clearance the source copper keeps."""
+    applied = fixture["rules"]["appliedGlobalClearance"]
+    if summary["sourceCopperKeepsAppliedClearance"]:
+        return applied
+    # Rounded down to 0.1 um so the source copper itself always satisfies the result.
+    return math.floor(min(finding["clearance"] for finding in findings) * 10000) / 10000
+
+
+def audit_all(apply=False):
     manifest = json.loads((ROOT / "manifest.json").read_text())
     boards = []
     for circuit in manifest["circuits"]:
         fixture = json.loads(gzip.decompress((ROOT / circuit["file"]).read_bytes()))
         findings, pair_gaps, unmeasured_pads = measure(fixture, load_source_board(circuit))
-        boards.append({**summarize(fixture, findings, pair_gaps, unmeasured_pads), "sourceSha256": circuit["source"]["sourceSha256"]})
+        summary = summarize(fixture, findings, pair_gaps, unmeasured_pads)
+        clearance = source_kept_clearance(fixture, findings, summary)
+        if apply and clearance != fixture["rules"]["appliedGlobalClearance"]:
+            # Imported fixtures repeat the rule in their source record and in the manifest.
+            source_records = [record for record in (fixture.get("source"), circuit["source"]) if record and "rules" in record]
+            for rules in [fixture["rules"]] + [record["rules"] for record in source_records]:
+                rules["appliedGlobalClearance"] = clearance
+            raw = gzip.compress((json.dumps(fixture, separators=(",", ":")) + "\n").encode(), mtime=0)
+            (ROOT / circuit["file"]).write_bytes(raw)
+            circuit["sha256"] = hashlib.sha256(raw).hexdigest()
+            summary = summarize(fixture, findings, pair_gaps, unmeasured_pads)
+        boards.append({**summary, "sourceSha256": circuit["source"]["sourceSha256"]})
+    if apply:
+        (ROOT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return {"schemaVersion": 1, "toleranceMm": TOLERANCE_MM, "boards": boards}
 
 
 if __name__ == "__main__":
-    serialized = json.dumps(audit_all(), indent=2) + "\n"
+    serialized = json.dumps(audit_all(apply="--apply" in sys.argv), indent=2) + "\n"
     if "--check" in sys.argv:
         if AUDIT_PATH.read_text() != serialized:
             raise SystemExit("provenance/source-clearance.json is stale; run python3 scripts/source_clearance.py")

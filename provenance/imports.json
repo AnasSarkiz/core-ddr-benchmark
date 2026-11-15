@@ -32,7 +32,8 @@
     "changes": [
       "Remove requestedNames selection filter if present",
       "Normalize sourceName to nativeNet if present",
-      "Serialize compact JSON and deterministic gzip"
+      "Serialize compact JSON and deterministic gzip",
+      "Cap the applied clearance at the tightest clearance the manufactured DDR copper keeps, 0.1249 mm instead of the declared 0.2 mm (scripts/source_clearance.py --apply)"
     ]
   },
   {

@@ -610,10 +610,10 @@
     },
     {
       "id": "a13",
-      "appliedGlobalClearanceMm": 0.2,
+      "appliedGlobalClearanceMm": 0.1249,
       "sourceCopperMinimumClearanceMm": 0.1249,
-      "sourceCopperBelowApplied": 308,
-      "sourceCopperKeepsAppliedClearance": false,
+      "sourceCopperBelowApplied": 0,
+      "sourceCopperKeepsAppliedClearance": true,
       "differentialPairGaps": {
         "measuredPairs": 446,
         "minimumMm": 0.1337
@@ -623,7 +623,7 @@
         "traceToPad": {
           "measuredPairs": 2550,
           "minimumMm": 0.1249,
-          "belowApplied": 64,
+          "belowApplied": 0,
           "tightest": [
             {
               "clearanceMm": 0.1249,
@@ -657,7 +657,7 @@
         "traceToTrace": {
           "measuredPairs": 7695,
           "minimumMm": 0.1271,
-          "belowApplied": 59,
+          "belowApplied": 0,
           "tightest": [
             {
               "clearanceMm": 0.1271,
@@ -691,7 +691,7 @@
         "viaToPad": {
           "measuredPairs": 288,
           "minimumMm": 0.1407,
-          "belowApplied": 67,
+          "belowApplied": 0,
           "tightest": [
             {
               "clearanceMm": 0.1407,
@@ -725,7 +725,7 @@
         "viaToTrace": {
           "measuredPairs": 2822,
           "minimumMm": 0.1273,
-          "belowApplied": 118,
+          "belowApplied": 0,
           "tightest": [
             {
               "clearanceMm": 0.1273,

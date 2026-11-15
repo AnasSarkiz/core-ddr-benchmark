@@ -61,6 +61,13 @@ restrictions, widths, via sizes and clearances. Every render audits emitted pad
 centers against the imported geometry. Actual wire segments, layer transitions
 and terminals determine connected nets; isolated fanout stubs do not count.
 
+Each circuit routes under one clearance, `rules.appliedGlobalClearance`: the
+largest clearance declared for its nets, capped at the tightest clearance the
+original board's own DDR copper keeps. `python3 scripts/source_clearance.py`
+measures that copper for all ten boards and records it in
+`provenance/source-clearance.json`;
+[A13's board keeps 0.1249 mm, not its declared 0.2 mm](repros/a13-source-clearance/README.md).
+
 Existing copper is removed. Power, VREF, ZQ and unconnected nets are excluded.
 Only the DDR subsystem and touching passives are included. Irregular board
 outlines use their bounding boxes. Non-circular pad shapes are represented by

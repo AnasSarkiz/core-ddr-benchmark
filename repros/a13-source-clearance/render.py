@@ -31,6 +31,11 @@ def n(value):
     return f"{value:.2f}"
 
 
+def mm(value):
+    """Three decimals, or four when the value needs them (0.1249 must not read as 0.125)."""
+    return f"{value:.3f}" if abs(round(value, 3) - value) < 1e-9 else f"{value:.4f}"
+
+
 def text(x, y, content, size=15, weight="normal", fill=INK, anchor="start"):
     return f'<text x="{n(x)}" y="{n(y)}" font-family="Arial, Helvetica, sans-serif" font-size="{size}" font-weight="{weight}" fill="{fill}" text-anchor="{anchor}">{content}</text>'
 
@@ -103,9 +108,9 @@ def main():
     checks = summary["checks"]
     keeps = summary["sourceCopperKeepsAppliedClearance"]
     verdict = (
-        f"The original board keeps the applied {applied:.3f} mm clearance: its tightest gap on the {len(nets)} requested nets is {summary['sourceCopperMinimumClearanceMm']:.4f} mm."
+        f"The original board keeps the applied {mm(applied)} mm clearance: its tightest gap on the {len(nets)} requested nets is {summary['sourceCopperMinimumClearanceMm']:.4f} mm."
         if keeps
-        else f"The original board does not keep the applied {applied:.3f} mm clearance: {summary['sourceCopperBelowApplied']} copper pairs on the {len(nets)} requested nets are closer, down to {summary['sourceCopperMinimumClearanceMm']:.4f} mm."
+        else f"The original board does not keep the applied {mm(applied)} mm clearance: {summary['sourceCopperBelowApplied']} copper pairs on the {len(nets)} requested nets are closer, down to {summary['sourceCopperMinimumClearanceMm']:.4f} mm."
     )
     out.append(text(margin, 72, verdict, 17, "bold", INK if keeps else RED))
     out.append(text(
@@ -151,7 +156,7 @@ def main():
     out.append(text(x1 + 4, y1 - 7, f"{MEMORY_REF} (detail)", 13, "bold"))
 
     # Detail: where a trace centre line may run between the memory balls.
-    out.append(text(detail_x, panel_y - 10, f"{MEMORY_REF} top layer: shaded = no trace centre line allowed at {applied:.3f} mm", 15, "bold"))
+    out.append(text(detail_x, panel_y - 10, f"{MEMORY_REF} top layer: shaded = no trace centre line allowed at {mm(applied)} mm", 15, "bold"))
     out.append(f'<clipPath id="detail"><rect x="{n(detail_x)}" y="{n(panel_y)}" width="{n(detail_w)}" height="{n(detail_h)}"/></clipPath>')
     out.append(f'<rect x="{n(detail_x)}" y="{n(panel_y)}" width="{n(detail_w)}" height="{n(detail_h)}" fill="white" stroke="#cbd2d9"/>')
     out.append('<g clip-path="url(#detail)">')
@@ -187,8 +192,8 @@ def main():
     out.append(f'<rect x="{n(cx - width / 2 * scale)}" y="{n(cy - 110)}" width="{n(width * scale)}" height="220" fill="{TOP if fits else RED}"/>')
     lines = [
         (f"Ball pitch {pitch:.3f} mm, ball {ball:.3f} mm: {gap:.3f} mm between balls.", INK, "normal"),
-        (f"A {width:.4f} mm trace at {applied:.3f} mm clearance needs", INK, "normal"),
-        (f"2 x {applied:.3f} + {width:.4f} = {needed:.3f} mm: {'fits' if fits else 'does not fit'}.", INK if fits else RED, "bold"),
+        (f"A {width:.4f} mm trace at {mm(applied)} mm clearance needs", INK, "normal"),
+        (f"2 x {mm(applied)} + {width:.4f} = {needed:.3f} mm: {'fits' if fits else 'does not fit'}.", INK if fits else RED, "bold"),
         (f"A {via_pad:.2f} mm via between four balls needs {via_needed:.3f} mm", INK, "normal"),
         (f"of the {pitch * math.sqrt(2):.3f} mm diagonal: {'fits' if via_fits else 'does not fit'}.", INK if via_fits else RED, "bold"),
         (f"The original trace keeps {(gap - width) / 2:.4f} mm to each ball.", INK, "normal"),

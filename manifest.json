@@ -449,7 +449,7 @@
       "id": "a13",
       "title": "Allwinner A13 SBC",
       "file": "circuits/a13.json.gz",
-      "sha256": "f60631dc0e6cb1773df1ff3e971085867ed7a9426f3e4eb3e26893cd8780dd88",
+      "sha256": "1d2f7904d70200afa2827079a2f5c82463bea147b5917354c0c0cecdb1f7e011",
       "nets": 96,
       "pads": 378,
       "source": {
@@ -520,7 +520,7 @@
             0.127,
             0.2
           ],
-          "appliedGlobalClearance": 0.2,
+          "appliedGlobalClearance": 0.1249,
           "viaPad": 0.45,
           "viaDrill": 0.3
         },
