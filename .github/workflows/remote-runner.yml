@@ -14,13 +14,17 @@ env:
   SOLVER_REF: main
 
 jobs:
-  sites:
+  chain:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        request: [a13-ram-byte1-request, a13-ram-byte0-request]
+        include:
+          - { label: baseline, layers: "", experiment: none }
+          - { label: pending-exits-ungated, layers: "", experiment: ungate-pending-exits }
+          - { label: bottom-only, layers: bottom, experiment: none }
+          - { label: bottom-only-ungated, layers: bottom, experiment: ungate-pending-exits }
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -32,5 +36,20 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
       - run: cd solver && bun install
-      - name: Via site diagnostics
-        run: cd solver && bun ../harness-repo/harness/diag/sites.ts ../harness-repo/harness/diag/${{ matrix.request }}.json.gz
+      - name: Apply the experiment
+        if: matrix.experiment == 'ungate-pending-exits'
+        run: |
+          cd solver
+          sed -i 's|  if (!hasCompletedTrunk) return \[\]|  // experiment: pending exits are computed for every request|' lib/pending-lane-certificates.ts
+          git diff --stat
+          git diff | grep "^[+-] " || true
+      - name: Chain RAM byte 0 into RAM byte 1
+        env:
+          BUS_LAYERS: ${{ matrix.layers }}
+          EXPERIMENT: ${{ matrix.experiment }}
+        run: cd solver && bun ../harness-repo/harness/diag/chain.ts ../harness-repo/harness/diag/a13-ram-byte0-request.json.gz ../harness-repo/harness/diag/a13-ram-byte1-request.json.gz
+      - name: Emit the picture
+        if: always()
+        run: |
+          cd solver
+          if [ -f chain.svg ]; then echo "=====TARBALL-BEGIN====="; tar -czf - chain.svg | base64 -w 160; echo "=====TARBALL-END====="; fi
