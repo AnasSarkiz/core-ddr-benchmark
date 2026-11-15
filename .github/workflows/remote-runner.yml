@@ -14,45 +14,52 @@ env:
   SOLVER_REF: main
 
 jobs:
-  sequence:
+  ddr:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        state: [repro, fix]
+        circuit: [h3, a64, stmp157, orangecrab, a13, h616, butterstick, glider, imx6, icepi]
+        variant: [base, fix]
     steps:
       - uses: actions/checkout@v4
-        with: { path: harness-repo }
+        with:
+          repository: tscircuit/core
+          ref: aeb7e465abc1680051e06f1c84ddc1e9166be07d
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - run: bun install --ignore-scripts
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
           ref: ${{ env.SOLVER_REF }}
-          path: solver
+          path: solver-src
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-      - run: cd solver && git rev-parse HEAD && bun install
-      - name: Overlay the repro
-        run: cp -r harness-repo/harness/overlay/. solver/
-      - name: Overlay the fix
-        if: matrix.state == 'fix'
+      - name: Build the solver under test and place it in Core
         run: |
-          cp -r harness-repo/harness/fix/. solver/
-          cd solver
-          sed -i 's|  if (!hasCompletedTrunk) return \[\]|  // experiment: pending exits are computed for every request|' lib/pending-lane-certificates.ts
-      - name: Format and typecheck
+          cd solver-src
+          git rev-parse HEAD
+          if [ "${{ matrix.variant }}" = fix ]; then
+            sed -i 's|  if (!hasCompletedTrunk) return \[\]|  // experiment: pending exits are computed for every request|' lib/pending-lane-certificates.ts
+            git diff --stat
+          fi
+          bun install
+          bun run build
+          cd ..
+          ls -la node_modules/@tscircuit/bus-lanes-solver/dist | head
+          grep -c "hasCompletedTrunk) return" node_modules/@tscircuit/bus-lanes-solver/dist/index.js || true
+          cp solver-src/dist/index.js node_modules/@tscircuit/bus-lanes-solver/dist/index.js
+          echo "after replacement:"; grep -c "hasCompletedTrunk) return" node_modules/@tscircuit/bus-lanes-solver/dist/index.js || true
+          rm -rf solver-src
+      - name: Route
         run: |
-          cd solver
-          bunx biome format --write tests/a13-ram-bytes-sequence.test.ts
-          bun run typecheck 2>&1 | tail -30
-      - name: Run the test and write its snapshots
-        run: |
-          cd solver
-          BUN_UPDATE_SNAPSHOTS=1 bun test tests/a13-ram-bytes-sequence.test.ts --timeout 900000 2>&1 | tail -40
-      - name: Emit the formatted test and snapshots
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 2>&1 | tail -15
+      - name: Print the report
         if: always()
         run: |
-          cd solver
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - tests/a13-ram-bytes-sequence.test.ts tests/__snapshots__/a13-ram-bytes-sequence* | base64 -w 160
-          echo "=====TARBALL-END====="
+          echo "=====REPORT====="
+          cat ddr-benchmark-results/report.md
+          echo "=====END-REPORT====="
