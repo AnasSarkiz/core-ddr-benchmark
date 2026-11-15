@@ -15,7 +15,7 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  h3repro:
+  h3variants:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -24,29 +24,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
-          ref: main
+          ref: repro/h3-pending-pad-escapes
           path: solver
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
       - run: cd solver && git rev-parse HEAD && bun install
-      - name: Overlay, format check, typecheck
+      - name: Byte 1 under request variants
         run: |
           cd solver
-          cp -r ../harness-repo/harness/overlay/. .
-          bun run format:check 2>&1 | tail -25
-          bun run typecheck 2>&1 | tail -20
-      - name: Test and write snapshots, then run against them
-        run: |
-          cd solver
-          BUN_UPDATE_SNAPSHOTS=1 bun test tests/h3-pending-pad-escapes.test.ts --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)|Writing|pass$|fail$|rror|Expected|Received" | head -40
-          sha256sum tests/__snapshots__/h3-pending-pad-escapes*
-          bun test tests/h3-pending-pad-escapes.test.ts --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)|pass$|fail$|rror|Expected|Received" | head -40
-          sha256sum tests/__snapshots__/h3-pending-pad-escapes*
-          ls tests/__snapshots__ | grep diff || true
-      - name: Emit
-        if: always()
-        run: |
-          cd solver
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - $(ls tests/__snapshots__/h3-pending-pad-escapes*.svg) | base64 -w 160
-          echo "=====TARBALL-END====="
+          bun ../harness-repo/harness/diag/h3-variants.ts 2>&1 | grep -E "^(OWN|VARIANT)|rror" | cut -c1-900
