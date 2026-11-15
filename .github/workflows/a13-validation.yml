@@ -41,6 +41,16 @@ jobs:
       - name: Summary
         if: always()
         run: cat ddr-benchmark-results/report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Print the results (artifact downloads are not reachable from the review session)
+        if: always()
+        run: |
+          ls -la ddr-benchmark-results ddr-benchmark-results/a13
+          echo "=====REPORT====="; cat ddr-benchmark-results/report.md
+          echo "=====PROGRESS====="; cat ddr-benchmark-results/a13/progress.json
+          echo "=====RENDERLOG====="; tail -c 6000 ddr-benchmark-results/a13/render.log
+          echo "=====TARBALL-BEGIN====="
+          tar -C ddr-benchmark-results -czf - . | base64 -w 160
+          echo "=====TARBALL-END====="
       - uses: actions/upload-artifact@v4
         if: always()
         with:
