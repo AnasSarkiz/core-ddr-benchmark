@@ -42,7 +42,10 @@ function expectConnectedAndClear(
     })),
     traces: request.traces?.map(owned),
   }
-  const context = { inputSrj, routedSrj: { ...inputSrj, traces: traces.map(owned) } }
+  const context = {
+    inputSrj,
+    routedSrj: { ...inputSrj, traces: traces.map(owned) },
+  }
   const connectivity = validateOriginalEndpointConnectivity(context)
   expect(connectivity.valid).toBe(true)
   expect(connectivity.connectedConnectionCount).toBe(connections.length)
@@ -99,38 +102,24 @@ test("A13 RAM byte 1 routes after RAM byte 0", async (): Promise<void> => {
   byte1.solve()
   expect(second).toEqual(originalSecond)
 
-  // Only validated, completed copper is drawn. Requested connections that
-  // did not route are straight guide lines, never candidate copper.
-  let traces = afterByte0
-  let caption =
-    "FAILED: RAM byte 1 0/8 after RAM byte 0 8/8; 24 completed routes shown; blue dashed lines are the 8 requested connections"
+  expect(byte1.error).toBeNull()
+  expect(byte1.solved).toBe(true)
+  const traces = byte1.getOutput().traces
+  expect(traces).toHaveLength(32)
+  expect(traces.slice(0, 24)).toEqual(afterByte0)
+  expectConnectedAndClear(
+    second,
+    [
+      ...fixture.fixedConnections,
+      ...first.connections,
+      ...second.connections,
+    ],
+    traces,
+  )
+
+  const caption =
+    "COMPLETED: RAM byte 1 8/8 after RAM byte 0 8/8; 32/32 routes connected; earlier copper unchanged; DRC passed"
   const circuit = [...fixture.circuit]
-  if (byte1.solved) {
-    traces = byte1.getOutput().traces
-    expect(traces.slice(0, 24)).toEqual(afterByte0)
-    expectConnectedAndClear(
-      second,
-      [...fixture.fixedConnections, ...first.connections, ...second.connections],
-      traces,
-    )
-    caption =
-      "COMPLETED: RAM byte 1 8/8 after RAM byte 0 8/8; 32/32 routes connected; earlier copper unchanged; DRC passed"
-  } else {
-    for (const [index, connection] of second.connections.entries()) {
-      const [start, end] = connection.pointsToConnect
-      circuit.push({
-        type: "pcb_note_line",
-        pcb_note_line_id: `requested_${index}`,
-        x1: start.x,
-        y1: start.y,
-        x2: end.x,
-        y2: end.y,
-        stroke_width: 0.07,
-        color: "#1d4ed8",
-        is_dashed: true,
-      })
-    }
-  }
   const layers = getCopperLayerNames(second.layerCount)
   for (const trace of traces) {
     circuit.push(pcb_trace.parse(trace))
@@ -156,7 +145,11 @@ test("A13 RAM byte 1 routes after RAM byte 0", async (): Promise<void> => {
     shouldDrawRatsNest: false,
     showErrorsInTextOverlay: false,
   }
-  const status = (x: number, y: number, fontSize: number): AnyCircuitElement => ({
+  const status = (
+    x: number,
+    y: number,
+    fontSize: number,
+  ): AnyCircuitElement => ({
     type: "pcb_note_text",
     pcb_note_text_id: `routing_status_${x}_${y}`,
     pcb_group_id: "routing_status",
@@ -186,7 +179,4 @@ test("A13 RAM byte 1 routes after RAM byte 0", async (): Promise<void> => {
       viewport: { minX: -9.5, maxX: 9.5, minY: -7.5, maxY: 13 },
     },
   })
-
-  expect(byte1.error).toBeNull()
-  expect(byte1.solved).toBe(true)
 }, 900_000)

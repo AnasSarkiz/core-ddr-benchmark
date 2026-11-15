@@ -14,52 +14,82 @@ env:
   SOLVER_REF: main
 
 jobs:
-  ddr:
+  pr:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h3, a64, stmp157, orangecrab, a13, h616, butterstick, glider, imx6, icepi]
-        variant: [base, fix]
+        state: [repro, fix]
     steps:
       - uses: actions/checkout@v4
-        with:
-          repository: tscircuit/core
-          ref: aeb7e465abc1680051e06f1c84ddc1e9166be07d
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.3'
-      - run: bun install --ignore-scripts
+        with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
           ref: ${{ env.SOLVER_REF }}
-          path: solver-src
+          path: solver
           persist-credentials: false
-      - name: Build the solver under test and place it in Core
+      - uses: oven-sh/setup-bun@v2
+      - run: cd solver && git rev-parse HEAD && bun install
+      - name: Overlay the repro
+        run: cp -r harness-repo/harness/overlay/. solver/
+      - name: Overlay the fix
+        if: matrix.state == 'fix'
         run: |
-          cd solver-src
-          git rev-parse HEAD
-          if [ "${{ matrix.variant }}" = fix ]; then
-            sed -i 's|  if (!hasCompletedTrunk) return \[\]|  // experiment: pending exits are computed for every request|' lib/pending-lane-certificates.ts
-            git diff --stat
-          fi
-          bun install
-          bun run build
-          cd ..
-          ls -la node_modules/@tscircuit/bus-lanes-solver/dist | head
-          grep -c "hasCompletedTrunk) return" node_modules/@tscircuit/bus-lanes-solver/dist/index.js || true
-          cp solver-src/dist/index.js node_modules/@tscircuit/bus-lanes-solver/dist/index.js
-          echo "after replacement:"; grep -c "hasCompletedTrunk) return" node_modules/@tscircuit/bus-lanes-solver/dist/index.js || true
-          rm -rf solver-src
-      - name: Route
+          cp -r harness-repo/harness/fix/. solver/
+          cd solver && git apply ../harness-repo/harness/fix.patch && git status --short
+      - name: Format check and typecheck
         run: |
-          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 2>&1 | tail -15
-      - name: Print the report
+          cd solver
+          bun run format:check 2>&1 | tail -15
+          bun run typecheck 2>&1 | tail -15
+      - name: Write snapshots
+        run: |
+          cd solver
+          FILES="tests/a13-ram-bytes-sequence.test.ts"
+          if [ "${{ matrix.state }}" = fix ]; then FILES="$FILES tests/a13-ram-byte0.test.ts tests/a13-preloaded-byte1.test.ts"; fi
+          echo "$FILES" > files.txt
+          BUN_UPDATE_SNAPSHOTS=1 bun test $FILES --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)|Writing|pass$|fail$|error|Expected|Received" | head -40
+          git status --short
+          sha256sum tests/__snapshots__/a13-ram-bytes-sequence* tests/__snapshots__/a13-ram-byte0* tests/__snapshots__/a13-preloaded-byte1*
+      - name: Emit the snapshots
         if: always()
         run: |
-          echo "=====REPORT====="
-          cat ddr-benchmark-results/report.md
-          echo "=====END-REPORT====="
+          cd solver
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - $(git status --short | awk '{print $2}' | grep -E "__snapshots__.*\.svg$") | base64 -w 160
+          echo "=====TARBALL-END====="
+      - name: Run again against the written snapshots
+        run: |
+          cd solver
+          bun test $(cat files.txt) --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)|pass$|fail$|error|Expected|Received" | head -40
+          sha256sum tests/__snapshots__/a13-ram-bytes-sequence* tests/__snapshots__/a13-ram-byte0* tests/__snapshots__/a13-preloaded-byte1*
+          ls tests/__snapshots__ | grep diff || true
+
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: ${{ env.SOLVER_REF }}
+          path: solver
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - run: cd solver && git rev-parse HEAD && bun install && nproc && grep -m1 "model name" /proc/cpuinfo
+      - name: Same-machine timing, base and fix alternating
+        run: |
+          cd solver
+          FILES="tests/am3352-sequential-native-ddr.test.ts tests/imx6-preloaded-byte1.test.ts tests/repros/orangecrab-core-data-bytes.test.ts tests/a64-preloaded-byte.test.ts tests/h3-preloaded-byte.test.ts tests/native-ddr-groups-complete.test.ts"
+          for round in 1 2; do
+            for variant in base fix; do
+              git checkout -q lib
+              if [ $variant = fix ]; then git apply ../harness-repo/harness/fix.patch; fi
+              echo "=====AB $variant round $round====="
+              bun test $FILES --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)|pass$|fail$|^Ran" 
+            done
+          done
