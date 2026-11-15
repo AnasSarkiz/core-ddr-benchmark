@@ -47,13 +47,13 @@ test("A13 second RAM byte fails beside three completed bytes", async (): Promise
       y1: start.y,
       x2: end.x,
       y2: end.y,
-      stroke_width: 0.05,
-      color: "#b91c1c",
+      stroke_width: 0.07,
+      color: "#1d4ed8",
       is_dashed: true,
     } as AnyCircuitElement)
   }
   const caption =
-    "FAILED: 0/8 new RAM routes accepted; 24 supplied routes shown; dashed lines are the 8 requested connections"
+    "FAILED: 0/8 new RAM routes accepted; 24 supplied routes shown; blue dashed lines are the 8 requested connections"
   const svgOptions = {
     backgroundColor: "white",
     shouldDrawErrors: false,

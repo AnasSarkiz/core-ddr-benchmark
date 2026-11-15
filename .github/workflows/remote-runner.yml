@@ -14,17 +14,13 @@ env:
   SOLVER_REF: main
 
 jobs:
-  chain:
+  suite:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { label: baseline, layers: "", experiment: none }
-          - { label: pending-exits-ungated, layers: "", experiment: ungate-pending-exits }
-          - { label: bottom-only, layers: bottom, experiment: none }
-          - { label: bottom-only-ungated, layers: bottom, experiment: ungate-pending-exits }
+        experiment: [none, ungate-pending-exits]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -35,21 +31,21 @@ jobs:
           path: solver
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
-      - run: cd solver && bun install
+      - run: cd solver && git rev-parse HEAD && bun install
       - name: Apply the experiment
         if: matrix.experiment == 'ungate-pending-exits'
         run: |
           cd solver
           sed -i 's|  if (!hasCompletedTrunk) return \[\]|  // experiment: pending exits are computed for every request|' lib/pending-lane-certificates.ts
-          git diff --stat
           git diff | grep "^[+-] " || true
-      - name: Chain RAM byte 0 into RAM byte 1
-        env:
-          BUS_LAYERS: ${{ matrix.layers }}
-          EXPERIMENT: ${{ matrix.experiment }}
-        run: cd solver && bun ../harness-repo/harness/diag/chain.ts ../harness-repo/harness/diag/a13-ram-byte0-request.json.gz ../harness-repo/harness/diag/a13-ram-byte1-request.json.gz
-      - name: Emit the picture
-        if: always()
+      - name: Full test suite
         run: |
           cd solver
-          if [ -f chain.svg ]; then echo "=====TARBALL-BEGIN====="; tar -czf - chain.svg | base64 -w 160; echo "=====TARBALL-END====="; fi
+          set +e
+          bun test --timeout 120000 > suite.log 2>&1
+          echo "exit code $?"
+          grep -E "^\(fail\)|^\(pass\)" suite.log | sed -E 's/\[[0-9.]+ms\]//' | sort > results.txt
+          echo "=====SUMMARY====="; tail -8 suite.log
+          echo "=====FAILED====="; grep -E "^\(fail\)" suite.log
+          echo "=====SLOWEST====="; grep -E "^\((pass|fail)\)" suite.log | sed -E 's/^(.*)\[([0-9.]+)ms\]$/\2 \1/' | sort -rn | head -25
+          echo "=====CHANGED-FILES====="; git status --short | head -40
