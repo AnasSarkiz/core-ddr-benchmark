@@ -1,0 +1,1026 @@
+{
+  "schemaVersion": 1,
+  "toleranceMm": 0.002,
+  "boards": [
+    {
+      "id": "h3",
+      "appliedGlobalClearanceMm": 0.0889,
+      "sourceCopperMinimumClearanceMm": 0.09,
+      "sourceCopperBelowApplied": 0,
+      "sourceCopperKeepsAppliedClearance": true,
+      "differentialPairGaps": {
+        "measuredPairs": 282,
+        "minimumMm": 0.1501
+      },
+      "checks": {
+        "traceToRoundPad": {
+          "measuredPairs": 1612,
+          "minimumMm": 0.09,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.09,
+              "net": "/DDR3 16x1/SDQ3",
+              "against": "DU1.G1"
+            },
+            {
+              "clearanceMm": 0.0932,
+              "net": "/DDR3 16x1/SDQ6",
+              "against": "U1.U20"
+            },
+            {
+              "clearanceMm": 0.0932,
+              "net": "/DDR3 16x1/SDQ6",
+              "against": "U1.U20"
+            }
+          ]
+        },
+        "traceToTrace": {
+          "measuredPairs": 6543,
+          "minimumMm": 0.1016,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1016,
+              "net": "/DDR3 16x1/SDQ4",
+              "against": "/DDR3 16x1/SDQ1"
+            },
+            {
+              "clearanceMm": 0.1016,
+              "net": "/DDR3 16x1/SDQ10",
+              "against": "/DDR3 16x1/SDQ8"
+            },
+            {
+              "clearanceMm": 0.1016,
+              "net": "/DDR3 16x1/SDQ10",
+              "against": "/DDR3 16x1/SDQ8"
+            }
+          ]
+        },
+        "viaToRoundPad": {
+          "measuredPairs": 279,
+          "minimumMm": 0.1047,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1047,
+              "net": "/DDR3 16x1/SBA1",
+              "against": "U1.U18"
+            },
+            {
+              "clearanceMm": 0.1073,
+              "net": "/DDR3 16x1/SODT0",
+              "against": "DU1.L1"
+            },
+            {
+              "clearanceMm": 0.1123,
+              "net": "/DDR3 16x1/SA10",
+              "against": "U1.R18"
+            }
+          ]
+        },
+        "viaToTrace": {
+          "measuredPairs": 3306,
+          "minimumMm": 0.1016,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1016,
+              "net": "/DDR3 16x1/SDQM1",
+              "against": "/DDR3 16x1/SDQ6"
+            },
+            {
+              "clearanceMm": 0.1016,
+              "net": "/DDR3 16x1/SDQ1",
+              "against": "/DDR3 16x1/SDQ6"
+            },
+            {
+              "clearanceMm": 0.1016,
+              "net": "/DDR3 16x1/SDQ1",
+              "against": "/DDR3 16x1/SDQ6"
+            }
+          ]
+        }
+      },
+      "sourceSha256": "4a1f99d157a4ed5dc15b2dff2fed9f3765226296c1da3930cdd00413254509bb"
+    },
+    {
+      "id": "a64",
+      "appliedGlobalClearanceMm": 0.10668,
+      "sourceCopperMinimumClearanceMm": 0.1067,
+      "sourceCopperBelowApplied": 0,
+      "sourceCopperKeepsAppliedClearance": true,
+      "differentialPairGaps": {
+        "measuredPairs": 2441,
+        "minimumMm": 0.1244
+      },
+      "checks": {
+        "traceToRoundPad": {
+          "measuredPairs": 1998,
+          "minimumMm": 0.1217,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1217,
+              "net": "/S0SA1",
+              "against": "U1.P3"
+            },
+            {
+              "clearanceMm": 0.1217,
+              "net": "/S0SA1",
+              "against": "U1.R3"
+            },
+            {
+              "clearanceMm": 0.1217,
+              "net": "/S0SA4",
+              "against": "U1.P5"
+            }
+          ]
+        },
+        "traceToTrace": {
+          "measuredPairs": 27479,
+          "minimumMm": 0.1067,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1067,
+              "net": "/S0SDQ10",
+              "against": "/S0SDQ9"
+            },
+            {
+              "clearanceMm": 0.1067,
+              "net": "/S0SDQ10",
+              "against": "/S0SDQ9"
+            },
+            {
+              "clearanceMm": 0.1067,
+              "net": "/S0SDQ10",
+              "against": "/S0SDQ9"
+            }
+          ]
+        },
+        "viaToRoundPad": {
+          "measuredPairs": 889,
+          "minimumMm": 0.1407,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1407,
+              "net": "/S0SDQ25",
+              "against": "U3.B8"
+            },
+            {
+              "clearanceMm": 0.1407,
+              "net": "/S0SDQ29",
+              "against": "U3.B3"
+            },
+            {
+              "clearanceMm": 0.1407,
+              "net": "/S0SDQ31",
+              "against": "U3.B2"
+            }
+          ]
+        },
+        "viaToTrace": {
+          "measuredPairs": 12878,
+          "minimumMm": 0.1078,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1078,
+              "net": "/S0SBA1",
+              "against": "GND"
+            },
+            {
+              "clearanceMm": 0.1078,
+              "net": "/S0SBA1",
+              "against": "GND"
+            },
+            {
+              "clearanceMm": 0.1082,
+              "net": "/S0SA0",
+              "against": "+1.5V"
+            }
+          ]
+        }
+      },
+      "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4"
+    },
+    {
+      "id": "stmp157",
+      "appliedGlobalClearanceMm": 0.127,
+      "sourceCopperMinimumClearanceMm": 0.127,
+      "sourceCopperBelowApplied": 0,
+      "sourceCopperKeepsAppliedClearance": true,
+      "differentialPairGaps": {
+        "measuredPairs": 1183,
+        "minimumMm": 0.127
+      },
+      "checks": {
+        "traceToRoundPad": {
+          "measuredPairs": 2302,
+          "minimumMm": 0.1275,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1275,
+              "net": "/S0SCK_N",
+              "against": "U3.J7"
+            },
+            {
+              "clearanceMm": 0.1275,
+              "net": "/S0SCK_N",
+              "against": "U3.J7"
+            },
+            {
+              "clearanceMm": 0.1275,
+              "net": "/S0SDQ28",
+              "against": "U3.A3"
+            }
+          ]
+        },
+        "traceToTrace": {
+          "measuredPairs": 17719,
+          "minimumMm": 0.127,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.127,
+              "net": "/S0SA0",
+              "against": "/S0SBA2"
+            },
+            {
+              "clearanceMm": 0.127,
+              "net": "/S0SA0",
+              "against": "/S0SBA2"
+            },
+            {
+              "clearanceMm": 0.127,
+              "net": "/S0SA0",
+              "against": "/S0SBA2"
+            }
+          ]
+        },
+        "viaToRoundPad": {
+          "measuredPairs": 880,
+          "minimumMm": 0.2022,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.2022,
+              "net": "/S0SA0",
+              "against": "U1.L19"
+            },
+            {
+              "clearanceMm": 0.2022,
+              "net": "/S0SA11",
+              "against": "U1.R19"
+            },
+            {
+              "clearanceMm": 0.2022,
+              "net": "/S0SCKE0",
+              "against": "U1.T19"
+            }
+          ]
+        },
+        "viaToTrace": {
+          "measuredPairs": 7976,
+          "minimumMm": 0.1285,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1285,
+              "net": "/S0SA1",
+              "against": "1.35V_DDR"
+            },
+            {
+              "clearanceMm": 0.1285,
+              "net": "/S0SA1",
+              "against": "1.35V_DDR"
+            },
+            {
+              "clearanceMm": 0.1285,
+              "net": "/S0SA1",
+              "against": "1.35V_DDR"
+            }
+          ]
+        }
+      },
+      "sourceSha256": "260a8c8429a14645014ab20f9ba4e3f04dadf3433453895dd43919bb65b0f79e"
+    },
+    {
+      "id": "orangecrab",
+      "appliedGlobalClearanceMm": 0.089,
+      "sourceCopperMinimumClearanceMm": 0.0889,
+      "sourceCopperBelowApplied": 0,
+      "sourceCopperKeepsAppliedClearance": true,
+      "differentialPairGaps": {
+        "measuredPairs": 6404,
+        "minimumMm": 0.1156
+      },
+      "checks": {
+        "traceToRoundPad": {
+          "measuredPairs": 2135,
+          "minimumMm": 0.089,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.089,
+              "net": "RAM_A6",
+              "against": "U3.A3"
+            },
+            {
+              "clearanceMm": 0.089,
+              "net": "RAM_A6",
+              "against": "U3.B3"
+            },
+            {
+              "clearanceMm": 0.089,
+              "net": "RAM_BA1",
+              "against": "U3.A6"
+            }
+          ]
+        },
+        "traceToTrace": {
+          "measuredPairs": 111882,
+          "minimumMm": 0.089,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.089,
+              "net": "RAM_D12",
+              "against": "RAM_D14"
+            },
+            {
+              "clearanceMm": 0.089,
+              "net": "RAM_D12",
+              "against": "RAM_D14"
+            },
+            {
+              "clearanceMm": 0.089,
+              "net": "RAM_D2",
+              "against": "RAM_D0"
+            }
+          ]
+        },
+        "viaToRoundPad": {
+          "measuredPairs": 610,
+          "minimumMm": 0.089,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.089,
+              "net": "RAM_UDM",
+              "against": "U3.C16"
+            },
+            {
+              "clearanceMm": 0.089,
+              "net": "RAM_A2",
+              "against": "U3.D4"
+            },
+            {
+              "clearanceMm": 0.089,
+              "net": "RAM_UDM",
+              "against": "U3.C17"
+            }
+          ]
+        },
+        "viaToTrace": {
+          "measuredPairs": 6811,
+          "minimumMm": 0.0889,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.0889,
+              "net": "RAM_RESET#",
+              "against": "ECP5_VREF"
+            },
+            {
+              "clearanceMm": 0.0889,
+              "net": "RAM_RESET#",
+              "against": "ECP5_VREF"
+            },
+            {
+              "clearanceMm": 0.0889,
+              "net": "RAM_CK+",
+              "against": "RAM_CK-"
+            }
+          ]
+        }
+      },
+      "sourceSha256": "4597f3ac08e21c09253b27ca1b9e26aaf3c3d3e2147b6c0d79c0dc6aa555e201"
+    },
+    {
+      "id": "a13",
+      "appliedGlobalClearanceMm": 0.2,
+      "sourceCopperMinimumClearanceMm": 0.1271,
+      "sourceCopperBelowApplied": 268,
+      "sourceCopperKeepsAppliedClearance": false,
+      "differentialPairGaps": {
+        "measuredPairs": 446,
+        "minimumMm": 0.1337
+      },
+      "checks": {
+        "traceToRoundPad": {
+          "measuredPairs": 564,
+          "minimumMm": 0.1273,
+          "belowApplied": 33,
+          "tightest": [
+            {
+              "clearanceMm": 0.1273,
+              "net": "/DDR3 Memory/ddr-ba1",
+              "against": "U200.M7"
+            },
+            {
+              "clearanceMm": 0.1492,
+              "net": "/DDR3 Memory/ddr-a1",
+              "against": "U200.N9"
+            },
+            {
+              "clearanceMm": 0.1492,
+              "net": "/DDR3 Memory/ddr-a1",
+              "against": "U200.P9"
+            }
+          ]
+        },
+        "traceToTrace": {
+          "measuredPairs": 7695,
+          "minimumMm": 0.1271,
+          "belowApplied": 59,
+          "tightest": [
+            {
+              "clearanceMm": 0.1271,
+              "net": "/DDR3 Memory/dqs1-",
+              "against": "+1V2_INT"
+            },
+            {
+              "clearanceMm": 0.1271,
+              "net": "/DDR3 Memory/dqs1-",
+              "against": "+1V2_INT"
+            },
+            {
+              "clearanceMm": 0.1271,
+              "net": "/DDR3 Memory/dqs1-",
+              "against": "+1V2_INT"
+            }
+          ]
+        },
+        "viaToRoundPad": {
+          "measuredPairs": 194,
+          "minimumMm": 0.1407,
+          "belowApplied": 58,
+          "tightest": [
+            {
+              "clearanceMm": 0.1407,
+              "net": "/DDR3 Memory/ddr-a1",
+              "against": "U200.N9"
+            },
+            {
+              "clearanceMm": 0.1407,
+              "net": "/DDR3 Memory/ddr-a6",
+              "against": "U200.R9"
+            },
+            {
+              "clearanceMm": 0.1407,
+              "net": "/DDR3 Memory/ddr-d5",
+              "against": "U200.H9"
+            }
+          ]
+        },
+        "viaToTrace": {
+          "measuredPairs": 2822,
+          "minimumMm": 0.1273,
+          "belowApplied": 118,
+          "tightest": [
+            {
+              "clearanceMm": 0.1273,
+              "net": "/DDR3 Memory/ddr-a8",
+              "against": "/DDR3 Memory/ddr-ras"
+            },
+            {
+              "clearanceMm": 0.1273,
+              "net": "/DDR3 Memory/ddr-a8",
+              "against": "/DDR3 Memory/ddr-ras"
+            },
+            {
+              "clearanceMm": 0.1377,
+              "net": "/DDR3 Memory/ddr-d5",
+              "against": "/DDR3 Memory/ddr-d7"
+            }
+          ]
+        }
+      },
+      "sourceSha256": "563b646fbd1f021c43a337798882e54ed024c39823280f8b93ddc59c9aa7cb33"
+    },
+    {
+      "id": "h616",
+      "appliedGlobalClearanceMm": 0.1,
+      "sourceCopperMinimumClearanceMm": 0.0989,
+      "sourceCopperBelowApplied": 0,
+      "sourceCopperKeepsAppliedClearance": true,
+      "differentialPairGaps": {
+        "measuredPairs": 356,
+        "minimumMm": 0.1142
+      },
+      "checks": {
+        "traceToRoundPad": {
+          "measuredPairs": 3445,
+          "minimumMm": 0.1,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1,
+              "net": "/DRAM/SA7",
+              "against": "U2.T1"
+            },
+            {
+              "clearanceMm": 0.1,
+              "net": "/DRAM/SA4",
+              "against": "U2.T8"
+            },
+            {
+              "clearanceMm": 0.1,
+              "net": "/DRAM/SA7",
+              "against": "U2.T1"
+            }
+          ]
+        },
+        "traceToTrace": {
+          "measuredPairs": 19044,
+          "minimumMm": 0.0992,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.0992,
+              "net": "/DRAM/SCKE0",
+              "against": "GND"
+            },
+            {
+              "clearanceMm": 0.0992,
+              "net": "/DRAM/SCKE0",
+              "against": "GND"
+            },
+            {
+              "clearanceMm": 0.1,
+              "net": "/DRAM/SA6",
+              "against": "/DRAM/SA14"
+            }
+          ]
+        },
+        "viaToRoundPad": {
+          "measuredPairs": 335,
+          "minimumMm": 0.0993,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.0993,
+              "net": "/DRAM/SA15",
+              "against": "U2.N7"
+            },
+            {
+              "clearanceMm": 0.0993,
+              "net": "/DRAM/DQ2",
+              "against": "U1.T3"
+            },
+            {
+              "clearanceMm": 0.0995,
+              "net": "/DRAM/DQ6",
+              "against": "U1.N3"
+            }
+          ]
+        },
+        "viaToTrace": {
+          "measuredPairs": 2532,
+          "minimumMm": 0.0989,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.0989,
+              "net": "/DRAM/SDQS1P",
+              "against": "/DRAM/SDQM0"
+            },
+            {
+              "clearanceMm": 0.0989,
+              "net": "/DRAM/SDQS1P",
+              "against": "/DRAM/SDQM0"
+            },
+            {
+              "clearanceMm": 0.099,
+              "net": "/DRAM/SBA1",
+              "against": "/DRAM/SCKN"
+            }
+          ]
+        }
+      },
+      "sourceSha256": "000e11b99a3446da47099c9f1c698cb2266668149edc368152b7d63dcc8a530d"
+    },
+    {
+      "id": "butterstick",
+      "appliedGlobalClearanceMm": 0.0889,
+      "sourceCopperMinimumClearanceMm": 0.089,
+      "sourceCopperBelowApplied": 0,
+      "sourceCopperKeepsAppliedClearance": true,
+      "differentialPairGaps": {
+        "measuredPairs": 24702,
+        "minimumMm": 0.1231
+      },
+      "checks": {
+        "traceToRoundPad": {
+          "measuredPairs": 2943,
+          "minimumMm": 0.09,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.09,
+              "net": "/FPGA-DDR3L/RST",
+              "against": "U4.C18"
+            },
+            {
+              "clearanceMm": 0.1208,
+              "net": "/FPGA-DDR3L/RST",
+              "against": "U4.C18"
+            },
+            {
+              "clearanceMm": 0.1217,
+              "net": "/FPGA-DDR3L/CKE0",
+              "against": "U11.B9"
+            }
+          ]
+        },
+        "traceToTrace": {
+          "measuredPairs": 145314,
+          "minimumMm": 0.089,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.089,
+              "net": "/FPGA-DDR3L/DQ12",
+              "against": "/FPGA-DDR3L/DQ11"
+            },
+            {
+              "clearanceMm": 0.089,
+              "net": "/FPGA-DDR3L/DQ12",
+              "against": "/FPGA-DDR3L/DQ11"
+            },
+            {
+              "clearanceMm": 0.089,
+              "net": "/FPGA-DDR3L/DQ12",
+              "against": "/FPGA-DDR3L/DQ11"
+            }
+          ]
+        },
+        "viaToRoundPad": {
+          "measuredPairs": 563,
+          "minimumMm": 0.1657,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1657,
+              "net": "/FPGA-DDR3L/DQ10",
+              "against": "U12.D7"
+            },
+            {
+              "clearanceMm": 0.1657,
+              "net": "/FPGA-DDR3L/DQ10",
+              "against": "U12.D8"
+            },
+            {
+              "clearanceMm": 0.1657,
+              "net": "/FPGA-DDR3L/DQ10",
+              "against": "U12.E7"
+            }
+          ]
+        },
+        "viaToTrace": {
+          "measuredPairs": 14640,
+          "minimumMm": 0.09,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.09,
+              "net": "/FPGA-DDR3L/A10",
+              "against": "/FPGA-DDR3L/A15"
+            },
+            {
+              "clearanceMm": 0.09,
+              "net": "/FPGA-DDR3L/A10",
+              "against": "/FPGA-DDR3L/A15"
+            },
+            {
+              "clearanceMm": 0.09,
+              "net": "/FPGA-DDR3L/A10",
+              "against": "/FPGA-DDR3L/A15"
+            }
+          ]
+        }
+      },
+      "sourceSha256": "2b25f3efcf32b8687f18ddfea6ccf379134ebd4b4e4285b92e126215a59aeeef"
+    },
+    {
+      "id": "glider",
+      "appliedGlobalClearanceMm": 0.11,
+      "sourceCopperMinimumClearanceMm": 0.121,
+      "sourceCopperBelowApplied": 0,
+      "sourceCopperKeepsAppliedClearance": true,
+      "differentialPairGaps": {
+        "measuredPairs": 1629,
+        "minimumMm": 0.1
+      },
+      "checks": {
+        "traceToRoundPad": {
+          "measuredPairs": 1236,
+          "minimumMm": 0.121,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.121,
+              "net": "/fpga_ddr/DRAM_CKE",
+              "against": "U12.L8"
+            },
+            {
+              "clearanceMm": 0.1265,
+              "net": "/fpga_ddr/DRAM_DATA10",
+              "against": "U12.A8"
+            },
+            {
+              "clearanceMm": 0.1265,
+              "net": "/fpga_ddr/DRAM_DATA10",
+              "against": "U12.B8"
+            }
+          ]
+        },
+        "traceToTrace": {
+          "measuredPairs": 17556,
+          "minimumMm": 0.127,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.127,
+              "net": "/fpga_ddr/DRAM_CASB",
+              "against": "/fpga_ddr/DRAM_ADDR12"
+            },
+            {
+              "clearanceMm": 0.127,
+              "net": "/fpga_ddr/DRAM_CASB",
+              "against": "/fpga_ddr/DRAM_ADDR12"
+            },
+            {
+              "clearanceMm": 0.127,
+              "net": "/fpga_ddr/DRAM_CASB",
+              "against": "/fpga_ddr/DRAM_ADDR12"
+            }
+          ]
+        },
+        "viaToRoundPad": {
+          "measuredPairs": 138,
+          "minimumMm": 0.1222,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1222,
+              "net": "/fpga_ddr/DRAM_DATA0",
+              "against": "U12.F3"
+            },
+            {
+              "clearanceMm": 0.1304,
+              "net": "/fpga_ddr/DRAM_ADDR6",
+              "against": "U12.T8"
+            },
+            {
+              "clearanceMm": 0.1378,
+              "net": "/fpga_ddr/DRAM_DATA0",
+              "against": "U12.F2"
+            }
+          ]
+        },
+        "viaToTrace": {
+          "measuredPairs": 4149,
+          "minimumMm": 0.1265,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1265,
+              "net": "/fpga_ddr/DRAM_ADDR12",
+              "against": "/fpga_ddr/DRAM_DATA7"
+            },
+            {
+              "clearanceMm": 0.1265,
+              "net": "/fpga_ddr/DRAM_ADDR12",
+              "against": "/fpga_ddr/DRAM_DATA7"
+            },
+            {
+              "clearanceMm": 0.1265,
+              "net": "/fpga_ddr/DRAM_ADDR12",
+              "against": "/fpga_ddr/DRAM_DATA7"
+            }
+          ]
+        }
+      },
+      "sourceSha256": "aea9094b681b96d6548beff89ca7a6c10484c7a95a29a6819fa34010b17513d3"
+    },
+    {
+      "id": "imx6",
+      "appliedGlobalClearanceMm": 0.119,
+      "sourceCopperMinimumClearanceMm": 0.12,
+      "sourceCopperBelowApplied": 0,
+      "sourceCopperKeepsAppliedClearance": true,
+      "differentialPairGaps": {
+        "measuredPairs": 469,
+        "minimumMm": 0.15
+      },
+      "checks": {
+        "traceToRoundPad": {
+          "measuredPairs": 1459,
+          "minimumMm": 0.12,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.12,
+              "net": "/i.MX6ULL MAIN/CPU/DRAM_A8",
+              "against": "U9.R8"
+            },
+            {
+              "clearanceMm": 0.1267,
+              "net": "/i.MX6ULL MAIN/CPU/DRAM_CLK_EN0",
+              "against": "TP28.1"
+            },
+            {
+              "clearanceMm": 0.13,
+              "net": "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA6",
+              "against": "U7.U6"
+            }
+          ]
+        },
+        "traceToTrace": {
+          "measuredPairs": 11453,
+          "minimumMm": 0.1247,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1247,
+              "net": "/i.MX6ULL MAIN/CPU/DRAM_A1",
+              "against": "/i.MX6ULL MAIN/CPU/DRAM_A14"
+            },
+            {
+              "clearanceMm": 0.1247,
+              "net": "/i.MX6ULL MAIN/CPU/DRAM_A1",
+              "against": "/i.MX6ULL MAIN/CPU/DRAM_A14"
+            },
+            {
+              "clearanceMm": 0.1247,
+              "net": "/i.MX6ULL MAIN/CPU/DRAM_A1",
+              "against": "/i.MX6ULL MAIN/CPU/DRAM_A14"
+            }
+          ]
+        },
+        "viaToRoundPad": {
+          "measuredPairs": 381,
+          "minimumMm": 0.1459,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1459,
+              "net": "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_N",
+              "against": "U7.U1"
+            },
+            {
+              "clearanceMm": 0.1483,
+              "net": "/i.MX6ULL MAIN/CPU/DRAM_A0",
+              "against": "U9.M3"
+            },
+            {
+              "clearanceMm": 0.1483,
+              "net": "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA14",
+              "against": "U9.A7"
+            }
+          ]
+        },
+        "viaToTrace": {
+          "measuredPairs": 2150,
+          "minimumMm": 0.1237,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1237,
+              "net": "/i.MX6ULL MAIN/CPU/DRAM_ODT1",
+              "against": "/i.MX6ULL MAIN/CPU/~{DRAM_CAS}"
+            },
+            {
+              "clearanceMm": 0.1237,
+              "net": "/i.MX6ULL MAIN/CPU/DRAM_ODT1",
+              "against": "/i.MX6ULL MAIN/CPU/~{DRAM_CAS}"
+            },
+            {
+              "clearanceMm": 0.125,
+              "net": "/i.MX6ULL MAIN/CPU/DRAM_A12",
+              "against": "/i.MX6ULL MAIN/CPU/DRAM_CLK_EN0"
+            }
+          ]
+        }
+      },
+      "sourceSha256": "8ce03c9bb877842b98984dd2e152f2a45b28f71e920115beb141eb9a2019d927"
+    },
+    {
+      "id": "icepi",
+      "appliedGlobalClearanceMm": 0.1,
+      "sourceCopperMinimumClearanceMm": 0.0996,
+      "sourceCopperBelowApplied": 0,
+      "sourceCopperKeepsAppliedClearance": true,
+      "differentialPairGaps": {
+        "measuredPairs": 555,
+        "minimumMm": 0.1972
+      },
+      "checks": {
+        "traceToRoundPad": {
+          "measuredPairs": 2763,
+          "minimumMm": 0.1005,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1005,
+              "net": "/DDR3/DQ14",
+              "against": "U1.F21"
+            },
+            {
+              "clearanceMm": 0.1005,
+              "net": "/DDR3/DQ14",
+              "against": "U1.G20"
+            },
+            {
+              "clearanceMm": 0.1006,
+              "net": "/DDR3/A15",
+              "against": "U2.L8"
+            }
+          ]
+        },
+        "traceToTrace": {
+          "measuredPairs": 13716,
+          "minimumMm": 0.101,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.101,
+              "net": "/DDR3/DQ5",
+              "against": "/DDR3/DQ7"
+            },
+            {
+              "clearanceMm": 0.101,
+              "net": "/DDR3/DQ5",
+              "against": "/DDR3/DQ7"
+            },
+            {
+              "clearanceMm": 0.101,
+              "net": "/DDR3/DQ5",
+              "against": "/DDR3/DQ7"
+            }
+          ]
+        },
+        "viaToRoundPad": {
+          "measuredPairs": 324,
+          "minimumMm": 0.1,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.1,
+              "net": "/DDR3/DQ9",
+              "against": "U2.D3"
+            },
+            {
+              "clearanceMm": 0.1,
+              "net": "/DDR3/BA1",
+              "against": "U2.R9"
+            },
+            {
+              "clearanceMm": 0.1,
+              "net": "/DDR3/DQ11",
+              "against": "U1.L21"
+            }
+          ]
+        },
+        "viaToTrace": {
+          "measuredPairs": 3087,
+          "minimumMm": 0.0996,
+          "belowApplied": 0,
+          "tightest": [
+            {
+              "clearanceMm": 0.0996,
+              "net": "/DDR3/BA1",
+              "against": "/DDR3/ODT"
+            },
+            {
+              "clearanceMm": 0.1,
+              "net": "/DDR3/A0",
+              "against": "/DDR3/BA0"
+            },
+            {
+              "clearanceMm": 0.1,
+              "net": "/DDR3/A9",
+              "against": "/DDR3/A5"
+            }
+          ]
+        }
+      },
+      "sourceSha256": "430a3b232c9b6e8219fbd726fc47128079de88286b93ab543ed676d9634188c1"
+    }
+  ]
+}
