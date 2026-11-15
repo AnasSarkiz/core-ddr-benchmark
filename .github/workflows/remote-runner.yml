@@ -14,13 +14,13 @@ env:
   SOLVER_REF: main
 
 jobs:
-  suite:
+  sequence:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        experiment: [none, ungate-pending-exits]
+        state: [repro, fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -32,20 +32,27 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
       - run: cd solver && git rev-parse HEAD && bun install
-      - name: Apply the experiment
-        if: matrix.experiment == 'ungate-pending-exits'
+      - name: Overlay the repro
+        run: cp -r harness-repo/harness/overlay/. solver/
+      - name: Overlay the fix
+        if: matrix.state == 'fix'
         run: |
+          cp -r harness-repo/harness/fix/. solver/
           cd solver
           sed -i 's|  if (!hasCompletedTrunk) return \[\]|  // experiment: pending exits are computed for every request|' lib/pending-lane-certificates.ts
-          git diff | grep "^[+-] " || true
-      - name: Full test suite
+      - name: Format and typecheck
         run: |
           cd solver
-          set +e
-          bun test --timeout 120000 > suite.log 2>&1
-          echo "exit code $?"
-          grep -E "^\(fail\)|^\(pass\)" suite.log | sed -E 's/\[[0-9.]+ms\]//' | sort > results.txt
-          echo "=====SUMMARY====="; tail -8 suite.log
-          echo "=====FAILED====="; grep -E "^\(fail\)" suite.log
-          echo "=====SLOWEST====="; grep -E "^\((pass|fail)\)" suite.log | sed -E 's/^(.*)\[([0-9.]+)ms\]$/\2 \1/' | sort -rn | head -25
-          echo "=====CHANGED-FILES====="; git status --short | head -40
+          bunx biome format --write tests/a13-ram-bytes-sequence.test.ts
+          bun run typecheck 2>&1 | tail -30
+      - name: Run the test and write its snapshots
+        run: |
+          cd solver
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/a13-ram-bytes-sequence.test.ts --timeout 900000 2>&1 | tail -40
+      - name: Emit the formatted test and snapshots
+        if: always()
+        run: |
+          cd solver
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - tests/a13-ram-bytes-sequence.test.ts tests/__snapshots__/a13-ram-bytes-sequence* | base64 -w 160
+          echo "=====TARBALL-END====="
