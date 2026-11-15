@@ -15,27 +15,6 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  artifacts:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Read the published AM3352 comparison of a public run
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          api=https://api.github.com/repos/tscircuit/bus-lanes-solver
-          for run in $BENCHMARK_RUN_IDS; do
-            curl -sS -H "Authorization: Bearer $GH_TOKEN" "$api/actions/runs/$run" | jq -r '"RUN \(.id) \(.status) \(.conclusion) head=\(.head_sha) attempt=\(.run_attempt)"'
-            curl -sS -H "Authorization: Bearer $GH_TOKEN" "$api/actions/runs/$run/artifacts?per_page=50" > artifacts.json
-            id=$(jq -r '.artifacts[] | select(.name=="am3352-comparison") | .id' artifacts.json)
-            curl -sS -L -o comparison.zip -H "Authorization: Bearer $GH_TOKEN" "$api/actions/artifacts/$id/zip"
-            rm -rf out && mkdir out && unzip -q -o comparison.zip -d out
-            echo "=====COMPARISON $run====="
-            cat out/comparison.md
-            echo
-            echo "=====END-COMPARISON $run====="
-          done
-
   capture:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -57,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
-          ref: 22819fe
+          ref: main
           path: solver-src
           persist-credentials: false
       - name: Build bus-lanes-solver main and place it in Core
