@@ -14,44 +14,13 @@ env:
   SOLVER_REF: main
 
 jobs:
-  repro-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with: { path: harness-repo }
-      - uses: actions/checkout@v4
-        with:
-          repository: tscircuit/bus-lanes-solver
-          ref: ${{ env.SOLVER_REF }}
-          path: solver
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-      - run: cd solver && git rev-parse HEAD && bun install
-      - name: Run the repro test and write its snapshots
-        run: |
-          cp -r harness-repo/harness/overlay/. solver/
-          cd solver
-          BUN_UPDATE_SNAPSHOTS=1 bun test tests/a13-preloaded-ram-byte1.test.ts --timeout 900000 2>&1 | tail -60
-      - name: Emit snapshots
-        if: always()
-        run: |
-          cd solver
-          ls -la tests/__snapshots__ | grep a13-preloaded-ram || true
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - tests/__snapshots__/a13-preloaded-ram-byte1* | base64 -w 160
-          echo "=====TARBALL-END====="
-  diagnose:
+  sites:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { request: a13-ram-byte1-request, goal: "" }
-          - { request: a13-ram-byte1-request, goal: connectivity }
-          - { request: a13-ram-byte0-request, goal: "" }
-          - { request: a13-ram-byte0-request, goal: connectivity }
+        request: [a13-ram-byte1-request, a13-ram-byte0-request]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -63,5 +32,5 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
       - run: cd solver && bun install
-      - name: Diagnose
-        run: cd solver && bun ../harness-repo/harness/diag/diagnose.ts ../harness-repo/harness/diag/${{ matrix.request }}.json.gz ${{ matrix.goal }}
+      - name: Via site diagnostics
+        run: cd solver && bun ../harness-repo/harness/diag/sites.ts ../harness-repo/harness/diag/${{ matrix.request }}.json.gz
