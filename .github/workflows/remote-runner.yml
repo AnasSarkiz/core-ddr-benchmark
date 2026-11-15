@@ -14,45 +14,27 @@ env:
   SOLVER_REF: main
 
 jobs:
-  a13core:
+  quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
-          repository: tscircuit/core
-          ref: aeb7e465abc1680051e06f1c84ddc1e9166be07d
-          path: core
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.3'
-      - run: cd core && bun install --ignore-scripts
-      - uses: actions/checkout@v4
-        with:
           repository: tscircuit/bus-lanes-solver
           ref: ${{ env.SOLVER_REF }}
-          path: solver-src
+          path: solver
           persist-credentials: false
-      - name: Build the fixed solver and place it in Core
+      - uses: oven-sh/setup-bun@v2
+      - run: cd solver && git rev-parse HEAD && bun install
+      - name: Base and fix
         run: |
-          cd solver-src
-          git apply ../harness-repo/harness/fix.patch && git diff --stat
-          bun install
-          bun run build
-          cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js
-      - name: Route A13
-        run: |
-          cd core
-          bun run benchmark:ddr --circuit a13 --timeout 900 2>&1 | tail -15
-      - name: Print the results
-        if: always()
-        run: |
-          cd core
-          cat ddr-benchmark-results/report.md
-          find ddr-benchmark-results -type f | xargs ls -la
+          cd solver
+          cp -r ../harness-repo/harness/overlay/. .
+          bun ../harness-repo/harness/diag/quality.ts base 2>&1 | grep -E "QUALITY|rror" 
+          git apply ../harness-repo/harness/fix.patch
+          bun ../harness-repo/harness/diag/quality.ts fix 2>&1 | grep -E "QUALITY|rror"
           echo "=====TARBALL-BEGIN====="
-          tar -C ddr-benchmark-results -czf - . | base64 -w 160
+          tar -czf - quality-base.json quality-fix.json | base64 -w 160
           echo "=====TARBALL-END====="
