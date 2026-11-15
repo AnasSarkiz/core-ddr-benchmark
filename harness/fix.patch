@@ -1,22 +1,36 @@
 diff --git a/lib/package-pad-frame.ts b/lib/package-pad-frame.ts
 new file mode 100644
-index 0000000..736ad2e
+index 0000000..dde1352
 --- /dev/null
 +++ b/lib/package-pad-frame.ts
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,103 @@
++import {
++  applyToPoint,
++  compose,
++  type Matrix,
++  rotate,
++  rotateDEG,
++  translate,
++} from "transformation-matrix"
 +import type { Obstacle, SimpleRouteJson } from "./types"
 +
 +type Box = SimpleRouteJson["bounds"]
 +
-+/** A package's pad field in the package's own frame. `angle` is the frame's
-+ * CCW rotation from board +X in radians; `field` bounds frame coordinates in
-+ * mm. An axis-aligned package keeps the supplied board-frame field. */
-+export type PackagePadFrame = { angle: number; field: Box }
++/** A package's pad field in the package's own frame. `field` bounds
++ * package-frame coordinates in mm; board coordinates are +X right, +Y up. An
++ * axis-aligned package keeps the supplied board-frame field. */
++export type PackagePadFrame = {
++  /** CCW rotation of the package frame from board +X. */
++  ccwRotationRadians: number
++  field: Box
++  boardToPackage: Matrix
++  packageToBoard: Matrix
++}
 +
-+const fieldAt = (pads: Obstacle[], degrees: number): Box => {
-+  const angle = (degrees * Math.PI) / 180,
-+    cos = Math.cos(angle),
-+    sin = Math.sin(angle)
++const getBoxArea = (box: Box) => (box.maxX - box.minX) * (box.maxY - box.minY)
++
++/** Bound every pad's copper in the frame reached through `boardToPackage`. */
++function getPadField(pads: Obstacle[], boardToPackage: Matrix): Box {
 +  const field = {
 +    minX: Infinity,
 +    maxX: -Infinity,
@@ -24,24 +38,34 @@ index 0000000..736ad2e
 +    maxY: -Infinity,
 +  }
 +  for (const pad of pads) {
-+    const x = pad.center.x * cos + pad.center.y * sin,
-+      y = -pad.center.x * sin + pad.center.y * cos
-+    const turn =
-+      pad.shape === "circle"
-+        ? 0
-+        : (((pad.ccwRotationDegrees ?? 0) - degrees) * Math.PI) / 180
-+    const halfX =
-+        (Math.abs(Math.cos(turn)) * pad.width +
-+          Math.abs(Math.sin(turn)) * pad.height) /
-+        2,
-+      halfY =
-+        (Math.abs(Math.sin(turn)) * pad.width +
-+          Math.abs(Math.cos(turn)) * pad.height) /
-+        2
-+    field.minX = Math.min(field.minX, x - halfX)
-+    field.maxX = Math.max(field.maxX, x + halfX)
-+    field.minY = Math.min(field.minY, y - halfY)
-+    field.maxY = Math.max(field.maxY, y + halfY)
++    const isCircle = pad.shape === "circle"
++    const padToPackage = compose(
++      boardToPackage,
++      translate(pad.center.x, pad.center.y),
++      rotateDEG(isCircle ? 0 : (pad.ccwRotationDegrees ?? 0)),
++    )
++    const halfWidth = pad.width / 2,
++      halfHeight = (isCircle ? pad.width : pad.height) / 2
++    const center = applyToPoint(padToPackage, { x: 0, y: 0 })
++    // A circle's extent is its radius in every frame; a rectangle's is the
++    // bounding box of its four corners.
++    const extents = isCircle
++      ? [
++          { x: center.x - halfWidth, y: center.y - halfWidth },
++          { x: center.x + halfWidth, y: center.y + halfWidth },
++        ]
++      : [
++          { x: -halfWidth, y: -halfHeight },
++          { x: halfWidth, y: -halfHeight },
++          { x: halfWidth, y: halfHeight },
++          { x: -halfWidth, y: halfHeight },
++        ].map((corner) => applyToPoint(padToPackage, corner))
++    for (const point of extents) {
++      field.minX = Math.min(field.minX, point.x)
++      field.maxX = Math.max(field.maxX, point.x)
++      field.minY = Math.min(field.minY, point.y)
++      field.maxY = Math.max(field.maxY, point.y)
++    }
 +  }
 +  return field
 +}
@@ -55,29 +79,42 @@ index 0000000..736ad2e
 +  pads: Obstacle[],
 +  boardAlignedField: Box,
 +): PackagePadFrame {
-+  const area = (field: Box) =>
-+    (field.maxX - field.minX) * (field.maxY - field.minY)
-+  let best: PackagePadFrame = { angle: 0, field: boardAlignedField }
-+  let bestArea = area(boardAlignedField)
-+  const candidates = new Set(
++  let best: PackagePadFrame = {
++    ccwRotationRadians: 0,
++    field: boardAlignedField,
++    boardToPackage: rotate(0),
++    packageToBoard: rotate(0),
++  }
++  const candidateCcwRotationDegrees = new Set(
 +    pads
 +      .filter((pad) => pad.shape !== "circle")
 +      .map((pad) => (((pad.ccwRotationDegrees ?? 0) % 90) + 90) % 90),
 +  )
-+  for (const degrees of [...candidates].sort((a, b) => a - b)) {
-+    if (!degrees) continue
-+    const field = fieldAt(pads, degrees)
-+    if (area(field) >= bestArea - 1e-9) continue
-+    best = { angle: (degrees * Math.PI) / 180, field }
-+    bestArea = area(field)
++  for (const ccwRotationDegrees of [...candidateCcwRotationDegrees].sort(
++    (a, b) => a - b,
++  )) {
++    if (!ccwRotationDegrees) continue
++    const ccwRotationRadians = (ccwRotationDegrees * Math.PI) / 180
++    const boardToPackage = rotate(-ccwRotationRadians)
++    const field = getPadField(pads, boardToPackage)
++    if (getBoxArea(field) >= getBoxArea(best.field) - 1e-9) continue
++    best = {
++      ccwRotationRadians,
++      field,
++      boardToPackage,
++      packageToBoard: rotate(ccwRotationRadians),
++    }
 +  }
 +  return best
 +}
 diff --git a/lib/pending-lane-certificates.ts b/lib/pending-lane-certificates.ts
-index bd632d7..723813d 100644
+index bd632d7..1b1c990 100644
 --- a/lib/pending-lane-certificates.ts
 +++ b/lib/pending-lane-certificates.ts
-@@ -3,48 +3,31 @@ import { VectorScene, type Copper } from "./vector-scene"
+@@ -1,50 +1,35 @@
++import { applyToPoint } from "transformation-matrix"
+ import { GridVisibilitySearch } from "./grid-visibility"
+ import { VectorScene, type Copper } from "./vector-scene"
  import type { Connection, SimpleRouteJson, Trace } from "./types"
  import { packageApproachRegions } from "./package-approach-regions"
  import { getConnectedPadGroups } from "./connected-pad-groups"
@@ -89,13 +126,14 @@ index bd632d7..723813d 100644
 - * package-to-package trunk. These soft guides stop at the pad field and
 - * retain native connectivity aliases; they never become routed connections. */
 +/** Preserve access for the pads of nets that a later request still has to
-+ * route. Every bus request receives them: a first bus between two packages
-+ * can close the last exit of a neighboring pad as easily as a branch added
-+ * to an existing trunk. Each guide runs from its pad to the nearest side of
-+ * the package's pad field, measured in the package's own frame so that a
-+ * rotated package is not given guides across the open board beside it. These
-+ * soft guides retain native connectivity aliases; they never become routed
-+ * connections. */
++ * route. A request needs no completed trunk to receive them: a first bus
++ * between two packages can close the last exit of a neighboring pad as easily
++ * as a branch added to an existing trunk. The ordered lane search asks for
++ * them for every input with buses; dense negotiation does not use them. Each
++ * guide runs from its pad to the nearest side of the package's pad field,
++ * measured in the package's own frame so that a rotated package is not given
++ * guides across the open board beside it. These soft guides retain native
++ * connectivity aliases; they never become routed connections. */
  export function* pendingPackageExits(
    input: SimpleRouteJson,
    fixed: Copper[],
@@ -140,17 +178,16 @@ index bd632d7..723813d 100644
      ]),
    )
    const groups = getConnectedPadGroups(pads)
-@@ -89,19 +72,30 @@ export function* pendingPackageExits(
+@@ -89,19 +74,28 @@ export function* pendingPackageExits(
          pad as typeof pad & { circuitJsonMetadata?: { pcb_port_id?: string } }
        ).circuitJsonMetadata?.pcb_port_id
        if (!port) continue
 -      const field = fields.get(pad.componentId!)!
-+      const { angle, field } = frames.get(pad.componentId!)!
-+      const cos = Math.cos(angle),
-+        sin = Math.sin(angle)
-+      // Pad center in the package frame; exits leave along the frame axes.
-+      const x = pad.center.x * cos + pad.center.y * sin,
-+        y = -pad.center.x * sin + pad.center.y * cos
++      const { field, boardToPackage, packageToBoard } = frames.get(
++        pad.componentId!,
++      )!
++      // Exits leave along the package frame's axes.
++      const padCenterInPackage = applyToPoint(boardToPackage, pad.center)
        for (const layer of pad.layers) {
          const start = { ...pad.center, layer, pcb_port_id: port }
          const end = [
@@ -163,14 +200,13 @@ index bd632d7..723813d 100644
 -            Math.hypot(a.x - start.x, a.y - start.y) -
 -            Math.hypot(b.x - start.x, b.y - start.y),
 -        )[0]
-+          { x: field.minX - extension, y },
-+          { x: field.maxX + extension, y },
-+          { x, y: field.minY - extension },
-+          { x, y: field.maxY + extension },
++          { x: field.minX - extension, y: padCenterInPackage.y },
++          { x: field.maxX + extension, y: padCenterInPackage.y },
++          { x: padCenterInPackage.x, y: field.minY - extension },
++          { x: padCenterInPackage.x, y: field.maxY + extension },
 +        ]
-+          .map((exit) => ({
-+            x: exit.x * cos - exit.y * sin,
-+            y: exit.x * sin + exit.y * cos,
++          .map((exitInPackage) => ({
++            ...applyToPoint(packageToBoard, exitInPackage),
 +            layer,
 +          }))
 +          .sort(
@@ -183,30 +219,27 @@ index bd632d7..723813d 100644
            pointsToConnect: [start, end],
 diff --git a/tests/package-pad-frame.test.ts b/tests/package-pad-frame.test.ts
 new file mode 100644
-index 0000000..8328b43
+index 0000000..1644e4a
 --- /dev/null
 +++ b/tests/package-pad-frame.test.ts
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,130 @@
 +import { expect, test } from "bun:test"
++import { applyToPoint, rotate, rotateDEG } from "transformation-matrix"
 +import { packageApproachRegions } from "../lib/package-approach-regions"
 +import { getPackagePadFrame } from "../lib/package-pad-frame"
-+import type { Obstacle, SimpleRouteJson } from "../lib/types"
++import type { Obstacle, Point, SimpleRouteJson } from "../lib/types"
 +
-+const pad = (
-+  x: number,
-+  y: number,
-+  width: number,
-+  height: number,
-+  ccwRotationDegrees?: number,
-+): Obstacle => ({
++const pad = (params: {
++  center: Point
++  width: number
++  height: number
++  ccwRotationDegrees?: number
++}): Obstacle => ({
 +  type: "rect",
 +  componentId: "U1",
-+  center: { x, y },
-+  width,
-+  height,
-+  ccwRotationDegrees,
 +  layers: ["top"],
 +  connectedTo: [],
++  ...params,
 +})
 +
 +const request: SimpleRouteJson = {
@@ -220,35 +253,82 @@ index 0000000..8328b43
 +// Board coordinates in mm, +X right, +Y up.
 +test("a package placed at 45 degrees gets a pad field in its own frame", (): void => {
 +  const aligned = { minX: -1, maxX: 1, minY: -1, maxY: 1 }
++  const boardFrame = {
++    ccwRotationRadians: 0,
++    field: aligned,
++    boardToPackage: rotate(0),
++    packageToBoard: rotate(0),
++  }
 +  // Axis-aligned packages, including quarter-turn pads, keep the board frame.
 +  expect(
 +    getPackagePadFrame(
-+      [pad(-0.75, 0, 0.5, 0.3), pad(0.75, 0, 0.5, 0.3, 180)],
++      [
++        pad({ center: { x: -0.75, y: 0 }, width: 0.5, height: 0.3 }),
++        pad({
++          center: { x: 0.75, y: 0 },
++          width: 0.5,
++          height: 0.3,
++          ccwRotationDegrees: 180,
++        }),
++      ],
 +      aligned,
 +    ),
-+  ).toEqual({ angle: 0, field: aligned })
++  ).toEqual(boardFrame)
 +  expect(
 +    getPackagePadFrame(
-+      [pad(0, -0.75, 0.5, 0.3, 90), pad(0, 0.75, 0.5, 0.3, 270)],
++      [
++        pad({
++          center: { x: 0, y: -0.75 },
++          width: 0.5,
++          height: 0.3,
++          ccwRotationDegrees: 90,
++        }),
++        pad({
++          center: { x: 0, y: 0.75 },
++          width: 0.5,
++          height: 0.3,
++          ccwRotationDegrees: 270,
++        }),
++      ],
 +      aligned,
 +    ),
-+  ).toEqual({ angle: 0, field: aligned })
++  ).toEqual(boardFrame)
 +
 +  // A square package turned 45 degrees with three pads on each side. In the
 +  // package frame the pad centers lie 4 mm from the center, at -3, 0 and 3 mm
 +  // along each side.
-+  const toBoard = (u: number, v: number) => ({
-+    x: (u - v) / Math.SQRT2,
-+    y: (u + v) / Math.SQRT2,
-+  })
++  const packageToBoard = rotateDEG(45)
 +  const pads = [-3, 0, 3].flatMap((along) => [
-+    { ...pad(0, 0, 0.3, 1.5, 45), center: toBoard(4, along) },
-+    { ...pad(0, 0, 0.3, 1.5, 45), center: toBoard(-4, along) },
-+    { ...pad(0, 0, 1.5, 0.3, 45), center: toBoard(along, 4) },
-+    { ...pad(0, 0, 1.5, 0.3, 45), center: toBoard(along, -4) },
++    pad({
++      center: applyToPoint(packageToBoard, { x: 4, y: along }),
++      width: 0.3,
++      height: 1.5,
++      ccwRotationDegrees: 45,
++    }),
++    pad({
++      center: applyToPoint(packageToBoard, { x: -4, y: along }),
++      width: 0.3,
++      height: 1.5,
++      ccwRotationDegrees: 45,
++    }),
++    pad({
++      center: applyToPoint(packageToBoard, { x: along, y: 4 }),
++      width: 1.5,
++      height: 0.3,
++      ccwRotationDegrees: 45,
++    }),
++    pad({
++      center: applyToPoint(packageToBoard, { x: along, y: -4 }),
++      width: 1.5,
++      height: 0.3,
++      ccwRotationDegrees: 45,
++    }),
 +  ])
 +  // A square thermal pad that is not rotated does not change the frame.
-+  pads.push({ ...pad(0, 0, 2, 2), layers: ["top", "bottom"] })
++  pads.push({
++    ...pad({ center: { x: 0, y: 0 }, width: 2, height: 2 }),
++    layers: ["top", "bottom"],
++  })
 +  const original = structuredClone(pads)
 +  const boardAligned = packageApproachRegions(
 +    { ...request, obstacles: pads },
@@ -258,11 +338,18 @@ index 0000000..8328b43
 +  expect(boardAligned.maxX).toBeGreaterThan(5.5)
 +  const frame = getPackagePadFrame(pads, boardAligned)
 +  expect(pads).toEqual(original)
-+  expect(frame.angle).toBeCloseTo(Math.PI / 4, 12)
++  expect(frame.ccwRotationRadians).toBeCloseTo(Math.PI / 4, 12)
 +  // 4 mm to the pad centers plus half the 0.3 mm pad dimension that lies
 +  // across each side.
 +  for (const bound of [frame.field.maxX, frame.field.maxY])
 +    expect(bound).toBeCloseTo(4.15, 9)
 +  for (const bound of [frame.field.minX, frame.field.minY])
 +    expect(bound).toBeCloseTo(-4.15, 9)
++  // A pad center on the package's +X side maps onto that side and back.
++  const sidePad = applyToPoint(frame.boardToPackage, pads[0].center)
++  expect(sidePad.x).toBeCloseTo(4, 9)
++  expect(sidePad.y).toBeCloseTo(-3, 9)
++  const roundTrip = applyToPoint(frame.packageToBoard, sidePad)
++  expect(roundTrip.x).toBeCloseTo(pads[0].center.x, 9)
++  expect(roundTrip.y).toBeCloseTo(pads[0].center.y, 9)
 +})
