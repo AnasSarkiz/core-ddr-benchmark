@@ -22,6 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         circuit: [a13]
+        variant: [base, board-clearance]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -37,6 +38,7 @@ jobs:
         run: |
           cd autorouter
           cp ../harness-repo/harness/diag/ar-run.ts scripts/ar-run.ts
+          if [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/ar-exp/${{ matrix.variant }}.py && git diff --stat; fi
           bun scripts/ar-run.ts ../harness-repo/harness/diag/${{ matrix.circuit }}-remaining.json.gz out.json 900 1 > out.txt 2>&1 || true
       - name: Print
         if: always()
