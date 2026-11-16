@@ -21,7 +21,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a64, stmp157, a13, h3]
+        circuit: [a64, stmp157]
+        effort: ['3', '10']
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -37,7 +38,7 @@ jobs:
         run: |
           cd autorouter
           cp ../harness-repo/harness/diag/ar-run.ts scripts/ar-run.ts
-          bun scripts/ar-run.ts ../harness-repo/harness/diag/${{ matrix.circuit }}-remaining.json.gz out.json 900 > out.txt 2>&1 || true
+          bun scripts/ar-run.ts ../harness-repo/harness/diag/${{ matrix.circuit }}-remaining.json.gz out.json 1500 ${{ matrix.effort }} > out.txt 2>&1 || true
       - name: Print
         if: always()
         run: |

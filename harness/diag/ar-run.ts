@@ -8,7 +8,8 @@ import { AutoroutingPipelineSolver9_PreloadedTraceGraph } from "lib/index"
 const file = process.argv[2]
 const out = process.argv[3]
 const srj = JSON.parse(gunzipSync(readFileSync(file)).toString("utf8"))
-const solver: any = new AutoroutingPipelineSolver9_PreloadedTraceGraph(srj, {})
+const effort = Number(process.argv[5] ?? 1)
+const solver: any = new AutoroutingPipelineSolver9_PreloadedTraceGraph(srj, { effort })
 const started = performance.now()
 let last = ""
 try {
@@ -29,7 +30,7 @@ while (active) {
   chain.push(`${active.constructor.name}(iterations=${active.iterations},max=${active.MAX_ITERATIONS},failed=${active.failed},error=${String(active.error).slice(0, 200)})`)
   active = active.activeSubSolver
 }
-console.log(`RESULT ${file} t=${((performance.now() - started) / 1000).toFixed(1)}s solved=${solver.solved} failed=${solver.failed} iterations=${solver.iterations} max=${solver.MAX_ITERATIONS} error=${String(solver.error).slice(0, 400)}`)
+console.log(`RESULT effort=${effort} ${file} t=${((performance.now() - started) / 1000).toFixed(1)}s solved=${solver.solved} failed=${solver.failed} iterations=${solver.iterations} max=${solver.MAX_ITERATIONS} error=${String(solver.error).slice(0, 400)}`)
 console.log(`CHAIN ${chain.join(" > ")}`)
 console.log(`TIMES ${JSON.stringify(Object.fromEntries(Object.entries(solver.timeSpentOnPhase ?? {}).map(([k, v]: any) => [k, Math.round(v)])))}`)
 if (solver.solved) writeFileSync(out, JSON.stringify(solver.getOutputSimpleRouteJson()))
