@@ -15,17 +15,13 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  subset:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  arpr:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        variant: [base, board-clearance]
-        subset:
-          - { name: dm-pairs14, keep: '76,77,95,17,86,79,56,44,54,42,49,39,11,8', drop: '' }
-          - { name: dm-ram, keep: '76,77,86,79,78,56,44,95,17', drop: '' }
-          - { name: no-address6, keep: '', drop: '54,42,49,39,11,8' }
+        state: [repro, fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -35,21 +31,36 @@ jobs:
           ref: main
           path: autorouter
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.4.3
       - run: cd autorouter && git rev-parse HEAD && bun install
-      - name: Route a subset of the A13 remaining-phase request
-        env:
-          KEEP: ${{ matrix.subset.keep }}
-          DROP: ${{ matrix.subset.drop }}
+      - name: Overlay
         run: |
           cd autorouter
-          cp ../harness-repo/harness/diag/ar-run.ts scripts/ar-run.ts
-          if [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/ar-exp/${{ matrix.variant }}.py && git diff --stat; fi
-          bun scripts/ar-run.ts ../harness-repo/harness/diag/a13-remaining.json.gz out.json 900 1 > out.txt 2>&1 || true
-      - name: Print
+          cp -r ../harness-repo/harness/overlay/. .
+          if [ "${{ matrix.state }}" = fix ]; then
+            python3 ../harness-repo/harness/ar-exp/board-clearance.py
+            sed -i 's|  expect(closeTracePairs).toHaveLength(6)|  expect(closeTracePairs).toEqual([])|' tests/repro/pipeline9-a13-declared-trace-clearance.test.ts
+            git diff --stat
+          fi
+          bunx biome format tests/repro/pipeline9-a13-declared-trace-clearance.test.ts lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9BoundedRegionalRepairSolver.ts 2>&1 | tail -20
+          bunx tsc --noEmit 2>&1 | tail -15
+      - name: Test and write snapshots, then run against them
+        run: |
+          cd autorouter
+          FILES="tests/repro/pipeline9-a13-declared-trace-clearance.test.ts"
+          if [ "${{ matrix.state }}" = fix ]; then FILES="$FILES tests/repro/pipeline9-a13-fixed-copper-checks.test.ts"; fi
+          BUN_UPDATE_SNAPSHOTS=1 bun test $FILES --timeout 600000 2>&1 | grep -E "^\((pass|fail)\)|pass$|fail$|rror|Expected|Received" | head -30
+          git status --short
+          sha256sum tests/repro/__snapshots__/pipeline9-a13-declared-trace-clearance.snap.svg tests/repro/__snapshots__/pipeline9-a13-fixed-copper-checks.snap.svg
+          bun test $FILES --timeout 600000 2>&1 | grep -E "^\((pass|fail)\)|pass$|fail$|rror|Expected|Received" | head -30
+          git status --short
+          grep -o "Relaxed DRC errors: [0-9]*" tests/repro/__snapshots__/pipeline9-a13-declared-trace-clearance.snap.svg tests/repro/__snapshots__/pipeline9-a13-fixed-copper-checks.snap.svg
+      - name: Emit
         if: always()
         run: |
           cd autorouter
-          grep -E "^(CONNECTIONS|RESULT|THREW|DRC )" out.txt | cut -c1-400
-          grep -E "^DRCERR board" out.txt | sed -E 's/unnamed //g' | cut -c1-150 | sort | uniq -c
-          grep -E "^STATS pipeline9JointDrcRepairSolver" out.txt | grep -o '"initialBoundedRegionalRepair[A-Za-z]*":[^,]*' | tr '\n' ' '
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - $(git status --short | awk '{print $2}' | grep -E "snap\.svg$") | base64 -w 160
+          echo "=====TARBALL-END====="
