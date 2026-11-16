@@ -21,22 +21,29 @@ const length = (trace: any) =>
   trace.route.slice(1).reduce((sum: number, p: any, i: number) => sum + Math.hypot(p.x - trace.route[i].x, p.y - trace.route[i].y), 0)
 const base = fixture.byte1Request
 const before = pads(base)
-const variants: [string, any][] = [14.84, 16, 18, 21, 25].map((maxLength) => [
+const variants: [string, any][] = [Number(process.argv[2])].map((maxLength) => [
   `maxLength-${maxLength}`,
   { ...base, buses: base.buses.map((bus: any) => ({ ...bus, maxLength })) },
 ])
 for (const [name, input] of variants) {
   const started = performance.now()
   const solver = new BusLanesPipelineSolver(input)
+  let last = ""
   try {
-    solver.solve()
+    while (!solver.solved && !solver.failed && performance.now() - started < 420_000) {
+      solver.step()
+      if (solver.phase !== last) {
+        last = solver.phase
+        console.log(`PHASE ${name} t=${((performance.now() - started) / 1000).toFixed(1)}s ${solver.phase}`)
+      }
+    }
   } catch (error) {
     console.log(`VARIANT ${name} threw ${String(error).slice(0, 300)}`)
     continue
   }
   const seconds = ((performance.now() - started) / 1000).toFixed(1)
   if (!solver.solved) {
-    console.log(`VARIANT ${name} solved=false error=${solver.error} t=${seconds}s`)
+    console.log(`VARIANT ${name} solved=false failed=${solver.failed} error=${solver.error} phase=${solver.phase} iterations=${solver.iterations} t=${seconds}s`)
     continue
   }
   const traces = solver.getOutput().traces
