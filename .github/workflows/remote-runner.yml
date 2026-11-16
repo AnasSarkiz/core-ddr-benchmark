@@ -15,30 +15,33 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  reserve:
+  arrun:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        request: [a13-reserve-ram-byte1, a13-reserve-ram-byte0]
+        circuit: [a13]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
-          repository: tscircuit/bus-lanes-solver
-          ref: repro/h3-pending-pad-escapes
-          path: solver
+          repository: tscircuit/tscircuit-autorouter
+          ref: main
+          path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
-      - run: cd solver && git rev-parse HEAD && bun install
-      - name: Reserve an escape for each trapped pad and reroute
+      - run: cd autorouter && git rev-parse HEAD && bun install
+      - name: Route the remaining-phase request
         run: |
-          cd solver
-          bun ../harness-repo/harness/diag/reserve.ts ../harness-repo/harness/diag/${{ matrix.request }}.json.gz result.json > out.txt 2>&1 || true
+          cd autorouter
+          cp ../harness-repo/harness/diag/ar-run.ts scripts/ar-run.ts
+          bun scripts/ar-run.ts ../harness-repo/harness/diag/${{ matrix.circuit }}-remaining.json.gz out.json 900 1 > out.txt 2>&1 || true
       - name: Print
         if: always()
         run: |
-          cd solver
-          grep -E "^RESERVE|rror" out.txt | cut -c1-1300 | tail -40
+          cd autorouter
+          grep -E "^(RESULT|TIMES|THREW|STATS|DRC)" out.txt | cut -c1-2600 | tail -90
+          grep -ci "error" out.txt || true
+          grep -i "error" out.txt | grep -v "^DRC\|^STATS" | sort | uniq -c | sort -rn | head -8 | cut -c1-300

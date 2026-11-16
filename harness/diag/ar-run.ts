@@ -4,6 +4,7 @@
 import { readFileSync, writeFileSync } from "node:fs"
 import { gunzipSync } from "node:zlib"
 import { AutoroutingPipelineSolver9_PreloadedTraceGraph } from "lib/index"
+import { evaluateRelaxedDrc } from "lib/testing/evaluate-relaxed-drc"
 
 const file = process.argv[2]
 const out = process.argv[3]
@@ -33,4 +34,20 @@ while (active) {
 console.log(`RESULT effort=${effort} ${file} t=${((performance.now() - started) / 1000).toFixed(1)}s solved=${solver.solved} failed=${solver.failed} iterations=${solver.iterations} max=${solver.MAX_ITERATIONS} error=${String(solver.error).slice(0, 400)}`)
 console.log(`CHAIN ${chain.join(" > ")}`)
 console.log(`TIMES ${JSON.stringify(Object.fromEntries(Object.entries(solver.timeSpentOnPhase ?? {}).map(([k, v]: any) => [k, Math.round(v)])))}`)
-if (solver.solved) writeFileSync(out, JSON.stringify(solver.getOutputSimpleRouteJson()))
+if (solver.solved) {
+  writeFileSync(out, JSON.stringify(solver.getOutputSimpleRouteJson()))
+  for (const name of ["highDensityRepairSolver", "globalDrcForceImproveSolver", "pipeline9JointDrcRepairSolver", "effortCleanupSolver"]) {
+    console.log(`STATS ${name} ${JSON.stringify(solver[name]?.stats ?? null).slice(0, 2500)}`)
+  }
+  const routedTraces = solver.getOutputSimplifiedPcbTraces()
+  for (const [label, drcOptions] of [
+    ["relaxed-0.1", undefined],
+    ["board-clearance", { traceClearance: srj.minTraceToPadEdgeClearance }],
+  ] as [string, any][]) {
+    const result = evaluateRelaxedDrc({ inputSrj: srj, srjWithPointPairs: solver.srjWithPointPairs, routedTraces, drcOptions })
+    const counts: Record<string, number> = {}
+    for (const error of result.errors) counts[error.type] = (counts[error.type] ?? 0) + 1
+    console.log(`DRC ${label} total=${result.errors.length} ${JSON.stringify(counts)}`)
+    for (const error of result.errors) console.log(`DRCERR ${label} ${error.type} ${String((error as any).message).slice(0, 200)}`)
+  }
+}
