@@ -23,9 +23,9 @@ jobs:
       matrix:
         variant: [base, board-clearance]
         subset:
-          - { name: pairs12, keep: '95,17,86,79,56,44,54,42,49,39,11,8', drop: '' }
-          - { name: address6, keep: '54,42,49,39,11,8', drop: '' }
-          - { name: nodm, keep: '', drop: '76,77' }
+          - { name: dm-pairs14, keep: '76,77,95,17,86,79,56,44,54,42,49,39,11,8', drop: '' }
+          - { name: dm-ram, keep: '76,77,86,79,78,56,44,95,17', drop: '' }
+          - { name: no-address6, keep: '', drop: '54,42,49,39,11,8' }
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
