@@ -1,0 +1,71 @@
+name: Autorouter suite with the declared-clearance change
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/ar-suite.trigger']
+
+jobs:
+  suite:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: main
+          path: autorouter
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.4.3
+      - run: cd autorouter && git rev-parse HEAD && bun install
+      - name: Apply the repro test and the fix
+        run: |
+          cd autorouter
+          cp -r ../harness-repo/harness/overlay/. .
+          python3 ../harness-repo/harness/ar-exp/board-clearance.py
+          sed -i 's|  expect(closeTracePairs).toHaveLength(6)|  expect(closeTracePairs).toEqual([])|' tests/repro/pipeline9-a13-declared-trace-clearance.test.ts
+          git status --short
+      - name: Generate balanced test plans
+        run: cd autorouter && bun scripts/generate-balanced-test-plan.ts
+        env:
+          NODE_COUNT: 9
+      - name: Run shard ${{ matrix.node }} without updating snapshots
+        run: |
+          cd autorouter
+          mapfile -t test_files < ".bun-test-plan/testplans/testplan${{ matrix.node }}.txt"
+          echo "Running ${#test_files[@]} test files"
+          regular_tests=(); slow_tests=(); full_board_tests=()
+          for test_file in "${test_files[@]}"; do
+            if [ "$test_file" = "tests/repro/pipeline9-orangecrab-via-roundoff.test.ts" ]; then
+              bun install --ignore-scripts --cwd tests/repro/orangecrab-via-roundoff
+            fi
+            case "$test_file" in
+              tests/bugs/bugreport107-board-1726.test.ts|tests/bugs/bugreport110/motherboard-power-full-route.test.ts)
+                full_board_tests+=("$test_file") ;;
+              tests/features/pipeline9-srj18-sample2-bounded-regional-drc.test.ts|tests/features/pipeline9-a13-srj18-sample2-drc.test.ts|tests/features/pipeline9-srj18-sample2-via-simplification.test.ts|tests/repro/pipeline9-stmp157-mesh-memory.test.ts|tests/repro/pipeline10-artix7-ddr-bus-length-matching.test.ts)
+                slow_tests+=("$test_file") ;;
+              *) regular_tests+=("$test_file") ;;
+            esac
+          done
+          : > suite.log
+          if [ "${#regular_tests[@]}" -gt 0 ]; then bun test "${regular_tests[@]}" --timeout 300000 >> suite.log 2>&1 || true; fi
+          if [ "${#slow_tests[@]}" -gt 0 ]; then bun test "${slow_tests[@]}" --timeout 600000 >> suite.log 2>&1 || true; fi
+          if [ "${#full_board_tests[@]}" -gt 0 ]; then bun test "${full_board_tests[@]}" --timeout 1800000 >> suite.log 2>&1 || true; fi
+      - name: Summary
+        if: always()
+        run: |
+          cd autorouter
+          echo "=====SUMMARY====="
+          grep -E "^ *[0-9]+ (pass|fail|skip)$|^Ran [0-9]+ tests" suite.log
+          echo "=====FAILED====="
+          grep -E "^\(fail\)" suite.log | cut -c1-200
+          echo "=====CHANGED====="
+          git status --short | grep -v "pipeline9-a13-declared-trace-clearance\|Pipeline9BoundedRegionalRepairSolver" | head -40
