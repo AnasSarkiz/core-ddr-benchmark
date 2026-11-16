@@ -15,33 +15,30 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  arrun:
+  reserve:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a64, stmp157]
-        effort: ['3', '10']
+        request: [a13-reserve-ram-byte1, a13-reserve-ram-byte0]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
-          repository: tscircuit/tscircuit-autorouter
-          ref: main
-          path: autorouter
+          repository: tscircuit/bus-lanes-solver
+          ref: repro/h3-pending-pad-escapes
+          path: solver
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
-      - run: cd autorouter && git rev-parse HEAD && bun install
-      - name: Route the remaining-phase request
+      - run: cd solver && git rev-parse HEAD && bun install
+      - name: Reserve an escape for each trapped pad and reroute
         run: |
-          cd autorouter
-          cp ../harness-repo/harness/diag/ar-run.ts scripts/ar-run.ts
-          bun scripts/ar-run.ts ../harness-repo/harness/diag/${{ matrix.circuit }}-remaining.json.gz out.json 1500 ${{ matrix.effort }} > out.txt 2>&1 || true
+          cd solver
+          bun ../harness-repo/harness/diag/reserve.ts ../harness-repo/harness/diag/${{ matrix.request }}.json.gz result.json > out.txt 2>&1 || true
       - name: Print
         if: always()
         run: |
-          cd autorouter
-          grep -E "^(STAGE|RESULT|CHAIN|TIMES|THREW)" out.txt | cut -c1-1500 | tail -70
-          grep -v "^STAGE\|^RESULT\|^CHAIN\|^TIMES" out.txt | sort | uniq -c | sort -rn | head -15 | cut -c1-300
+          cd solver
+          grep -E "^RESERVE|rror" out.txt | cut -c1-1300 | tail -40
