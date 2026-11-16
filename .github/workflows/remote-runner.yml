@@ -15,13 +15,9 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  h3variants:
+  h3sites:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        maxlength: ['14.84', '16', '18', '21', '25', '30']
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -33,12 +29,12 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
       - run: cd solver && git rev-parse HEAD && bun install
-      - name: Byte 1 with a bus length limit
+      - name: Byte 1 with expanded via sites offered beside surface approaches
         run: |
           cd solver
-          bun ../harness-repo/harness/diag/h3-variants.ts ${{ matrix.maxlength }} > out.txt 2>&1 || true
+          bun ../harness-repo/harness/diag/h3-generated-sites.ts > out.txt 2>&1 || true
       - name: Print
         if: always()
         run: |
           cd solver
-          grep -E "^(PHASE|VARIANT)|rror" out.txt | cut -c1-900 | tail -40
+          grep -E "^(GENERATED|CARRIER)|rror" out.txt | cut -c1-900 | tail -60
