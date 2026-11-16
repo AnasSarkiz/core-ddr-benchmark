@@ -9,6 +9,11 @@ import { evaluateRelaxedDrc } from "lib/testing/evaluate-relaxed-drc"
 const file = process.argv[2]
 const out = process.argv[3]
 const srj = JSON.parse(gunzipSync(readFileSync(file)).toString("utf8"))
+const keep = (process.env.KEEP ?? "").split(",").filter(Boolean).map((n) => `source_net_${n}`)
+const drop = (process.env.DROP ?? "").split(",").filter(Boolean).map((n) => `source_net_${n}`)
+if (keep.length) srj.connections = srj.connections.filter((c: any) => keep.includes(c.name))
+if (drop.length) srj.connections = srj.connections.filter((c: any) => !drop.includes(c.name))
+console.log(`CONNECTIONS ${srj.connections.length}`)
 const effort = Number(process.argv[5] ?? 1)
 const solver: any = new AutoroutingPipelineSolver9_PreloadedTraceGraph(srj, { effort })
 const started = performance.now()

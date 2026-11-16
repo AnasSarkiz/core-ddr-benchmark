@@ -15,54 +15,41 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  arddr:
+  subset:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
         variant: [base, board-clearance]
+        subset:
+          - { name: pairs12, keep: '95,17,86,79,56,44,54,42,49,39,11,8', drop: '' }
+          - { name: address6, keep: '54,42,49,39,11,8', drop: '' }
+          - { name: nodm, keep: '', drop: '76,77' }
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
-          repository: tscircuit/core
-          ref: 0ce5c61dbe004e8ce368cf491efd856870ba5aa4
-          path: core
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.3'
-      - run: cd core && bun install --ignore-scripts
-      - uses: actions/checkout@v4
-        with:
           repository: tscircuit/tscircuit-autorouter
-          ref: c5059c7e768ed23ba29eea7271423a778d7f1027
+          ref: main
           path: autorouter
           persist-credentials: false
-      - name: Build the autorouter under test and place it in Core
+      - uses: oven-sh/setup-bun@v2
+      - run: cd autorouter && git rev-parse HEAD && bun install
+      - name: Route a subset of the A13 remaining-phase request
+        env:
+          KEEP: ${{ matrix.subset.keep }}
+          DROP: ${{ matrix.subset.drop }}
         run: |
           cd autorouter
+          cp ../harness-repo/harness/diag/ar-run.ts scripts/ar-run.ts
           if [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/ar-exp/${{ matrix.variant }}.py && git diff --stat; fi
-          bun install
-          bun run build 2>&1 | tail -3
-          rm -rf ../core/node_modules/@tscircuit/capacity-autorouter/dist
-          cp -r dist ../core/node_modules/@tscircuit/capacity-autorouter/dist
-          ls ../core/node_modules/@tscircuit/capacity-autorouter/dist | head
-      - name: Route
-        run: |
-          cd core
-          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 2>&1 | tail -12
-      - name: Print the report
+          bun scripts/ar-run.ts ../harness-repo/harness/diag/a13-remaining.json.gz out.json 900 1 > out.txt 2>&1 || true
+      - name: Print
         if: always()
         run: |
-          cd core
-          echo "=====REPORT====="
-          cat ddr-benchmark-results/report.md
-          echo "=====END-REPORT====="
-          cd ddr-benchmark-results/${{ matrix.circuit }}
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - progress.json assessment.json findings.json | base64 -w 160
-          echo "=====TARBALL-END====="
+          cd autorouter
+          grep -E "^(CONNECTIONS|RESULT|THREW|DRC )" out.txt | cut -c1-400
+          grep -E "^DRCERR board" out.txt | sed -E 's/unnamed //g' | cut -c1-150 | sort | uniq -c
+          grep -E "^STATS pipeline9JointDrcRepairSolver" out.txt | grep -o '"initialBoundedRegionalRepair[A-Za-z]*":[^,]*' | tr '\n' ' '
