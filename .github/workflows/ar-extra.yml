@@ -6,52 +6,36 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  extra:
+  list:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        state: [base, fix]
+        ref: [repro/a13-declared-trace-clearance, fix/a13-declared-trace-clearance]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: main
+          ref: ${{ matrix.ref }}
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
-      - run: cd autorouter && git rev-parse HEAD && bun install > /dev/null 2>&1 && bun install --ignore-scripts --cwd tests/repro/orangecrab-via-roundoff > /dev/null 2>&1
-      - name: Run
+      - run: cd autorouter && git rev-parse HEAD && bun install > /dev/null 2>&1
+      - name: Checks the PR will run
         run: |
           cd autorouter
-          if [ "${{ matrix.state }}" = fix ]; then python3 ../harness-repo/harness/ar-exp/board-clearance.py; fi
-          FILES="tests/repro/pipeline9-imx6-published-ddr-clearance.test.ts tests/repro/pipeline9-orangecrab-via-roundoff.test.ts"
-          bun test $FILES --timeout 900000 > e0.log 2>&1 || true
-          if [ "${{ matrix.state }}" = fix ]; then
-            BUN_UPDATE_SNAPSHOTS=1 bun test $FILES --timeout 900000 > e1.log 2>&1 || true
-            bun test $FILES --timeout 900000 > e2.log 2>&1 || true
-          fi
+          (bun run format:check > fmt.log 2>&1 && echo "FORMAT ok") || (echo "FORMAT failed"; tail -30 fmt.log)
+          (bunx tsc --noEmit > tsc.log 2>&1 && echo "TSC ok") || (echo "TSC failed"; tail -30 tsc.log)
+      - name: List
+        run: |
+          cd autorouter
+          cp ../harness-repo/harness/diag/list-declared-errors.ts ./list-declared-errors.ts
+          bun list-declared-errors.ts > list.log 2>&1 || true
       - name: Emit
         if: always()
-        run: |
-          cd autorouter
-          for f in e0 e1 e2; do
-            [ -f $f.log ] || continue
-            echo "=====$f====="
-            grep -vE "^\s*$|^\s+at " $f.log | grep -E "^\(pass\)|^\(fail\)|^ *[0-9]+ (pass|fail)|error:|Expected|Received|differs|^[-+] |toEqual|message|clearance" | cut -c1-260 | head -80
-          done
-          echo "=====STATUS====="; git status --short | grep -v "\.log$"
-          echo "=====LABELS====="
-          for f in $(git status --short | awk '{print $2}' | grep -E "snap\.svg$"); do
-            echo "## $f"
-            echo "old: $(git show HEAD:$f 2>/dev/null | grep -oiE '>[^<>]*(error|clearance|via|route)[^<>]*[0-9][^<>]*<' | tr '\n' ' ' | cut -c1-400)"
-            echo "new: $(grep -oiE '>[^<>]*(error|clearance|via|route)[^<>]*[0-9][^<>]*<' $f | tr '\n' ' ' | cut -c1-400)"
-          done
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - $(git status --short | awk '{print $2}' | grep -E "snap\.svg$") /dev/null 2>/dev/null | base64 -w 160
-          echo "=====TARBALL-END====="
+        run: cd autorouter && grep "^LIST\|rror" list.log | cut -c1-240 | head -80

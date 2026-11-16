@@ -3,8 +3,6 @@
 name: Remote runner
 
 on:
-  push:
-    branches: [ci/a13-validation]
   workflow_dispatch:
 
 permissions:
