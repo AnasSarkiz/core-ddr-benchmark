@@ -17,7 +17,7 @@ env:
 jobs:
   h3sites:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -32,9 +32,9 @@ jobs:
       - name: Byte 1 with expanded via sites offered beside surface approaches
         run: |
           cd solver
-          bun ../harness-repo/harness/diag/h3-generated-sites.ts > out.txt 2>&1 || true
+          bun ../harness-repo/harness/diag/h3-reserve.ts > out.txt 2>&1 || true
       - name: Print
         if: always()
         run: |
           cd solver
-          grep -E "^(GENERATED|CARRIER)|rror" out.txt | cut -c1-900 | tail -60
+          grep -E "^RESERVE|rror" out.txt | cut -c1-1200 | tail -60
