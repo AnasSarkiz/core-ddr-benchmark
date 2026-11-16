@@ -15,35 +15,54 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  arrun:
+  arddr:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a13]
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
         variant: [base, board-clearance]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
-          repository: tscircuit/tscircuit-autorouter
-          ref: main
-          path: autorouter
+          repository: tscircuit/core
+          ref: 0ce5c61dbe004e8ce368cf491efd856870ba5aa4
+          path: core
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
-      - run: cd autorouter && git rev-parse HEAD && bun install
-      - name: Route the remaining-phase request
+        with:
+          bun-version: '1.4.3'
+      - run: cd core && bun install --ignore-scripts
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: c5059c7e768ed23ba29eea7271423a778d7f1027
+          path: autorouter
+          persist-credentials: false
+      - name: Build the autorouter under test and place it in Core
         run: |
           cd autorouter
-          cp ../harness-repo/harness/diag/ar-run.ts scripts/ar-run.ts
           if [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/ar-exp/${{ matrix.variant }}.py && git diff --stat; fi
-          bun scripts/ar-run.ts ../harness-repo/harness/diag/${{ matrix.circuit }}-remaining.json.gz out.json 900 1 > out.txt 2>&1 || true
-      - name: Print
+          bun install
+          bun run build 2>&1 | tail -3
+          rm -rf ../core/node_modules/@tscircuit/capacity-autorouter/dist
+          cp -r dist ../core/node_modules/@tscircuit/capacity-autorouter/dist
+          ls ../core/node_modules/@tscircuit/capacity-autorouter/dist | head
+      - name: Route
+        run: |
+          cd core
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 2>&1 | tail -12
+      - name: Print the report
         if: always()
         run: |
-          cd autorouter
-          grep -E "^(RESULT|TIMES|THREW|STATS|DRC)" out.txt | cut -c1-2600 | tail -90
-          grep -ci "error" out.txt || true
-          grep -i "error" out.txt | grep -v "^DRC\|^STATS" | sort | uniq -c | sort -rn | head -8 | cut -c1-300
+          cd core
+          echo "=====REPORT====="
+          cat ddr-benchmark-results/report.md
+          echo "=====END-REPORT====="
+          cd ddr-benchmark-results/${{ matrix.circuit }}
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - progress.json assessment.json findings.json | base64 -w 160
+          echo "=====TARBALL-END====="
