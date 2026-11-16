@@ -15,26 +15,42 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  h3sites:
+  coreexp:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
+        variant: [rotated, fine]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
-          repository: tscircuit/bus-lanes-solver
-          ref: repro/h3-pending-pad-escapes
-          path: solver
+          repository: tscircuit/core
+          ref: aeb7e465abc1680051e06f1c84ddc1e9166be07d
+          path: core
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
-      - run: cd solver && git rev-parse HEAD && bun install
-      - name: Byte 1 with expanded via sites offered beside surface approaches
+        with:
+          bun-version: '1.4.3'
+      - name: Install Core with bus-lanes-solver 0.0.57 and the fixed-trace variant
         run: |
-          cd solver
-          bun ../harness-repo/harness/diag/h3-reserve.ts > out.txt 2>&1 || true
-      - name: Print
+          cd core
+          sed -i 's|@tscircuit/bus-lanes-solver/0.0.56.tgz|@tscircuit/bus-lanes-solver/0.0.57.tgz|' package.json
+          bun install --ignore-scripts
+          cp ../harness-repo/harness/core-exp/${{ matrix.variant }}.ts lib/utils/autorouting/with-fixed-traces.ts
+          git diff --stat
+      - name: Route
+        run: |
+          cd core
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 2>&1 | tail -12
+      - name: Print the report
         if: always()
         run: |
-          cd solver
-          grep -E "^RESERVE|rror" out.txt | cut -c1-1200 | tail -60
+          cd core
+          echo "=====REPORT====="
+          cat ddr-benchmark-results/report.md
+          echo "=====END-REPORT====="
+          cat ddr-benchmark-results/${{ matrix.circuit }}/progress.json | head -c 3000
