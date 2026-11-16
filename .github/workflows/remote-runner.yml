@@ -12,24 +12,26 @@ permissions:
 
 env:
   SOLVER_REF: main
-  BENCHMARK_RUN_IDS: '43755978071 43762402853'
+  BENCHMARK_RUN_IDS: '43776434886'
 
 jobs:
-  h3variants:
+  artifacts:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-        with: { path: harness-repo }
-      - uses: actions/checkout@v4
-        with:
-          repository: tscircuit/bus-lanes-solver
-          ref: repro/h3-pending-pad-escapes
-          path: solver
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-      - run: cd solver && git rev-parse HEAD && bun install
-      - name: Byte 1 under request variants
+      - name: Read the published AM3352 comparison of a public run
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          cd solver
-          bun ../harness-repo/harness/diag/h3-variants.ts 2>&1 | grep -E "^(OWN|VARIANT)|rror" | cut -c1-900
+          api=https://api.github.com/repos/tscircuit/bus-lanes-solver
+          for run in $BENCHMARK_RUN_IDS; do
+            curl -sS -H "Authorization: Bearer $GH_TOKEN" "$api/actions/runs/$run" | jq -r '"RUN \(.id) \(.status) \(.conclusion) head=\(.head_sha) attempt=\(.run_attempt)"'
+            curl -sS -H "Authorization: Bearer $GH_TOKEN" "$api/actions/runs/$run/artifacts?per_page=50" > artifacts.json
+            id=$(jq -r '.artifacts[] | select(.name=="am3352-comparison") | .id' artifacts.json)
+            curl -sS -L -o comparison.zip -H "Authorization: Bearer $GH_TOKEN" "$api/actions/artifacts/$id/zip"
+            rm -rf out && mkdir out && unzip -q -o comparison.zip -d out
+            echo "=====COMPARISON $run====="
+            cat out/comparison.md
+            echo
+            echo "=====END-COMPARISON $run====="
+          done
