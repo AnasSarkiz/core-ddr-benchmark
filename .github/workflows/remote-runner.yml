@@ -15,36 +15,32 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  baseline:
+  arrun:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
+        circuit: [a64, stmp157, a13, h3]
     steps:
       - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
         with:
-          repository: tscircuit/core
-          ref: 0ce5c61dbe004e8ce368cf491efd856870ba5aa4
-          path: core
+          repository: tscircuit/tscircuit-autorouter
+          ref: main
+          path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.3'
-      - run: cd core && bun install --ignore-scripts && grep -n '"version"' node_modules/@tscircuit/capacity-autorouter/package.json node_modules/@tscircuit/bus-lanes-solver/package.json
-      - name: Route
+      - run: cd autorouter && git rev-parse HEAD && bun install
+      - name: Route the remaining-phase request
         run: |
-          cd core
-          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 2>&1 | tail -12
-      - name: Print the report
+          cd autorouter
+          cp ../harness-repo/harness/diag/ar-run.ts scripts/ar-run.ts
+          bun scripts/ar-run.ts ../harness-repo/harness/diag/${{ matrix.circuit }}-remaining.json.gz out.json 900 > out.txt 2>&1 || true
+      - name: Print
         if: always()
         run: |
-          cd core
-          echo "=====REPORT====="
-          cat ddr-benchmark-results/report.md
-          echo "=====END-REPORT====="
-          cd ddr-benchmark-results/${{ matrix.circuit }}
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - $(ls phase-*-start.srj.json | sort -V | tail -1) $(ls phase-*-error.srj.json phase-*-end.srj.json 2>/dev/null | sort -V | tail -1) progress.json assessment.json findings.json render.log | base64 -w 160
-          echo "=====TARBALL-END====="
+          cd autorouter
+          grep -E "^(STAGE|RESULT|CHAIN|TIMES|THREW)" out.txt | cut -c1-1500 | tail -70
+          grep -v "^STAGE\|^RESULT\|^CHAIN\|^TIMES" out.txt | sort | uniq -c | sort -rn | head -15 | cut -c1-300
