@@ -15,14 +15,13 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  coreexp:
+  regroup:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
-        variant: [rotated, fine]
+        circuit: [h3, a64, orangecrab]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -35,17 +34,16 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
-      - name: Install Core with bus-lanes-solver 0.0.57 and the fixed-trace variant
+      - name: Install Core with bus-lanes-solver 0.0.57 and regroup the fixture
         run: |
           cd core
           sed -i 's|@tscircuit/bus-lanes-solver/0.0.56.tgz|@tscircuit/bus-lanes-solver/0.0.57.tgz|' package.json
           bun install --ignore-scripts
-          cp ../harness-repo/harness/core-exp/${{ matrix.variant }}.ts lib/utils/autorouting/with-fixed-traces.ts
-          git diff --stat
+          python3 ../harness-repo/harness/core-exp/regroup.py node_modules/@tscircuit/core-ddr-benchmark/circuits/${{ matrix.circuit }}.json.gz
       - name: Route
         run: |
           cd core
-          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 2>&1 | tail -12
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 600 2>&1 | tail -12
       - name: Print the report
         if: always()
         run: |
@@ -53,4 +51,4 @@ jobs:
           echo "=====REPORT====="
           cat ddr-benchmark-results/report.md
           echo "=====END-REPORT====="
-          cat ddr-benchmark-results/${{ matrix.circuit }}/progress.json | head -c 3000
+          cat ddr-benchmark-results/${{ matrix.circuit }}/progress.json | head -c 2500
