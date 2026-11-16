@@ -20,3 +20,10 @@ for t in f["traces"]:
         break
 gzip.open(path, "wb").write(json.dumps(f, separators=(",", ":")).encode())
 print("moved", moved)
+import hashlib, os
+manifest_path = os.path.join(os.path.dirname(os.path.dirname(path)), "manifest.json")
+manifest = json.load(open(manifest_path))
+for circuit in manifest["circuits"]:
+    if circuit["id"] == f["id"]:
+        circuit["sha256"] = hashlib.sha256(open(path, "rb").read()).hexdigest()
+json.dump(manifest, open(manifest_path, "w"))
