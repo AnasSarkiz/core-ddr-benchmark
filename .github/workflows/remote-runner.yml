@@ -32,4 +32,4 @@ jobs:
       - name: Byte 1 under request variants
         run: |
           cd solver
-          bun ../harness-repo/harness/diag/h3-generated-sites.ts 2>&1 | grep -E "^GENERATED|rror" | cut -c1-900
+          bun ../harness-repo/harness/diag/h3-variants.ts 2>&1 | grep -E "^(OWN|VARIANT)|rror" | cut -c1-900
