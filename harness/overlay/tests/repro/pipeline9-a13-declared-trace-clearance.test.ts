@@ -68,9 +68,9 @@ test("A13 routed traces sit closer together than the declared clearance", async 
       }
       return {
         center: { x: error.center.x, y: error.center.y },
-        radius: 0.5,
+        radius: 0.7,
         stroke: "#7c3aed",
-        fill: "rgba(124, 58, 237, 0.18)",
+        fill: "rgba(124, 58, 237, 0.45)",
       }
     }),
   ]

@@ -52,9 +52,9 @@ jobs:
           echo "=====TARBALL-BEGIN====="
           tar -czf - tests/repro/__snapshots__/pipeline9-a13-declared-trace-clearance*.svg | base64 -w 160
           echo "=====TARBALL-END====="
-  fixfail:
+  fixsnaps:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -68,16 +68,30 @@ jobs:
         with:
           bun-version: 1.4.3
       - run: cd autorouter && git rev-parse HEAD && bun install > /dev/null 2>&1
-      - name: Failing files with the change, no snapshot update
+      - name: Update the changed snapshots, then run against them
         run: |
           cd autorouter
+          cp -r ../harness-repo/harness/overlay/. .
           python3 ../harness-repo/harness/ar-exp/board-clearance.py
-          for F in tests/repro/pipeline9-glider-dqs-fixed-copper.test.ts tests/repro/pipeline9-h3-ddr-strobe-via-access.test.ts tests/repro/pipeline9-ecp5-declared-clearance.test.ts tests/repro/pipeline9-t113-hdmi-ddc-via-spacing.test.ts tests/repro/pipeline9-muse-eink-via-copper-clearance.test.ts tests/repro/pipeline9-ecp5-fixed-copper-clearance.test.ts tests/repro/pipeline9-imx6-ddr-fixed-copper.test.ts tests/repro/pipeline9-orangecrab-through-vias.test.ts tests/bugs/controller-power-expansion.test.tsx tests/repro/pipeline9-orangecrab-through-via-layer-span.test.ts tests/repro/pipeline9-a13-fixed-copper-checks.test.ts tests/repro/pipeline9-ddr-force-clearance.test.ts; do
-            echo "########## $F" >> ff.log
-            bun test $F --timeout 600000 >> ff.log 2>&1 || true
-          done
+          sed -i 's|  expect(closeTracePairs.length).toBeGreaterThan(0)|  expect(closeTracePairs).toEqual([])|' tests/repro/pipeline9-a13-declared-trace-clearance.test.ts
+          bunx tsc --noEmit > tsc.log 2>&1 || true
+          FILES="tests/repro/pipeline9-a13-declared-trace-clearance.test.ts tests/repro/pipeline9-glider-dqs-fixed-copper.test.ts tests/repro/pipeline9-h3-ddr-strobe-via-access.test.ts tests/repro/pipeline9-ecp5-declared-clearance.test.ts tests/repro/pipeline9-t113-hdmi-ddc-via-spacing.test.ts tests/repro/pipeline9-muse-eink-via-copper-clearance.test.ts tests/repro/pipeline9-ecp5-fixed-copper-clearance.test.ts tests/repro/pipeline9-imx6-ddr-fixed-copper.test.ts tests/repro/pipeline9-orangecrab-through-vias.test.ts tests/bugs/controller-power-expansion.test.tsx tests/repro/pipeline9-orangecrab-through-via-layer-span.test.ts tests/repro/pipeline9-a13-fixed-copper-checks.test.ts tests/repro/pipeline9-ddr-force-clearance.test.ts"
+          BUN_UPDATE_SNAPSHOTS=1 bun test $FILES --timeout 600000 > u1.log 2>&1 || true
+          bun test $FILES --timeout 600000 > u2.log 2>&1 || true
       - name: Emit
         if: always()
         run: |
           cd autorouter
-          grep -vE "^\s*$" ff.log | grep -vE "^\s+at |^✓|Writing|Updating" | cut -c1-260 | head -400
+          echo "=====TSC====="; tail -15 tsc.log
+          echo "=====U1====="; grep -E "^\(pass\)|^\(fail\)|^ *[0-9]+ (pass|fail)|error:|Expected|Received|differs" u1.log | cut -c1-240
+          echo "=====U2====="; grep -E "^\(pass\)|^\(fail\)|^ *[0-9]+ (pass|fail)|error:|Expected|Received|differs" u2.log | cut -c1-240
+          echo "=====STATUS====="; git status --short
+          echo "=====LABELS====="
+          for f in $(git status --short | awk '{print $2}' | grep -E "snap\.svg$"); do
+            echo "## $f"
+            echo "old: $(git show HEAD:$f 2>/dev/null | grep -oiE '>[^<>]*(error|clearance|via|route)[^<>]*[0-9][^<>]*<' | tr '\n' ' ' | cut -c1-400)"
+            echo "new: $(grep -oiE '>[^<>]*(error|clearance|via|route)[^<>]*[0-9][^<>]*<' $f | tr '\n' ' ' | cut -c1-400)"
+          done
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - $(git status --short | awk '{print $2}' | grep -E "snap\.svg$") | base64 -w 160
+          echo "=====TARBALL-END====="
