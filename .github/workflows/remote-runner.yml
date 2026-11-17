@@ -13,27 +13,88 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  track:
+  ar:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [base, regular-via-clearance]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: main
+          ref: dd3383c2fe0c3a2e12e7d33c7b0ea52a1e33fcf3
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
       - run: cd autorouter && git rev-parse HEAD && bun install > /dev/null 2>&1
-      - name: Track
+      - name: Route the A13 remaining request
         run: |
           cd autorouter
-          cp ../harness-repo/harness/diag/hd-via.ts .
-          WATCH='{"x":4.65,"y":5.864,"w":0.5,"h":0.32}' bun hd-via.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz > track.log 2>&1 || true
+          if [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/ar-exp/${{ matrix.variant }}.py; bunx tsc --noEmit 2>&1 | tail -5; fi
+          cp ../harness-repo/harness/diag/ar-run.ts ../harness-repo/harness/diag/hd-via.ts .
+          bun ar-run.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz /tmp/out.json 900 1 > run.log 2>&1 || true
+          WATCH='{"x":4.65,"y":5.864,"w":0.5,"h":0.32}' bun hd-via.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz > hd.log 2>&1 || true
       - name: Emit
         if: always()
-        run: cd autorouter && grep -E "^(HDVIA|HDSTATS|NODE|  PORT)|rror" track.log | cut -c1-600 | head -80
+        run: |
+          cd autorouter
+          grep -E "^(RESULT|TIMES|DRC|DRCERR)" run.log | cut -c1-600
+          grep -E "^(HDVIA|HDSTATS)" hd.log | cut -c1-700
+
+  arddr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
+        variant: [base, regular-via-clearance]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/core
+          ref: 701339c13c9f1cba5c71bf9801fac787a60de937
+          path: core
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - run: cd core && bun install --ignore-scripts > /dev/null
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: dd3383c2fe0c3a2e12e7d33c7b0ea52a1e33fcf3
+          path: autorouter
+          persist-credentials: false
+      - name: Build the autorouter under test and place it in Core
+        run: |
+          cd autorouter
+          if [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/ar-exp/${{ matrix.variant }}.py && git diff --stat; fi
+          bun install > /dev/null 2>&1
+          bun run build 2>&1 | tail -3
+          rm -rf ../core/node_modules/@tscircuit/capacity-autorouter/dist
+          cp -r dist ../core/node_modules/@tscircuit/capacity-autorouter/dist
+      - name: Route
+        run: |
+          cd core
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
+          tail -12 route.log
+      - name: Print the report
+        if: always()
+        run: |
+          cd core
+          echo "=====REPORT====="
+          cat ddr-benchmark-results/report.md
+          echo "=====END-REPORT====="
+          cd ddr-benchmark-results/${{ matrix.circuit }}
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - progress.json assessment.json findings.json | base64 -w 160
+          echo "=====TARBALL-END====="
