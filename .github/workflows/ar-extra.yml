@@ -1,4 +1,4 @@
-name: Review changes, format, tests, detail, timing
+name: Format the final fix
 
 on:
   push:
@@ -6,74 +6,35 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  check:
+  fmt:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 7d8e63c573589261bd56f567c022adfb97c70233
+          ref: 0294e7f
           path: autorouter
           persist-credentials: false
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
       - name: Run
         run: |
           cd autorouter
+          git checkout -q repro/a13-via-without-legal-site 2>/dev/null || true
+          git log --oneline -1
           bun install > /dev/null 2>&1
-          git apply ../harness-repo/harness/ar-exp/detail-test.patch
-          git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm repro-detail
-          bunx biome format --write tests/repro/pipeline9-a13-via-without-legal-site.test.ts > /dev/null 2>&1
-          echo "=====REPROFMT-BEGIN====="; git diff | base64 -w 160; echo "=====REPROFMT-END====="
-          git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm fmt --allow-empty
-          F=tests/repro/pipeline9-a13-via-without-legal-site.test.ts
-          bun test $F --timeout 900000 > r1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Writing" r1.log
-          mkdir -p ../out/repro && cp tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*.snap.svg ../out/repro/
-          git apply ../harness-repo/harness/ar-exp/fix-review.patch
-          sed -i 's|  expect(frameFindings.length).toBeGreaterThan(0)|  expect(frameFindings).toEqual([])|' $F
-          bunx biome format --write lib tests > /dev/null 2>&1
+          git apply ../harness-repo/harness/ar-exp/fix-final.patch
+          git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm applied
+          bun run format > /dev/null 2>&1
+          bun run format:check > fc.log 2>&1; echo "FORMATCHECK exit=$?"; tail -3 fc.log
           git status --short
-          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"; head -10 tsc.log
-          for t in tests/features/mark-nodes-without-via-site-*.test.ts; do bun test $t > u.log 2>&1; grep -E "^\((pass|fail)\)|^error|Expected|Received" u.log | head -4; done
-          FORCE_BUN_UPDATE_SNAPSHOTS=1 BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > f1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" f1.log
-          bun test $F --timeout 900000 > f2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" f2.log
-          mkdir -p ../out/fix && cp tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*.snap.svg ../out/fix/
-          git add -A tests/features && git diff HEAD -- lib tests > ../out/fix-formatted.patch
-          cd ../out && echo "=====OUT-BEGIN=====" && tar -czf - repro fix fix-formatted.patch | base64 -w 160 && echo "=====OUT-END====="
-  timing:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        narrow: ['0', '1']
-    steps:
-      - uses: actions/checkout@v4
-        with: { path: harness-repo }
-      - uses: actions/checkout@v4
-        with:
-          repository: tscircuit/tscircuit-autorouter
-          ref: 7d8e63c573589261bd56f567c022adfb97c70233
-          path: autorouter
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: 1.4.3
-      - name: Run
-        run: |
-          cd autorouter
-          bun install > /dev/null 2>&1
-          git apply ../harness-repo/harness/ar-exp/fix-review.patch
-          python3 ../harness-repo/harness/ar-exp/mark-timing.py
-          export MARK_NARROW=${{ matrix.narrow }}
-          cp ../harness-repo/harness/diag/h616-full.ts ../harness-repo/harness/diag/a13-count.ts .
-          bun a13-count.ts narrow${{ matrix.narrow }} > a.log 2>&1 || true; grep -E "^A13|^MARKTIME" a.log | cut -c1-220
-          bun h616-full.ts narrow${{ matrix.narrow }} > h.log 2>&1 || true; grep -E "^H616 .* solved|^MARKTIME" h.log | cut -c1-220
-          if [ "${{ matrix.narrow }}" = 0 ]; then
-            start=$(date +%s); bun test tests/bugs/bugreport110/motherboard-power-full-route.test.ts --timeout 1800000 > m.log 2>&1 || true; end=$(date +%s)
-            echo "MOTHERBOARD seconds=$((end-start)) $(grep -E '^\((pass|fail)\)' m.log | cut -c1-40)"; grep -E "^MARKTIME" m.log | head -3
-          fi
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"
+          for t in tests/features/mark-nodes-without-via-site-*.test.ts; do bun test $t 2>&1 | grep -E "^\((pass|fail)\)"; done
+          echo "=====FMT-BEGIN====="
+          git diff | base64 -w 160
+          echo "=====FMT-END====="
