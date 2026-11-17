@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, a13h616]
+        shard: [0, 1, 2, 3, 4, 5, s4]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -30,13 +30,15 @@ jobs:
           cd autorouter
           bun install > /dev/null 2>&1
           bun install --ignore-scripts --cwd tests/repro/orangecrab-via-roundoff > /dev/null 2>&1
-          git apply ../harness-repo/harness/ar-exp/via-site-fraction-env.patch
-          export VIA_SITE_ZERO_ONLY=1
+          git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch
           sed -i 's|  expect(viaPadErrors.length).toBeGreaterThan(0)|  expect(viaPadErrors).toEqual([])|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
-          if [ "${{ matrix.shard }}" = a13h616 ]; then
-            cp ../harness-repo/harness/diag/h616-full.ts ../harness-repo/harness/diag/a13-count.ts .
-            bun a13-count.ts zero > a.log 2>&1 || true; grep -E "^A13" a.log | head -1 | cut -c1-300
-            bun h616-full.ts zero > h.log 2>&1 || true; grep -E "^H616" h.log | head -1 | cut -c1-300
+          if [ "${{ matrix.shard }}" = s4 ]; then
+            NODE_COUNT=9 bun scripts/generate-balanced-test-plan.ts > /dev/null 2>&1
+            mapfile -t files < .bun-test-plan/testplans/testplan4.txt
+            for f in "${files[@]}"; do
+              bun test "$f" --timeout 300000 > t.log 2>&1 || true
+              if grep -qE "^\(fail\)|^error|Unhandled" t.log; then echo "########## $f"; grep -vE "^\s+at " t.log | grep -E "^\(fail\)|^error|Unhandled|Expected|Received" | head -8 | cut -c1-220; fi
+            done
             exit 0
           fi
           i=0
