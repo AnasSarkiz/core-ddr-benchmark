@@ -1,4 +1,4 @@
-name: Format the final fix
+name: A13 on current main, base vs fix
 
 on:
   push:
@@ -6,35 +6,30 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  fmt:
+  run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: repro/a13-via-without-legal-site
+          ref: bfc6509a20959b11ebdea7e38d7fb5fe0fef2097
           path: autorouter
           persist-credentials: false
-          fetch-depth: 0
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
       - name: Run
         run: |
           cd autorouter
-          git checkout -q repro/a13-via-without-legal-site 2>/dev/null || true
           git log --oneline -1
           bun install > /dev/null 2>&1
-          git apply ../harness-repo/harness/ar-exp/fix-final.patch
-          git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm applied
-          bun run format > /dev/null 2>&1
-          bun run format:check > fc.log 2>&1; echo "FORMATCHECK exit=$?"; tail -3 fc.log
-          git status --short
-          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"
-          for t in tests/features/mark-nodes-without-via-site-*.test.ts; do bun test $t 2>&1 | grep -E "^\((pass|fail)\)"; done
-          echo "=====FMT-BEGIN====="
-          git diff | base64 -w 160
-          echo "=====FMT-END====="
+          git apply ../harness-repo/harness/ar-exp/repro-tests.patch && echo repro-applied
+          cp ../harness-repo/harness/diag/h616-full.ts ../harness-repo/harness/diag/a13-count.ts .
+          bun a13-count.ts main > a.log 2>&1; grep -E "^A13" a.log | cut -c1-220; tail -2 a.log | cut -c1-200
+          bun h616-full.ts main > h.log 2>&1; grep -E "^H616 .* solved" h.log | cut -c1-220
+          git apply ../harness-repo/harness/ar-exp/fix-lib-final.patch && echo fix-applied
+          bun a13-count.ts mainfix > a.log 2>&1; grep -E "^A13" a.log | cut -c1-220; tail -2 a.log | cut -c1-200
+          bun h616-full.ts mainfix > h.log 2>&1; grep -E "^H616 .* solved" h.log | cut -c1-220
