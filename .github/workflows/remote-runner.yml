@@ -13,33 +13,88 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  a64:
+  ar:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        variant: [main, fix]
+        variant: [base, split-nodes]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
-          repository: tscircuit/bus-lanes-solver
-          ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
-          path: solver
+          repository: tscircuit/tscircuit-autorouter
+          ref: 8da00b27530a97bc6e1d76b2bedd96e8c9087ad5
+          path: autorouter
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.4.3
+      - run: cd autorouter && bun install > /dev/null 2>&1
+      - name: Route the A13 remaining request
+        run: |
+          cd autorouter
+          if [ "${{ matrix.variant }}" != base ]; then git apply ../harness-repo/harness/ar-exp/${{ matrix.variant }}.patch && git status --short && bunx tsc --noEmit 2>&1 | tail -5; fi
+          cp ../harness-repo/harness/diag/ar-run.ts ../harness-repo/harness/diag/hd-via.ts .
+          bun ar-run.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz /tmp/out.json 900 1 > run.log 2>&1 || true
+          WATCH='{"x":4.65,"y":5.864,"w":0.5,"h":0.32}' bun hd-via.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz > hd.log 2>&1 || true
+      - name: Emit
+        if: always()
+        run: |
+          cd autorouter
+          grep -E "^(RESULT|DRC|DRCERR)" run.log | cut -c1-260
+          grep -E "^(HDVIA|NODE)" hd.log | cut -c1-300
+
+  arddr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
+        variant: [base, split-nodes]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/core
+          ref: 960282419809a03bc6c2d4da52bb3056068e6476
+          path: core
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
-      - name: Route A64 bytes in order
+      - run: cd core && bun install --ignore-scripts > /dev/null
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: 8da00b27530a97bc6e1d76b2bedd96e8c9087ad5
+          path: autorouter
+          persist-credentials: false
+      - name: Build the autorouter under test and place it in Core
         run: |
-          cd solver
+          cd autorouter
+          if [ "${{ matrix.variant }}" != base ]; then git apply ../harness-repo/harness/ar-exp/${{ matrix.variant }}.patch; fi
           bun install > /dev/null 2>&1
-          if [ "${{ matrix.variant }}" = fix ]; then git apply ../harness-repo/harness/bl-exp/pending-bus-plan.patch; fi
-          cp ../harness-repo/harness/bl-exp/a64-chain.ts .
-          D=../harness-repo/harness/bl-exp/a64
-          timeout 3000 bun a64-chain.ts $D/main-byte0.srj.json $D/main-byte1.srj.json $D/main-byte2.srj.json > a64.log 2>&1 || true
-      - name: Emit
+          bun run build 2>&1 | tail -2
+          rm -rf ../core/node_modules/@tscircuit/capacity-autorouter/dist
+          cp -r dist ../core/node_modules/@tscircuit/capacity-autorouter/dist
+      - name: Route
+        run: |
+          cd core
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
+          tail -12 route.log
+      - name: Print the report
         if: always()
-        run: cd solver && grep -E "^CHAIN|rror" a64.log | cut -c1-300
+        run: |
+          cd core
+          echo "=====REPORT====="
+          cat ddr-benchmark-results/report.md
+          echo "=====END-REPORT====="
+          cd ddr-benchmark-results/${{ matrix.circuit }}
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - progress.json assessment.json findings.json | base64 -w 160
+          echo "=====TARBALL-END====="

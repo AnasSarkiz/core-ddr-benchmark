@@ -1,0 +1,182 @@
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
+index 03c147e..09628af 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
+@@ -1,4 +1,6 @@
+ import { getDifferentialPairsForPostProcessing } from "lib/utils/getDifferentialPairsForPostProcessing"
++import { getViaToPadClearance } from "lib/utils/getViaToPadClearance"
++import { splitNodesWithoutViaSite } from "./splitNodesWithoutViaSite"
+ import type { SolverRuntimeExecutor } from "@tscircuit/solver-utils"
+ import { Pipeline9EffortCleanupSolver } from "./Pipeline9EffortCleanupSolver"
+ import { createPipeline9AutoroutingDrcEvaluator } from "./createPipeline9AutoroutingDrcEvaluator"
+@@ -423,7 +425,15 @@ export class AutoroutingPipelineSolver9_PreloadedTraceGraph extends BaseSolver {
+       },
+       {
+         onSolved: (cms) => {
+-          cms.capacityNodes = cms.topologyMergingSolver!.getOutput()
++          cms.capacityNodes = splitNodesWithoutViaSite({
++            nodes: cms.topologyMergingSolver!.getOutput(),
++            srj: cms.srj,
++            viaDiameter: cms.viaDiameter,
++            viaToPadClearance:
++              getViaToPadClearance(cms.srj) ??
++              cms.srj.defaultObstacleMargin ??
++              0.15,
++          })
+         },
+       },
+     ),
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts
+index edb17c3..69b8569 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts
+@@ -37,7 +37,7 @@ type Pipeline9RegionalFallbackSolverParams = {
+   captureSearchDebug?: boolean
+ }
+ 
+-const getPointToObstacleDistance = (
++export const getPointToObstacleDistance = (
+   point: { x: number; y: number },
+   obstacle: Obstacle,
+ ): number => {
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/splitNodesWithoutViaSite.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/splitNodesWithoutViaSite.ts
+new file mode 100644
+index 0000000..b6262eb
+--- /dev/null
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/splitNodesWithoutViaSite.ts
+@@ -0,0 +1,135 @@
++import type { CapacityMeshNode } from "lib/types/capacity-mesh-types"
++import type { Obstacle, SimpleRouteJson } from "lib/types/srj-types"
++import { getPointToObstacleDistance } from "./Pipeline9RegionalFallbackSolver"
++
++type Bounds = { minX: number; maxX: number; minY: number; maxY: number }
++type SplitNodesWithoutViaSiteParams = {
++  nodes: CapacityMeshNode[]
++  srj: SimpleRouteJson
++  viaDiameter: number
++  viaToPadClearance: number
++}
++
++const getObstacleBounds = (obstacle: Obstacle): Bounds => {
++  const rotationRadians = ((obstacle.ccwRotationDegrees ?? 0) * Math.PI) / 180
++  const cos = Math.abs(Math.cos(rotationRadians))
++  const sin = Math.abs(Math.sin(rotationRadians))
++  const halfWidth = (obstacle.width / 2) * cos + (obstacle.height / 2) * sin
++  const halfHeight = (obstacle.width / 2) * sin + (obstacle.height / 2) * cos
++  return {
++    minX: obstacle.center.x - halfWidth,
++    maxX: obstacle.center.x + halfWidth,
++    minY: obstacle.center.y - halfHeight,
++    maxY: obstacle.center.y + halfHeight,
++  }
++}
++
++/** Candidate coordinates along one axis of the via-center region: its ends,
++ * every obstacle keep-out boundary inside it and the midpoints between them. */
++const getAxisSamples = (
++  min: number,
++  max: number,
++  boundaries: number[],
++): number[] => {
++  const cuts = [
++    ...new Set([
++      min,
++      max,
++      ...boundaries.filter((value) => value > min && value < max),
++    ]),
++  ].sort((a, b) => a - b)
++  return cuts.flatMap((cut, index) =>
++    index + 1 < cuts.length ? [cut, (cut + cuts[index + 1]!) / 2] : [cut],
++  )
++}
++
++/**
++ * Split free-space nodes that can hold a via but have no legal place for one
++ * into one node per layer, so path planning cannot put a layer change there.
++ *
++ * Global free-space nodes may border copper directly, and the high-density
++ * solvers keep a via inside its node. A node therefore offers a via only where
++ * a via center inside it keeps the via-to-pad clearance from routed copper and
++ * from the pads of nets this request does not route. Pads of nets it routes
++ * are skipped: their own vias may sit beside them. Component topology nodes,
++ * which apply their own via rules, and nodes too small for any via are left
++ * unchanged. Board coordinates in mm, +X right, +Y up.
++ */
++export const splitNodesWithoutViaSite = ({
++  nodes,
++  srj,
++  viaDiameter,
++  viaToPadClearance,
++}: SplitNodesWithoutViaSiteParams): CapacityMeshNode[] => {
++  const routedNetIds = new Set(
++    srj.connections.flatMap((connection) => [
++      connection.name,
++      ...connection.pointsToConnect.flatMap((point) =>
++        [point.pointId, point.pcb_port_id].filter(
++          (id): id is string => id !== undefined,
++        ),
++      ),
++    ]),
++  )
++  const keepOut = viaDiameter / 2 + viaToPadClearance
++  const hardObstacles = srj.obstacles
++    .filter(
++      (obstacle) => !obstacle.connectedTo.some((id) => routedNetIds.has(id)),
++    )
++    .map((obstacle) => ({ obstacle, bounds: getObstacleBounds(obstacle) }))
++  return nodes.flatMap((node): CapacityMeshNode[] => {
++    if (
++      node._isComponentTopologyNode ||
++      node._containsTarget ||
++      node._containsObstacle ||
++      node.availableZ.length < 2
++    )
++      return [node]
++    const centers: Bounds = {
++      minX: node.center.x - node.width / 2 + viaDiameter / 2,
++      maxX: node.center.x + node.width / 2 - viaDiameter / 2,
++      minY: node.center.y - node.height / 2 + viaDiameter / 2,
++      maxY: node.center.y + node.height / 2 - viaDiameter / 2,
++    }
++    if (centers.minX > centers.maxX || centers.minY > centers.maxY)
++      return [node]
++    const nearby = hardObstacles.filter(
++      ({ bounds }) =>
++        bounds.minX - keepOut < centers.maxX &&
++        bounds.maxX + keepOut > centers.minX &&
++        bounds.minY - keepOut < centers.maxY &&
++        bounds.maxY + keepOut > centers.minY,
++    )
++    if (nearby.length === 0) return [node]
++    const xs = getAxisSamples(
++      centers.minX,
++      centers.maxX,
++      nearby.flatMap(({ bounds }) => [
++        bounds.minX - keepOut,
++        bounds.maxX + keepOut,
++      ]),
++    )
++    const ys = getAxisSamples(
++      centers.minY,
++      centers.maxY,
++      nearby.flatMap(({ bounds }) => [
++        bounds.minY - keepOut,
++        bounds.maxY + keepOut,
++      ]),
++    )
++    const hasViaSite = xs.some((x) =>
++      ys.some((y) =>
++        nearby.every(
++          ({ obstacle }) =>
++            getPointToObstacleDistance({ x, y }, obstacle) >= keepOut,
++        ),
++      ),
++    )
++    if (hasViaSite) return [node]
++    return node.availableZ.map((z) => ({
++      ...node,
++      capacityMeshNodeId: `${node.capacityMeshNodeId}_z${z}`,
++      availableZ: [z],
++    }))
++  })
++}
