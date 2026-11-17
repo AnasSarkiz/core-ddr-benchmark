@@ -20,4 +20,6 @@ try {
   console.log(`REMAINING ${label} threw ${String(error).slice(0, 300)}`)
 }
 console.log(`REMAINING ${label} solved=${solver.solved} failed=${solver.failed} seconds=${((performance.now() - started) / 1000).toFixed(1)} error=${String(solver.error).slice(0, 300)}`)
+console.log(`REMAINING ${label} times=${JSON.stringify(Object.fromEntries(Object.entries(solver.timeSpentOnPhase ?? {}).map(([k, v]: any) => [k, Math.round(v / 1000)])))}`)
 if (solver.solved) console.log(`REMAINING ${label} routed=${solver.getOutputSimplifiedPcbTraces().length}`)
+if (process.env.DUMP) require("node:fs").writeFileSync(process.env.DUMP, JSON.stringify(request))

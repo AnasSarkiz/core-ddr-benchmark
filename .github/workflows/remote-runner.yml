@@ -13,9 +13,9 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  fix:
+  a64:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -24,44 +24,17 @@ jobs:
           repository: tscircuit/bus-lanes-solver
           ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
           path: solver
-          fetch-depth: 0
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
-      - name: Overlay the repro and the fix
+      - name: Route A64 byte 2
         run: |
           cd solver
           bun install > /dev/null 2>&1
-          cp -r ../harness-repo/harness/bl-overlay/. .
           git apply ../harness-repo/harness/bl-exp/pending-bus-plan.patch
-          cp ../harness-repo/harness/bl-exp/h3-fix.test.ts tests/h3-byte0-later-bus-carriers.test.ts
-          cp ../harness-repo/harness/bl-exp/next-bus-plan.test.ts tests/
-          git status --short
-          bun run format:check 2>&1 | tail -15
-          bun run typecheck 2>&1 | tail -15
-      - name: Tests and snapshots
-        run: |
-          cd solver
-          F="tests/h3-byte0-later-bus-carriers.test.ts tests/next-bus-plan.test.ts"
-          BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > s1.log 2>&1 || true
-          grep -E "^\((pass|fail)\)| pass$| fail$|rror|Expected|Received" s1.log | head -30
-          bun test $F --timeout 900000 > s2.log 2>&1 || true
-          grep -E "^\((pass|fail)\)| pass$| fail$" s2.log | head -10
-          sha256sum tests/__snapshots__/h3-byte0-later-bus-carriers*
-      - name: H3 phases
-        run: |
-          cd solver
-          git fetch -q origin repro/h3-pending-pad-escapes
-          git checkout FETCH_HEAD -- tests/fixtures/h3-pending-pad-escapes tests/fixtures/pad-escapes.ts
-          cp ../harness-repo/harness/bl-exp/h3-phases.ts .
-          sed -i 's|stats=${JSON.stringify({ planned: (solver.stats as any).plannedWithPendingBuses, planError: (solver.stats as any).pendingBusPlanError })}|stats=${JSON.stringify({ alone: (solver.stats as any).nextBusCarrierSignalsLostAlone, lost: (solver.stats as any).nextBusCarrierSignalsLost, planned: (solver.stats as any).plannedBesideNextBus })}|' h3-phases.ts
-          bun h3-phases.ts narrowed ../harness-repo/harness/bl-exp/h3-byte0-request.json.gz > bytes.log 2>&1 || true
-          grep -E "^(STEP|RESULT)|rror" bytes.log | cut -c1-400
+          cp ../harness-repo/harness/bl-exp/a64-byte2.ts .
+          timeout 3000 bun a64-byte2.ts ../harness-repo/harness/bl-exp/a64/main-byte2.srj.json ../harness-repo/harness/bl-exp/a64/planned-byte2.srj.json > a64.log 2>&1 || true
       - name: Emit
         if: always()
-        run: |
-          cd solver
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - tests/__snapshots__/h3-byte0-later-bus-carriers* | base64 -w 160
-          echo "=====TARBALL-END====="
+        run: cd solver && grep -E "^(PHASE|A64)|rror" a64.log | uniq | cut -c1-300 | head -80
