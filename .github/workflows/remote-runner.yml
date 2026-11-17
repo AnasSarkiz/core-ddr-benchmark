@@ -13,27 +13,33 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  ar:
+  a64:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [main, fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
-          repository: tscircuit/tscircuit-autorouter
-          ref: dd3383cfcb5c82960952bd44e6e1dc1d95a7f84f
-          path: autorouter
+          repository: tscircuit/bus-lanes-solver
+          ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
+          path: solver
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.3
-      - run: cd autorouter && bun install > /dev/null 2>&1
-      - name: Route H3 remaining
+          bun-version: '1.4.3'
+      - name: Route A64 bytes in order
         run: |
-          cd autorouter
-          cp ../harness-repo/harness/diag/ar-run.ts .
-          bun ar-run.ts ../harness-repo/harness/diag/h3-remaining-planned.json.gz /tmp/out.json 1500 1 > run.log 2>&1 || true
+          cd solver
+          bun install > /dev/null 2>&1
+          if [ "${{ matrix.variant }}" = fix ]; then git apply ../harness-repo/harness/bl-exp/pending-bus-plan.patch; fi
+          cp ../harness-repo/harness/bl-exp/a64-chain.ts .
+          D=../harness-repo/harness/bl-exp/a64
+          timeout 3000 bun a64-chain.ts $D/main-byte0.srj.json $D/main-byte1.srj.json $D/main-byte2.srj.json > a64.log 2>&1 || true
       - name: Emit
         if: always()
-        run: cd autorouter && grep -E "^(STAGE|RESULT|TIMES|STATS|DRC )" run.log | cut -c1-3000 | head -60
+        run: cd solver && grep -E "^CHAIN|rror" a64.log | cut -c1-300
