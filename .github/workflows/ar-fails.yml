@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5]
+        shard: [0, 1, 2, 3, 4, 5, a13h616]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -30,8 +30,15 @@ jobs:
           cd autorouter
           bun install > /dev/null 2>&1
           bun install --ignore-scripts --cwd tests/repro/orangecrab-via-roundoff > /dev/null 2>&1
-          git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch
+          git apply ../harness-repo/harness/ar-exp/via-site-fraction-env.patch
+          export VIA_SITE_ZERO_ONLY=1
           sed -i 's|  expect(viaPadErrors.length).toBeGreaterThan(0)|  expect(viaPadErrors).toEqual([])|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
+          if [ "${{ matrix.shard }}" = a13h616 ]; then
+            cp ../harness-repo/harness/diag/h616-full.ts ../harness-repo/harness/diag/a13-count.ts .
+            bun a13-count.ts zero > a.log 2>&1 || true; grep -E "^A13" a.log | head -1 | cut -c1-300
+            bun h616-full.ts zero > h.log 2>&1 || true; grep -E "^H616" h.log | head -1 | cut -c1-300
+            exit 0
+          fi
           i=0
           while read -r f; do
             if [ $((i % 6)) -eq ${{ matrix.shard }} ]; then
