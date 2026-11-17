@@ -13,27 +13,39 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  origin:
+  h3:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [base, surface-first]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
-          repository: tscircuit/tscircuit-autorouter
-          ref: dd3383cfcb5c82960952bd44e6e1dc1d95a7f84f
-          path: autorouter
+          repository: tscircuit/bus-lanes-solver
+          ref: main
+          path: solver
+          fetch-depth: 0
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.3
-      - run: cd autorouter && bun install > /dev/null 2>&1
-      - name: Origin
+          bun-version: '1.4.3'
+      - name: Install and bring in the #203 fixtures
         run: |
-          cd autorouter
-          cp ../harness-repo/harness/diag/pair-track.ts .
-          NETS=source_net_20,source_net_8 POINT='{"x":7.91,"y":-2.55}' bun pair-track.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz > origin.log 2>&1 || true
+          cd solver
+          git rev-parse HEAD
+          git fetch -q origin repro/h3-pending-pad-escapes
+          git checkout FETCH_HEAD -- tests/fixtures/h3-pending-pad-escapes tests/fixtures/pad-escapes.ts
+          bun install > /dev/null 2>&1
+      - name: Route byte 1
+        run: |
+          cd solver
+          if [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/bl-exp/${{ matrix.variant }}.py; fi
+          cp ../harness-repo/harness/bl-exp/h3-trapped.ts .
+          timeout 1800 bun h3-trapped.ts > h3.log 2>&1 || true
       - name: Emit
         if: always()
-        run: cd autorouter && grep -E "^(PAIR|JOINTKEYS)|rror" origin.log | cut -c1-700
+        run: cd solver && grep -E "^(RESULT|ROUTES|ROUTE|TRAPPED)|rror" h3.log | cut -c1-400 | head -40
