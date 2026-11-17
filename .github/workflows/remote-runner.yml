@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [trace-choices, cap200k]
+        variant: [trace-reach]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -48,4 +48,4 @@ jobs:
           timeout 1800 bun h3-trapped.ts > h3.log 2>&1 || true
       - name: Emit
         if: always()
-        run: cd solver && grep -E "^(RESULT|ROUTES|ROUTE|TRAPPED|EXP (ends|pairsearch|rejected))|rror" h3.log | uniq -c | cut -c1-300 | head -80
+        run: cd solver && grep -E "^(RESULT|TRAPPED|EXP (pair|setup|reach))|rror" h3.log | uniq -c | cut -c1-300 | head -80
