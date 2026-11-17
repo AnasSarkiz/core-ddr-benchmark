@@ -14,7 +14,7 @@ const route = (name: string, request: any): any[] => {
   const started = performance.now()
   const solver = new BusLanesPipelineSolver(structuredClone(request))
   solver.solve()
-  console.log(`STEP ${label} ${name} solved=${solver.solved} error=${String(solver.error).slice(0, 160)} seconds=${((performance.now() - started) / 1000).toFixed(1)} stats=${JSON.stringify({ planned: (solver.stats as any).plannedWithPendingBuses, planError: (solver.stats as any).pendingBusPlanError })}`)
+  console.log(`STEP ${label} ${name} solved=${solver.solved} error=${String(solver.error).slice(0, 160)} seconds=${((performance.now() - started) / 1000).toFixed(1)} stats=${JSON.stringify(Object.fromEntries(Object.entries(solver.stats as any).filter(([k]) => /Stranded|planned/i.test(k))))}`)
   if (!solver.solved) throw new Error(`${name} failed`)
   return solver.getOutput().traces.slice(request.traces?.length ?? 0)
 }

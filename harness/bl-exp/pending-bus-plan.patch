@@ -1,28 +1,25 @@
 diff --git a/lib/bus-lanes-pipeline-solver.ts b/lib/bus-lanes-pipeline-solver.ts
-index 2dedc9c..d33c07d 100644
+index 2dedc9c..8d06edf 100644
 --- a/lib/bus-lanes-pipeline-solver.ts
 +++ b/lib/bus-lanes-pipeline-solver.ts
-@@ -29,6 +29,11 @@ import {
+@@ -29,6 +29,8 @@ import {
  import { joinedSignalGeometryIsValid } from "./joined-signal-geometry"
  import { tuneGeneratedPairEscapes } from "./tune-generated-pair-escapes"
  import { routeFreshSurfaceBuses } from "./route-fresh-surface-buses"
-+import {
-+  getLaterBusCarrierLayers,
-+  getLostCarrierSignals,
-+} from "./later-bus-carriers"
++import { getStrandedLaterSignals } from "./later-bus-carriers"
 +import { getNextBusPlan, type NextBusPlan } from "./plan-with-pending-buses"
  import { rebalancePairEscapes } from "./rebalance-pair-escapes"
  import { createTerminalViaClearanceChecker } from "./terminal-via-clearance"
  import {
-@@ -380,6 +385,86 @@ export class BusLanesPipelineSolver extends BaseSolver {
+@@ -380,6 +382,81 @@ export class BusLanesPipelineSolver extends BaseSolver {
      }
    }
  
-+  /** Route this request alone, as without later-phase intent. If that closes
-+   * a carrier layer the next later bus could still use, plan the current
-+   * buses together with that bus and keep this request's copper from the plan
-+   * when it closes fewer carriers. The later bus is routed again by its own
-+   * phase. */
++  /** Route this request alone, as without later-phase intent. If that leaves
++   * a signal of the next later bus with no carrier off its pads' layer, plan
++   * the current buses together with that bus and keep this request's copper
++   * from the plan when it strands fewer signals. The later bus is routed again
++   * by its own phase. */
 +  private *planBesideNextBus({
 +    plan,
 +    alone,
@@ -47,17 +44,14 @@ index 2dedc9c..d33c07d 100644
 +    }
 +    this.phase = "check_next_bus_carriers"
 +    const supplied = plan.alone.traces ?? []
-+    const before = yield* getLaterBusCarrierLayers(plan.alone, plan.laterBus)
-+    const lostAlone = getLostCarrierSignals({
-+      before,
-+      after: yield* getLaterBusCarrierLayers(
-+        { ...plan.alone, traces: [...supplied, ...alone.traces] },
-+        plan.laterBus,
-+      ),
++    const strandedAlone = yield* getStrandedLaterSignals({
++      before: plan.alone,
++      after: { ...plan.alone, traces: [...supplied, ...alone.traces] },
++      laterBus: plan.laterBus,
 +    })
 +    let traces = alone.traces
-+    let lost = lostAlone
-+    if (lostAlone.length) {
++    let stranded = strandedAlone
++    if (strandedAlone.length) {
 +      this.phase = "plan_beside_next_bus"
 +      while (!joint.solved && !joint.failed) {
 +        joint.step()
@@ -70,16 +64,14 @@ index 2dedc9c..d33c07d 100644
 +        const planned = joint.traces.filter((trace) =>
 +          current.has(trace.connection_name!),
 +        )
-+        const lostPlanned = getLostCarrierSignals({
-+          before,
-+          after: yield* getLaterBusCarrierLayers(
-+            { ...plan.alone, traces: [...supplied, ...planned] },
-+            plan.laterBus,
-+          ),
++        const strandedPlanned = yield* getStrandedLaterSignals({
++          before: plan.alone,
++          after: { ...plan.alone, traces: [...supplied, ...planned] },
++          laterBus: plan.laterBus,
 +        })
-+        if (lostPlanned.length < lostAlone.length) {
++        if (strandedPlanned.length < strandedAlone.length) {
 +          traces = planned
-+          lost = lostPlanned
++          stranded = strandedPlanned
 +        }
 +      }
 +    }
@@ -93,15 +85,15 @@ index 2dedc9c..d33c07d 100644
 +    this.stats = {
 +      ...this.stats,
 +      ...alone.stats,
-+      nextBusCarrierSignalsLostAlone: lostAlone.length,
-+      nextBusCarrierSignalsLost: lost.length,
++      nextBusSignalsStrandedAlone: strandedAlone.length,
++      nextBusSignalsStranded: stranded.length,
 +      plannedBesideNextBus: traces !== alone.traces,
 +    }
 +  }
    private finishAccepted(early: boolean) {
      const optimization = this.envelopeOptimization
      this.envelopeOptimization = undefined
-@@ -410,6 +495,7 @@ export class BusLanesPipelineSolver extends BaseSolver {
+@@ -410,6 +487,7 @@ export class BusLanesPipelineSolver extends BaseSolver {
      this.stats = { ...this.stats, optimizationStoppedEarly: early }
    }
  
@@ -109,7 +101,7 @@ index 2dedc9c..d33c07d 100644
    private sharedPackages?: Generator<void, RepairedBusDogbones | null>
    private backwardPackages?: Generator<void, RepairedBusDogbones | null>
    private child?: BusLanesSolver
-@@ -478,6 +564,20 @@ export class BusLanesPipelineSolver extends BaseSolver {
+@@ -478,6 +556,20 @@ export class BusLanesPipelineSolver extends BaseSolver {
      this.MAX_ITERATIONS =
        (options.maxSearchIterations ?? searchBudget) *
        Math.max(1, input.layerCount)
@@ -130,7 +122,7 @@ index 2dedc9c..d33c07d 100644
      const outlineError = boardOutlineError(this.input.outline)
      if (outlineError) {
        this.failed = true
-@@ -1335,6 +1435,10 @@ export class BusLanesPipelineSolver extends BaseSolver {
+@@ -1335,6 +1427,10 @@ export class BusLanesPipelineSolver extends BaseSolver {
        this.phase = "failed"
        return
      }
@@ -143,26 +135,57 @@ index 2dedc9c..d33c07d 100644
          const result = this.nativeSingleCarrier.next()
 diff --git a/lib/later-bus-carriers.ts b/lib/later-bus-carriers.ts
 new file mode 100644
-index 0000000..023e24d
+index 0000000..3cf8eca
 --- /dev/null
 +++ b/lib/later-bus-carriers.ts
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,66 @@
 +import { getCopperLayerNames } from "@tscircuit/fanout-solver"
 +import { expandedSignalSiteChoices } from "./expanded-signal-sites"
-+import type { PendingRoutingAccess, SimpleRouteJson } from "./types"
++import type { Connection, PendingRoutingAccess, SimpleRouteJson } from "./types"
 +
 +type ConnectionName = string
 +type LayerName = string
 +
-+/** For each two-pad signal of a later bus, the layers other than its pads'
-+ * own on which it still has a carrier: the solver's expanded via sites at both
-+ * pads, joined by a legal path on that layer beside the copper in `input`.
-+ * Board coordinates in mm, +X right, +Y up. */
-+export function* getLaterBusCarrierLayers(
++/** Whether a signal has a carrier on one of `layers` beside the copper in
++ * `input`: the solver's expanded via sites at both pads, joined by a legal
++ * path on that layer. */
++function* hasCarrier(
 +  input: SimpleRouteJson,
-+  laterBus: PendingRoutingAccess,
-+): Generator<void, Map<ConnectionName, LayerName[]>> {
-+  const carrierLayers = new Map<ConnectionName, LayerName[]>()
++  connection: Connection,
++  layers: LayerName[],
++): Generator<void, boolean> {
++  for (const layer of layers) {
++    const choices = expandedSignalSiteChoices({
++      input,
++      connection,
++      targetLayer: layer,
++      limit: 1,
++    })
++    let step = choices.next()
++    while (!step.done) {
++      yield
++      step = choices.next()
++    }
++    if (step.value.length) return true
++  }
++  return false
++}
++
++/** Two-pad signals of a later bus that have a carrier off their pads' layer
++ * beside the copper in `before` and none beside the copper in `after`. Such a
++ * signal can then only route on its pads' layer, where it has to pass every
++ * other pad and route in between. Losing one of several carrier layers does
++ * not count. Board coordinates in mm, +X right, +Y up. */
++export function* getStrandedLaterSignals({
++  before,
++  after,
++  laterBus,
++}: {
++  before: SimpleRouteJson
++  after: SimpleRouteJson
++  laterBus: PendingRoutingAccess
++}): Generator<void, ConnectionName[]> {
++  const stranded: ConnectionName[] = []
 +  for (const connection of laterBus.connections) {
 +    const bus = laterBus.buses?.find((candidate) =>
 +      candidate.connectionNames.includes(connection.name),
@@ -172,40 +195,15 @@ index 0000000..023e24d
 +    )
 +    if (!bus || connection.pointsToConnect.length !== 2 || padLayers.size > 1)
 +      continue
-+    const open: LayerName[] = []
 +    const layers = (
-+      bus.allowedLayers ?? getCopperLayerNames(input.layerCount)
++      bus.allowedLayers ?? getCopperLayerNames(before.layerCount)
 +    ).filter((layer) => !padLayers.has(layer))
-+    for (const layer of layers) {
-+      const choices = expandedSignalSiteChoices({
-+        input,
-+        connection,
-+        targetLayer: layer,
-+        limit: 1,
-+      })
-+      let step = choices.next()
-+      while (!step.done) {
-+        yield
-+        step = choices.next()
-+      }
-+      if (step.value.length) open.push(layer)
-+    }
-+    carrierLayers.set(connection.name, open)
++    if (!layers.length || (yield* hasCarrier(after, connection, layers)))
++      continue
++    if (yield* hasCarrier(before, connection, layers))
++      stranded.push(connection.name)
 +  }
-+  return carrierLayers
-+}
-+
-+/** Later bus signals that had a carrier layer before and lost it after. */
-+export function getLostCarrierSignals({
-+  before,
-+  after,
-+}: {
-+  before: ReadonlyMap<ConnectionName, LayerName[]>
-+  after: ReadonlyMap<ConnectionName, LayerName[]>
-+}): ConnectionName[] {
-+  return [...before].flatMap(([name, layers]) =>
-+    layers.some((layer) => !after.get(name)?.includes(layer)) ? [name] : [],
-+  )
++  return stranded
 +}
 diff --git a/lib/plan-with-pending-buses.ts b/lib/plan-with-pending-buses.ts
 new file mode 100644
