@@ -13,71 +13,29 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  bytes:
+  capture:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with: { path: harness-repo }
-      - uses: actions/checkout@v4
-        with:
-          repository: tscircuit/bus-lanes-solver
-          ref: main
-          path: solver
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.3'
-      - name: Install and bring in the #203 fixtures
-        run: |
-          cd solver
-          git rev-parse HEAD
-          git fetch -q origin repro/h3-pending-pad-escapes
-          git checkout FETCH_HEAD -- tests/fixtures/h3-pending-pad-escapes tests/fixtures/pad-escapes.ts
-          bun install > /dev/null 2>&1
-      - name: Route the bytes three ways
-        run: |
-          cd solver
-          cp ../harness-repo/harness/bl-exp/h3-lookahead.ts .
-          bun h3-lookahead.ts > bytes.log 2>&1 || true
-          grep -E "^(STEP|RESULT)|rror" bytes.log | cut -c1-400
-          ls -la /tmp/bytes-*.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: bytes
-          path: /tmp/bytes-*.json
-
-  remaining:
-    needs: bytes
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        label: [current, lookahead, swap]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/core
-          ref: 701339c13c9f1cba5c71bf9801fac787a60de937
+          ref: 914daa787936f8a3a7b290de7a37ecc508479080
           path: core
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
-      - run: cd core && bun install --ignore-scripts > /dev/null && grep '"version"' node_modules/@tscircuit/capacity-autorouter/package.json
-      - uses: actions/download-artifact@v4
-        with:
-          name: bytes
-          path: bytes
-      - name: Route the remaining phase
+      - run: cd core && bun install --ignore-scripts > /dev/null
+      - name: Capture
         run: |
           cd core
-          cp ../harness-repo/harness/core-exp/h3-remaining.ts .
-          timeout 1500 bun h3-remaining.ts ../harness-repo/harness/core-exp/h3-phase3-start.srj.json ../bytes/bytes-${{ matrix.label }}.json ${{ matrix.label }} > rem.log 2>&1 || true
-      - name: Emit
-        if: always()
-        run: cd core && grep -E "^REMAINING|rror" rem.log | cut -c1-400 | head -20
+          cp ../harness-repo/harness/core-exp/capture-h3-byte0.test.tsx tests/repros/
+          bun test tests/repros/capture-h3-byte0.test.tsx --timeout 300000 2>&1 | grep -E "CAPTURED|pass|fail|rror" | head -20
+          ls -la /tmp/h3-byte0-request.json.gz
+          sha256sum /tmp/h3-byte0-request.json.gz
+          echo "=====TARBALL-BEGIN====="
+          base64 -w 160 /tmp/h3-byte0-request.json.gz
+          echo "=====TARBALL-END====="
