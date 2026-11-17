@@ -12,7 +12,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [none, split, scale, both]
+        include:
+          - { mode: scale, small: skip, floor: '0.01' }
+          - { mode: scale, small: skip, floor: '0.1' }
+          - { mode: scale, small: skip, floor: '0.0001' }
+          - { mode: both, small: skip, floor: '0.01' }
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -32,8 +36,8 @@ jobs:
           git apply ../harness-repo/harness/ar-exp/split-nodes.patch
           python3 ../harness-repo/harness/ar-exp/via-site-cost.py
           cp ../harness-repo/harness/diag/h616-full.ts ../harness-repo/harness/diag/a13-count.ts .
-          export VIA_SITE_MODE=${{ matrix.mode }}
-          bun a13-count.ts ${{ matrix.mode }} > a.log 2>&1 || true
+          export VIA_SITE_MODE=${{ matrix.mode }} VIA_SITE_SMALL=${{ matrix.small }} VIA_SITE_FLOOR=${{ matrix.floor }}
+          bun a13-count.ts ${{ matrix.mode }}-${{ matrix.floor }} > a.log 2>&1 || true
           grep -E "^(A13|VIASITE)" a.log | cut -c1-500; tail -3 a.log | cut -c1-300
-          bun h616-full.ts ${{ matrix.mode }} > h.log 2>&1 || true
+          bun h616-full.ts ${{ matrix.mode }}-${{ matrix.floor }} > h.log 2>&1 || true
           grep -E "^(H616|VIASITE)" h.log | head -2 | cut -c1-500; tail -3 h.log | cut -c1-300
