@@ -42,11 +42,7 @@ jobs:
   ar:
     needs: capture
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [base, split-nodes]
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -64,15 +60,16 @@ jobs:
         with:
           name: butterstick-remaining
           path: req
-      - name: Route
+      - name: Same machine, alternating
         run: |
           cd autorouter
-          if [ "${{ matrix.variant }}" != base ]; then git apply ../harness-repo/harness/ar-exp/${{ matrix.variant }}.patch; fi
           cp ../harness-repo/harness/diag/ar-run.ts .
-          bun ar-run.ts ../req/butterstick-remaining.json.gz /tmp/out.json 1200 1 > run.log 2>&1 || true
-      - name: Emit
-        if: always()
-        run: |
-          cd autorouter
-          grep -E "^(RESULT|TIMES|DRC )" run.log | cut -c1-1500
-          grep -E "^STATS pipeline9JointDrcRepairSolver" run.log | cut -c1-600
+          for round in 1 2; do
+            for variant in base split; do
+              git checkout -q -- lib; git clean -qfd lib
+              if [ $variant = split ]; then git apply ../harness-repo/harness/ar-exp/split-nodes.patch; fi
+              bun ar-run.ts ../req/butterstick-remaining.json.gz /tmp/out.json 1200 1 > run.log 2>&1 || true
+              echo "ROUND $round $variant $(grep -E '^RESULT' run.log | grep -oE 't=[0-9.]+s solved=[a-z]+')"
+              grep -E "^TIMES" run.log | sed "s/^/ROUND $round $variant /" | cut -c1-900
+            done
+          done
