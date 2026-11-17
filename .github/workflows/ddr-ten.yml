@@ -1,4 +1,4 @@
-name: Ten DDR boards, Core main plus pending routing access
+name: Ten DDR boards, autorouter base vs no-via-site mark
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
-        variant: [bus-main, planned]
+        variant: [ar-base, ar-fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -41,13 +41,27 @@ jobs:
           ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
           path: solver
           persist-credentials: false
-      - name: Build bus-lanes under test and place it in Core
+      - name: Build bus-lanes main and place it in Core
         run: |
           cd solver
-          if [ "${{ matrix.variant }}" = planned ]; then git apply ../harness-repo/harness/bl-exp/pending-bus-plan.patch && git status --short; fi
           bun install > /dev/null 2>&1
           bun run build 2>&1 | tail -2
           cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: 7d8e63c573589261bd56f567c022adfb97c70233
+          path: autorouter
+          persist-credentials: false
+      - name: Build the autorouter under test and place it in Core
+        run: |
+          cd autorouter
+          if [ "${{ matrix.variant }}" = ar-fix ]; then git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch && git status --short; fi
+          bun install > /dev/null 2>&1
+          bun run build > build.log 2>&1; tail -3 build.log
+          grep '"version"' ../core/node_modules/@tscircuit/capacity-autorouter/package.json
+          rm -rf ../core/node_modules/@tscircuit/capacity-autorouter/dist
+          cp -r dist ../core/node_modules/@tscircuit/capacity-autorouter/dist
       - name: Route
         run: |
           cd core
