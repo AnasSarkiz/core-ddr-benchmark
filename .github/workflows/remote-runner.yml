@@ -13,9 +13,9 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  a64:
+  bytes:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -24,17 +24,56 @@ jobs:
           repository: tscircuit/bus-lanes-solver
           ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
           path: solver
+          fetch-depth: 0
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
-      - name: Route A64 byte 2
+      - name: Route the bytes
         run: |
           cd solver
+          git fetch -q origin repro/h3-pending-pad-escapes
+          git checkout FETCH_HEAD -- tests/fixtures/h3-pending-pad-escapes tests/fixtures/pad-escapes.ts
           bun install > /dev/null 2>&1
           git apply ../harness-repo/harness/bl-exp/pending-bus-plan.patch
-          cp ../harness-repo/harness/bl-exp/a64-byte2.ts .
-          timeout 3000 bun a64-byte2.ts ../harness-repo/harness/bl-exp/a64/main-byte2.srj.json ../harness-repo/harness/bl-exp/a64/planned-byte2.srj.json > a64.log 2>&1 || true
+          cp ../harness-repo/harness/bl-exp/h3-phases.ts .
+          bun h3-phases.ts narrowed ../harness-repo/harness/bl-exp/h3-byte0-request.json.gz > bytes.log 2>&1 || true
+          grep -E "^(STEP|RESULT)|rror" bytes.log | cut -c1-300
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bytes-narrowed
+          path: /tmp/bytes-*.json
+  remaining:
+    needs: bytes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/core
+          ref: 701339c13c9f1cba5c71bf9801fac787a60de937
+          path: core
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - run: cd core && bun install --ignore-scripts > /dev/null
+      - uses: actions/download-artifact@v4
+        with:
+          name: bytes-narrowed
+          path: bytes
+      - name: Route the remaining phase
+        run: |
+          cd core
+          cp ../harness-repo/harness/core-exp/h3-remaining.ts .
+          DUMP=/tmp/h3-remaining-narrowed.srj.json timeout 1500 bun h3-remaining.ts ../harness-repo/harness/core-exp/h3-phase3-start.srj.json ../bytes/bytes-narrowed.json narrowed > rem.log 2>&1 || true
+          gzip -k /tmp/h3-remaining-narrowed.srj.json || true
       - name: Emit
         if: always()
-        run: cd solver && grep -E "^(PHASE|A64)|rror" a64.log | uniq | cut -c1-300 | head -80
+        run: |
+          cd core && grep -E "^REMAINING|rror" rem.log | cut -c1-900 | head -20
+          echo "=====TARBALL-BEGIN====="
+          base64 -w 160 /tmp/h3-remaining-narrowed.srj.json.gz
+          echo "=====TARBALL-END====="
