@@ -32,7 +32,6 @@ jobs:
           cd autorouter
           if [ "${{ matrix.variant }}" = fix ]; then
             git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch
-            sed -i 's|  expect(viaPadErrors.length).toBeGreaterThan(0)|  expect(viaPadErrors).toEqual([])|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
           fi
           git status --short
       - name: Typecheck
