@@ -13,29 +13,75 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  capture:
+  bytes:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        label: [main, planned]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: cbd27db6cec1cd87ff3cda0fec7a01ca97e0ab32
+          path: solver
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - name: Install and bring in the #203 fixtures
+        run: |
+          cd solver
+          git rev-parse HEAD
+          git fetch -q origin repro/h3-pending-pad-escapes
+          git checkout FETCH_HEAD -- tests/fixtures/h3-pending-pad-escapes tests/fixtures/pad-escapes.ts
+          bun install > /dev/null 2>&1
+          if [ "${{ matrix.label }}" = planned ]; then cp ../harness-repo/harness/bl-exp/plan-with-pending-buses.ts lib/ && git apply --exclude=lib/plan-with-pending-buses.ts ../harness-repo/harness/bl-exp/pending-bus-plan.patch && git status --short && bun run typecheck 2>&1 | tail -5; fi
+      - name: Route byte 0 and byte 1
+        run: |
+          cd solver
+          cp ../harness-repo/harness/bl-exp/h3-phases.ts .
+          bun h3-phases.ts ${{ matrix.label }} ../harness-repo/harness/bl-exp/h3-byte0-request.json.gz > bytes.log 2>&1 || true
+          grep -E "^(STEP|RESULT)|rror" bytes.log | cut -c1-400
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bytes-${{ matrix.label }}
+          path: /tmp/bytes-*.json
+
+  remaining:
+    needs: bytes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        label: [main, planned]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/core
-          ref: 914daa787936f8a3a7b290de7a37ecc508479080
+          ref: 701339c13c9f1cba5c71bf9801fac787a60de937
           path: core
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
       - run: cd core && bun install --ignore-scripts > /dev/null
-      - name: Capture
+      - uses: actions/download-artifact@v4
+        with:
+          name: bytes-${{ matrix.label }}
+          path: bytes
+      - name: Route the remaining phase
         run: |
           cd core
-          cp ../harness-repo/harness/core-exp/capture-h3-byte0.test.tsx tests/repros/
-          bun test tests/repros/capture-h3-byte0.test.tsx --timeout 300000 2>&1 | grep -E "CAPTURED|pass|fail|rror" | head -20
-          ls -la /tmp/h3-byte0-request.json.gz
-          sha256sum /tmp/h3-byte0-request.json.gz
-          echo "=====TARBALL-BEGIN====="
-          base64 -w 160 /tmp/h3-byte0-request.json.gz
-          echo "=====TARBALL-END====="
+          cp ../harness-repo/harness/core-exp/h3-remaining.ts .
+          timeout 1500 bun h3-remaining.ts ../harness-repo/harness/core-exp/h3-phase3-start.srj.json ../bytes/bytes-${{ matrix.label }}.json ${{ matrix.label }} > rem.log 2>&1 || true
+      - name: Emit
+        if: always()
+        run: cd core && grep -E "^REMAINING|rror" rem.log | cut -c1-400 | head -20

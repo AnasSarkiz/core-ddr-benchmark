@@ -1,0 +1,111 @@
+diff --git a/lib/bus-lanes-pipeline-solver.ts b/lib/bus-lanes-pipeline-solver.ts
+index 2dedc9c..0a4bfb7 100644
+--- a/lib/bus-lanes-pipeline-solver.ts
++++ b/lib/bus-lanes-pipeline-solver.ts
+@@ -29,6 +29,7 @@ import {
+ import { joinedSignalGeometryIsValid } from "./joined-signal-geometry"
+ import { tuneGeneratedPairEscapes } from "./tune-generated-pair-escapes"
+ import { routeFreshSurfaceBuses } from "./route-fresh-surface-buses"
++import { getPlanWithPendingBuses } from "./plan-with-pending-buses"
+ import { rebalancePairEscapes } from "./rebalance-pair-escapes"
+ import { createTerminalViaClearanceChecker } from "./terminal-via-clearance"
+ import {
+@@ -380,6 +381,24 @@ export class BusLanesPipelineSolver extends BaseSolver {
+     }
+   }
+ 
++  /** Keep the current connections' copper from a plan that also routed the
++   * later buses; their own phases route them again. */
++  private finishPendingBusPlan(plan: BusLanesPipelineSolver) {
++    const current = new Set(
++      this.input.connections.map((connection) => connection.name),
++    )
++    this.traces = plan.traces.filter((trace) =>
++      current.has(trace.connection_name!),
++    )
++    this.pendingBusPlan = undefined
++    this.solved = true
++    this.failed = false
++    this.error = null
++    this.failureCode = null
++    this.phase = "solved"
++    this.progress = 1
++    this.stats = { ...this.stats, plannedWithPendingBuses: true }
++  }
+   private finishAccepted(early: boolean) {
+     const optimization = this.envelopeOptimization
+     this.envelopeOptimization = undefined
+@@ -410,6 +429,7 @@ export class BusLanesPipelineSolver extends BaseSolver {
+     this.stats = { ...this.stats, optimizationStoppedEarly: early }
+   }
+ 
++  private pendingBusPlan?: BusLanesPipelineSolver
+   private sharedPackages?: Generator<void, RepairedBusDogbones | null>
+   private backwardPackages?: Generator<void, RepairedBusDogbones | null>
+   private child?: BusLanesSolver
+@@ -465,6 +485,12 @@ export class BusLanesPipelineSolver extends BaseSolver {
+       routingInput = withSkewRoundoffReserve(routingInput)
+     this.routingInput = routingInput
+     this.options = { smoothTuning: true, denseSearch: true, ...options }
++    const planWithPendingBuses = getPlanWithPendingBuses(this.input)
++    if (planWithPendingBuses)
++      this.pendingBusPlan = new BusLanesPipelineSolver(
++        planWithPendingBuses,
++        options,
++      )
+     this.stats = { carrierStrategy: this.carrierStrategy.name }
+     // Surface routing negotiates carrier layers and owned approaches before
+     // matching and control repair. Its aggregate work reserve includes those
+@@ -1335,6 +1361,22 @@ export class BusLanesPipelineSolver extends BaseSolver {
+       this.phase = "failed"
+       return
+     }
++    if (this.pendingBusPlan) {
++      this.phase = "plan_with_pending_buses"
++      this.pendingBusPlan.step()
++      if (this.pendingBusPlan.solved) {
++        this.finishPendingBusPlan(this.pendingBusPlan)
++        return
++      }
++      if (!this.pendingBusPlan.failed) return
++      // The later buses may not fit beside this one at all; route it alone.
++      this.stats = {
++        ...this.stats,
++        pendingBusPlanError: this.pendingBusPlan.error,
++      }
++      this.pendingBusPlan = undefined
++      return
++    }
+     if (this.nativeSingleCarrier) {
+       try {
+         const result = this.nativeSingleCarrier.next()
+diff --git a/lib/types.ts b/lib/types.ts
+index 515d650..4a72a88 100644
+--- a/lib/types.ts
++++ b/lib/types.ts
+@@ -92,6 +92,25 @@ export interface SimpleRouteJson {
+     traceGap?: number
+     maxUncoupledLength?: number
+   }>
++  /** Requests that later routing phases still have to route, with their own
++   * physical rules. They describe intent only: never route or return them. */
++  pendingRoutingAccess?: PendingRoutingAccess[]
++}
++/** One later routing phase, in the same board frame as its parent request.
++ * Obstacles and fixed copper are the parent request's. */
++export interface PendingRoutingAccess {
++  connections: Connection[]
++  buses?: Bus[]
++  minTraceWidth: number
++  minTraceToPadEdgeClearance?: number
++  minViaEdgeToPadEdgeClearance?: number
++  minViaPadDiameter?: number
++  minViaHoleDiameter?: number
++  minViaHoleEdgeToViaHoleEdgeClearance?: number
++  minPadEdgeToPadEdgeClearance?: number
++  minBoardEdgeClearance?: number
++  allowViaInPad?: boolean
++  allowBlindAndBuriedVias?: boolean
+ }
+ export interface SolverOptions {
+   /** Reject paired tuning that folds back into a generated terminal via land. */
