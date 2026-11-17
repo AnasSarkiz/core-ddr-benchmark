@@ -13,18 +13,10 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  arddr:
+  capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        circuit: [butterstick]
-        variant: [base, split-nodes]
-        repeat: [1, 2, 3]
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-        with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/core
@@ -35,33 +27,52 @@ jobs:
         with:
           bun-version: '1.4.3'
       - run: cd core && bun install --ignore-scripts > /dev/null
+      - name: Route
+        run: cd core && bun run benchmark:ddr --circuit butterstick --timeout 600 > route.log 2>&1 || true; tail -3 core/route.log || true
+      - name: Keep the remaining request
+        run: |
+          cd core/ddr-benchmark-results/butterstick
+          ls
+          f=$(ls phase-*-start.srj.json | sort -V | tail -1); echo $f
+          gzip -c $f > /tmp/butterstick-remaining.json.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: butterstick-remaining
+          path: /tmp/butterstick-remaining.json.gz
+  ar:
+    needs: capture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [base, split-nodes]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
           ref: 8da00b27530a97bc6e1d76b2bedd96e8c9087ad5
           path: autorouter
           persist-credentials: false
-      - name: Build the autorouter under test and place it in Core
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.4.3
+      - run: cd autorouter && bun install > /dev/null 2>&1
+      - uses: actions/download-artifact@v4
+        with:
+          name: butterstick-remaining
+          path: req
+      - name: Route
         run: |
           cd autorouter
           if [ "${{ matrix.variant }}" != base ]; then git apply ../harness-repo/harness/ar-exp/${{ matrix.variant }}.patch; fi
-          bun install > /dev/null 2>&1
-          bun run build 2>&1 | tail -2
-          rm -rf ../core/node_modules/@tscircuit/capacity-autorouter/dist
-          cp -r dist ../core/node_modules/@tscircuit/capacity-autorouter/dist
-      - name: Route
-        run: |
-          cd core
-          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
-          tail -12 route.log
-      - name: Print the report
+          cp ../harness-repo/harness/diag/ar-run.ts .
+          bun ar-run.ts ../req/butterstick-remaining.json.gz /tmp/out.json 1200 1 > run.log 2>&1 || true
+      - name: Emit
         if: always()
         run: |
-          cd core
-          echo "=====REPORT====="
-          cat ddr-benchmark-results/report.md
-          echo "=====END-REPORT====="
-          cd ddr-benchmark-results/${{ matrix.circuit }}
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - progress.json assessment.json findings.json | base64 -w 160
-          echo "=====TARBALL-END====="
+          cd autorouter
+          grep -E "^(RESULT|TIMES|DRC )" run.log | cut -c1-1500
+          grep -E "^STATS pipeline9JointDrcRepairSolver" run.log | cut -c1-600
