@@ -47,4 +47,4 @@ jobs:
         if: always()
         run: |
           cd autorouter
-          grep -vE "^\s+at |^\s*[0-9]+ \||^bun test v" ff.log | grep -E "^SPLIT|^##########|^\((pass|fail)\)|error:|Expected|Received|differ|toBe|toEqual" | cut -c1-240 | head -300
+          grep -vE "^\s+at |^\s*[0-9]+ \||^bun test v" ff.log | grep -E "^SPLIT|^SPLITNODE|^##########|^\((pass|fail)\)|error:|Expected|Received|differ|toBe|toEqual" | cut -c1-240 | head -300

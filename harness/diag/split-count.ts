@@ -18,4 +18,9 @@ for (const [label, srj] of inputs) {
   const split = new Set(nodes.filter((n: any) => /_z\d+$/.test(n.capacityMeshNodeId)).map((n: any) => n.capacityMeshNodeId.replace(/_z\d+$/, "")))
   const multi = merged.filter((n: any) => n.availableZ.length > 1 && !n._isComponentTopologyNode && !n._containsTarget && !n._containsObstacle).length
   console.log(`SPLIT ${label} merged=${merged.length} eligibleMultiLayer=${multi} split=${split.size}`)
+  if (label === "h616-full")
+    for (const id of [...split].slice(0, 40)) {
+      const n = merged.find((m: any) => m.capacityMeshNodeId === id)
+      console.log(`SPLITNODE ${label} ${id} (${n.center.x.toFixed(2)},${n.center.y.toFixed(2)}) ${n.width.toFixed(3)}x${n.height.toFixed(3)} z=${JSON.stringify(n.availableZ)}`)
+    }
 }

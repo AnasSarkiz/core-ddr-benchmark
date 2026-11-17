@@ -42,13 +42,14 @@ index edb17c3..69b8569 100644
  ): number => {
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/splitNodesWithoutViaSite.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/splitNodesWithoutViaSite.ts
 new file mode 100644
-index 0000000..67e80ee
+index 0000000..21d602b
 --- /dev/null
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/splitNodesWithoutViaSite.ts
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,148 @@
 +import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 +import type { CapacityMeshNode } from "lib/types/capacity-mesh-types"
 +import type { Obstacle, SimpleRouteJson } from "lib/types/srj-types"
++import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
 +import { getPointToObstacleDistance } from "./Pipeline9RegionalFallbackSolver"
 +
 +type Bounds = { minX: number; maxX: number; minY: number; maxY: number }
@@ -100,8 +101,10 @@ index 0000000..67e80ee
 + * Global free-space nodes may border copper directly, and the high-density
 + * solvers keep a via inside its node. A node therefore offers a via only where
 + * a via center inside it keeps the via-to-pad clearance from routed copper and
-+ * from the pads of nets this request does not route. Pads of nets it routes
-+ * are skipped: their own vias may sit beside them. Component topology nodes,
++ * from the pads of nets this request does not route, on the layers the node
++ * offers. Pads of nets it routes are skipped: their own vias may sit beside
++ * them. Copper on layers the node does not offer, such as a plane, is left to
++ * the stages that already handle vias through it. Component topology nodes,
 + * which apply their own via rules, and nodes too small for any via are left
 + * unchanged. Board coordinates in mm, +X right, +Y up.
 + */
@@ -127,7 +130,13 @@ index 0000000..67e80ee
 +  const keepOut = viaDiameter / 2 + viaToPadClearance
 +  const hardObstacles = srj.obstacles
 +    .filter((obstacle) => !isRoutedNetObstacle(obstacle))
-+    .map((obstacle) => ({ obstacle, bounds: getObstacleBounds(obstacle) }))
++    .map((obstacle) => ({
++      obstacle,
++      bounds: getObstacleBounds(obstacle),
++      zLayers:
++        obstacle.zLayers ??
++        obstacle.layers.map((layer) => mapLayerNameToZ(layer, srj.layerCount)),
++    }))
 +  return nodes.flatMap((node): CapacityMeshNode[] => {
 +    if (
 +      node._isComponentTopologyNode ||
@@ -145,7 +154,8 @@ index 0000000..67e80ee
 +    if (centers.minX > centers.maxX || centers.minY > centers.maxY)
 +      return [node]
 +    const nearby = hardObstacles.filter(
-+      ({ bounds }) =>
++      ({ bounds, zLayers }) =>
++        zLayers.some((z) => node.availableZ.includes(z)) &&
 +        bounds.minX - keepOut < centers.maxX &&
 +        bounds.maxX + keepOut > centers.minX &&
 +        bounds.minY - keepOut < centers.maxY &&
