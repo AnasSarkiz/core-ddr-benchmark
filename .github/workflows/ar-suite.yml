@@ -1,4 +1,4 @@
-name: Autorouter suite, base vs via-site fraction
+name: Autorouter suite on main, repro vs fix
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [4]
+        node: [1, 2, 3, 4, 5, 6, 7, 8, 9]
         variant: [base, fix]
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 7d8e63c573589261bd56f567c022adfb97c70233
+          ref: bfc6509a20959b11ebdea7e38d7fb5fe0fef2097
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -30,8 +30,9 @@ jobs:
       - name: Apply the fix
         run: |
           cd autorouter
+          git apply ../harness-repo/harness/ar-exp/repro-tests.patch
           if [ "${{ matrix.variant }}" = fix ]; then
-            git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch
+            git apply ../harness-repo/harness/ar-exp/fix-code.patch
           fi
           git status --short
       - name: Typecheck

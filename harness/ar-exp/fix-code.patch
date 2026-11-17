@@ -1,0 +1,481 @@
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
+index 03c147e..cd0ff5c 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
+@@ -1,4 +1,6 @@
+ import { getDifferentialPairsForPostProcessing } from "lib/utils/getDifferentialPairsForPostProcessing"
++import { getViaToPadClearance } from "lib/utils/getViaToPadClearance"
++import { markNodesWithoutViaSite } from "./markNodesWithoutViaSite"
+ import type { SolverRuntimeExecutor } from "@tscircuit/solver-utils"
+ import { Pipeline9EffortCleanupSolver } from "./Pipeline9EffortCleanupSolver"
+ import { createPipeline9AutoroutingDrcEvaluator } from "./createPipeline9AutoroutingDrcEvaluator"
+@@ -438,7 +440,16 @@ export class AutoroutingPipelineSolver9_PreloadedTraceGraph extends BaseSolver {
+       ],
+       {
+         onSolved: (cms) => {
+-          cms.capacityNodes = cms.nodeDimensionSubdivisionSolver!.outputNodes
++          cms.capacityNodes = markNodesWithoutViaSite({
++            nodes: cms.nodeDimensionSubdivisionSolver!.outputNodes,
++            srj: cms.srj,
++            connMap: cms.connMap,
++            viaDiameter: cms.viaDiameter,
++            viaToPadClearance:
++              getViaToPadClearance(cms.srj) ??
++              cms.srj.defaultObstacleMargin ??
++              0.15,
++          })
+         },
+       },
+     ),
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts
+index edb17c3..3d60c8f 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts
+@@ -37,7 +37,7 @@ type Pipeline9RegionalFallbackSolverParams = {
+   captureSearchDebug?: boolean
+ }
+ 
+-const getPointToObstacleDistance = (
++export const getPointToObstacleDistance = (
+   point: { x: number; y: number },
+   obstacle: Obstacle,
+ ): number => {
+@@ -61,7 +61,7 @@ const getPointToObstacleDistance = (
+   return Math.hypot(outsideX, outsideY)
+ }
+ 
+-const getObstacleZLayers = (
++export const getObstacleZLayers = (
+   obstacle: Obstacle,
+   layerCount: number,
+ ): number[] => {
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts
+new file mode 100644
+index 0000000..48ef7aa
+--- /dev/null
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts
+@@ -0,0 +1,181 @@
++import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
++import type { CapacityMeshNode } from "lib/types/capacity-mesh-types"
++import type { Obstacle, SimpleRouteJson } from "lib/types/srj-types"
++import {
++  getObstacleZLayers,
++  getPointToObstacleDistance,
++} from "./Pipeline9RegionalFallbackSolver"
++
++type Bounds = { minX: number; maxX: number; minY: number; maxY: number }
++type MarkNodesWithoutViaSiteParams = {
++  nodes: CapacityMeshNode[]
++  srj: SimpleRouteJson
++  connMap: ConnectivityMap
++  viaDiameter: number
++  viaToPadClearance: number
++}
++
++const getObstacleBounds = (obstacle: Obstacle): Bounds => {
++  const rotationRadians = ((obstacle.ccwRotationDegrees ?? 0) * Math.PI) / 180
++  const cos = Math.abs(Math.cos(rotationRadians))
++  const sin = Math.abs(Math.sin(rotationRadians))
++  const halfWidth = (obstacle.width / 2) * cos + (obstacle.height / 2) * sin
++  const halfHeight = (obstacle.width / 2) * sin + (obstacle.height / 2) * cos
++  return {
++    minX: obstacle.center.x - halfWidth,
++    maxX: obstacle.center.x + halfWidth,
++    minY: obstacle.center.y - halfHeight,
++    maxY: obstacle.center.y + halfHeight,
++  }
++}
++
++/** Smallest searched cell edge, in mm. A via center that fits only inside a
++ * smaller gap would clear the keep-out by less than this. */
++const MIN_SEARCH_CELL_SIZE = 0.005
++
++type KeepOutObstacle = { obstacle: Obstacle; bounds: Bounds }
++
++const isRoutedNetObstacle = (
++  obstacle: Obstacle,
++  connMap: ConnectivityMap,
++  routedNetIds: ReadonlySet<string>,
++): boolean =>
++  [obstacle.obstacleId, ...obstacle.connectedTo].some((id) => {
++    if (!id) return false
++    const netId = connMap.getNetConnectedToId(id)
++    return netId !== undefined && routedNetIds.has(netId)
++  })
++
++/**
++ * True when some point of the cell is at least keepOut from every obstacle.
++ * Distance to a rectangle (rotated or not) or a circle is convex, so a cell
++ * whose four corners all lie closer than keepOut to one obstacle lies inside
++ * that obstacle's keep-out entirely. Otherwise the cell is halved along its
++ * longer side until a legal point turns up or each part is covered; a part
++ * under MIN_SEARCH_CELL_SIZE with no legal corner or center counts as covered.
++ */
++const hasViaSiteInCell = (
++  cell: Bounds,
++  obstacles: KeepOutObstacle[],
++  keepOut: number,
++): boolean => {
++  const corners = [
++    { x: cell.minX, y: cell.minY },
++    { x: cell.maxX, y: cell.minY },
++    { x: cell.minX, y: cell.maxY },
++    { x: cell.maxX, y: cell.maxY },
++  ]
++  const center = {
++    x: (cell.minX + cell.maxX) / 2,
++    y: (cell.minY + cell.maxY) / 2,
++  }
++  for (const point of [center, ...corners]) {
++    if (
++      obstacles.every(
++        ({ obstacle }) =>
++          getPointToObstacleDistance(point, obstacle) >= keepOut,
++      )
++    )
++      return true
++  }
++  if (
++    obstacles.some(({ obstacle }) =>
++      corners.every(
++        (corner) => getPointToObstacleDistance(corner, obstacle) < keepOut,
++      ),
++    )
++  )
++    return false
++  const width = cell.maxX - cell.minX
++  const height = cell.maxY - cell.minY
++  if (Math.max(width, height) <= MIN_SEARCH_CELL_SIZE) return false
++  const halves: Bounds[] =
++    width >= height
++      ? [
++          { ...cell, maxX: center.x },
++          { ...cell, minX: center.x },
++        ]
++      : [
++          { ...cell, maxY: center.y },
++          { ...cell, minY: center.y },
++        ]
++  return halves.some((half) =>
++    hasViaSiteInCell(
++      half,
++      obstacles.filter(
++        ({ bounds }) =>
++          bounds.minX - keepOut < half.maxX &&
++          bounds.maxX + keepOut > half.minX &&
++          bounds.minY - keepOut < half.maxY &&
++          bounds.maxY + keepOut > half.minY,
++      ),
++      keepOut,
++    ),
++  )
++}
++
++/**
++ * Mark free-space nodes that can hold a via but have no legal place for one,
++ * so path planning prices a layer change there far above its area cost.
++ *
++ * Global free-space nodes may border copper directly, and the high-density
++ * solvers keep a via inside its node. A node therefore offers a via only where
++ * a via center inside it keeps the via-to-pad clearance from the copper of nets
++ * this request does not route, such as pads and traces fixed by earlier
++ * phases, on the layers the node offers. Copper of nets it routes is skipped:
++ * their own vias may sit beside it. Copper on layers the node does not offer,
++ * such as a plane, is left to the stages that already handle vias through it.
++ * Component topology nodes, which apply their own via rules, are left
++ * unchanged. So are nodes narrower than a via: marking them too (about 2,000
++ * nodes on H616) raised H616's full-board DRC findings from 43 to 113, and
++ * A13's from 7 to 10. Board coordinates in mm, +X right, +Y up.
++ */
++export const markNodesWithoutViaSite = ({
++  nodes,
++  srj,
++  connMap,
++  viaDiameter,
++  viaToPadClearance,
++}: MarkNodesWithoutViaSiteParams): CapacityMeshNode[] => {
++  const routedNetIds = new Set(
++    srj.connections.map(
++      (connection) =>
++        connMap.getNetConnectedToId(connection.name) ?? connection.name,
++    ),
++  )
++  const keepOut = viaDiameter / 2 + viaToPadClearance
++  const hardObstacles = srj.obstacles
++    .filter((obstacle) => !isRoutedNetObstacle(obstacle, connMap, routedNetIds))
++    .map((obstacle) => ({
++      obstacle,
++      bounds: getObstacleBounds(obstacle),
++      zLayers: getObstacleZLayers(obstacle, srj.layerCount),
++    }))
++  return nodes.map((node): CapacityMeshNode => {
++    if (
++      node._isComponentTopologyNode ||
++      node._containsTarget ||
++      node._containsObstacle ||
++      node.availableZ.length < 2
++    )
++      return node
++    const centers: Bounds = {
++      minX: node.center.x - node.width / 2 + viaDiameter / 2,
++      maxX: node.center.x + node.width / 2 - viaDiameter / 2,
++      minY: node.center.y - node.height / 2 + viaDiameter / 2,
++      maxY: node.center.y + node.height / 2 - viaDiameter / 2,
++    }
++    if (centers.minX > centers.maxX || centers.minY > centers.maxY) return node
++    const nearby = hardObstacles.filter(
++      ({ bounds, zLayers }) =>
++        zLayers.some((z) => node.availableZ.includes(z)) &&
++        bounds.minX - keepOut < centers.maxX &&
++        bounds.maxX + keepOut > centers.minX &&
++        bounds.minY - keepOut < centers.maxY &&
++        bounds.maxY + keepOut > centers.minY,
++    )
++    if (nearby.length === 0) return node
++    const hasViaSite = hasViaSiteInCell(centers, nearby, keepOut)
++    return hasViaSite ? node : { ...node, _lacksViaSite: true }
++  })
++}
+diff --git a/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts b/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
+index ea1be88..9a68046 100644
+--- a/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
++++ b/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
+@@ -108,6 +108,10 @@ type CandidatePortfolioPhase = "primary" | "alternative" | "complete"
+ // A second global-routing candidate is only worthwhile when the primary
+ // candidate predicts downstream congestion. Selection requires meaningful
+ // trace dispersion without materially increasing predicted failure pressure.
++/** A node with no legal via center prices a layer change at ten times its area
++ * cost instead of forbidding it: forbidding layer changes there pushed H616's
++ * vias into crowded nodes nearby and raised its DRC findings from 43 to 124. */
++const NO_VIA_SITE_AREA_FRACTION = 0.1
+ const TRACE_DENSITY_PORTFOLIO_MIN_ROUTE_COUNT = 30
+ const TRACE_DENSITY_PORTFOLIO_MAX_ROUTE_COUNT = 99
+ const TRACE_DENSITY_PORTFOLIO_MIN_PF_SUM = 4
+@@ -390,7 +394,22 @@ const toSerializedRegionData = (
+   netId?: number,
+ ) => {
+   const regionMetadata = region.d as typeof region.d & TinyRegionMetadata
+-  const bounds = regionMetadata.bounds
++  // tiny-hypergraph prices layer changes per unit of region width x height.
++  // A node with no legal via center is priced as if it had only
++  // NO_VIA_SITE_AREA_FRACTION of its area. Bounds keep it drawn at full size.
++  const areaScale = region.d._lacksViaSite
++    ? Math.sqrt(NO_VIA_SITE_AREA_FRACTION)
++    : 1
++  const bounds =
++    regionMetadata.bounds ??
++    (region.d._lacksViaSite
++      ? {
++          minX: region.d.center.x - region.d.width / 2,
++          maxX: region.d.center.x + region.d.width / 2,
++          minY: region.d.center.y - region.d.height / 2,
++          maxY: region.d.center.y + region.d.height / 2,
++        }
++      : undefined)
+ 
+   return {
+     capacityMeshNodeId: region.d.capacityMeshNodeId,
+@@ -398,8 +417,8 @@ const toSerializedRegionData = (
+       x: region.d.center.x,
+       y: region.d.center.y,
+     },
+-    width: region.d.width,
+-    height: region.d.height,
++    width: region.d.width * areaScale,
++    height: region.d.height * areaScale,
+     availableZ: [...region.d.availableZ],
+     ...(bounds
+       ? {
+diff --git a/lib/types/capacity-mesh-types.ts b/lib/types/capacity-mesh-types.ts
+index da99c60..66c2e64 100644
+--- a/lib/types/capacity-mesh-types.ts
++++ b/lib/types/capacity-mesh-types.ts
+@@ -34,6 +34,9 @@ export interface CapacityMeshNode {
+   _soicRegionType?: "center" | "pad" | "pad-gap"
+   _isComponentTopologyNode?: boolean
+   _connectedTo?: string[]
++  /** The node can hold a via, but every via center inside it is closer than the
++   * via-to-pad clearance to copper its vias cannot touch. */
++  _lacksViaSite?: true
+ 
+   _parent?: CapacityMeshNode
+ }
+diff --git a/tests/features/mark-nodes-without-via-site-circle-pad.test.ts b/tests/features/mark-nodes-without-via-site-circle-pad.test.ts
+new file mode 100644
+index 0000000..d322913
+--- /dev/null
++++ b/tests/features/mark-nodes-without-via-site-circle-pad.test.ts
+@@ -0,0 +1,50 @@
++import { expect, test } from "bun:test"
++import { ConnectivityMap } from "circuit-json-to-connectivity-map"
++import { markNodesWithoutViaSite } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite"
++import type { CapacityMeshNode } from "lib/types/capacity-mesh-types"
++import type { Obstacle, SimpleRouteJson } from "lib/types/srj-types"
++
++// A 1 x 1 mm two-layer node at the origin. With a 0.3 mm via and 0.1 mm
++// via-to-pad clearance, via centers lie in [-0.35, 0.35] on each axis and must
++// stay 0.25 mm from the pad.
++const node: CapacityMeshNode = {
++  capacityMeshNodeId: "node",
++  center: { x: 0, y: 0 },
++  width: 1,
++  height: 1,
++  layer: "top",
++  availableZ: [0, 1],
++}
++
++const getMarks = (obstacles: Obstacle[], layerCount = 2): boolean[] => {
++  const srj: SimpleRouteJson = {
++    layerCount,
++    minTraceWidth: 0.1,
++    obstacles,
++    connections: [],
++    bounds: { minX: -2, maxX: 2, minY: -2, maxY: 2 },
++  }
++  return markNodesWithoutViaSite({
++    nodes: [node],
++    srj,
++    connMap: new ConnectivityMap({}),
++    viaDiameter: 0.3,
++    viaToPadClearance: 0.1,
++  }).map((marked) => marked._lacksViaSite === true)
++}
++
++test("a round pad leaves the node's corners for a via, a square one does not", (): void => {
++  // A 0.4 mm pad at the node center keeps every via center within 0.25 mm,
++  // except near the corners when the pad is round: (0.35, 0.35) is 0.295 mm
++  // from the circle but 0.212 mm from the square.
++  const pad: Obstacle = {
++    type: "rect",
++    layers: ["top"],
++    center: { x: 0, y: 0 },
++    width: 0.4,
++    height: 0.4,
++    connectedTo: [],
++  }
++  expect(getMarks([{ ...pad, shape: "circle" }])).toEqual([false])
++  expect(getMarks([pad])).toEqual([true])
++})
+diff --git a/tests/features/mark-nodes-without-via-site-rotated-pad.test.ts b/tests/features/mark-nodes-without-via-site-rotated-pad.test.ts
+new file mode 100644
+index 0000000..817ecbd
+--- /dev/null
++++ b/tests/features/mark-nodes-without-via-site-rotated-pad.test.ts
+@@ -0,0 +1,49 @@
++import { expect, test } from "bun:test"
++import { ConnectivityMap } from "circuit-json-to-connectivity-map"
++import { markNodesWithoutViaSite } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite"
++import type { CapacityMeshNode } from "lib/types/capacity-mesh-types"
++import type { Obstacle, SimpleRouteJson } from "lib/types/srj-types"
++
++// A 1 x 1 mm two-layer node at the origin. With a 0.3 mm via and 0.1 mm
++// via-to-pad clearance, via centers lie in [-0.35, 0.35] on each axis and must
++// stay 0.25 mm from the pad.
++const node: CapacityMeshNode = {
++  capacityMeshNodeId: "node",
++  center: { x: 0, y: 0 },
++  width: 1,
++  height: 1,
++  layer: "top",
++  availableZ: [0, 1],
++}
++
++const getMarks = (obstacles: Obstacle[], layerCount = 2): boolean[] => {
++  const srj: SimpleRouteJson = {
++    layerCount,
++    minTraceWidth: 0.1,
++    obstacles,
++    connections: [],
++    bounds: { minX: -2, maxX: 2, minY: -2, maxY: 2 },
++  }
++  return markNodesWithoutViaSite({
++    nodes: [node],
++    srj,
++    connMap: new ConnectivityMap({}),
++    viaDiameter: 0.3,
++    viaToPadClearance: 0.1,
++  }).map((marked) => marked._lacksViaSite === true)
++}
++
++test("a 45 degree pad leaves the node's corners for a via, the same pad unrotated does not", (): void => {
++  // A 0.424 mm square reaches 0.3 mm along each axis once rotated 45 degrees,
++  // so the via center (0.35, 0.35) is 0.283 mm from it; unrotated, 0.195 mm.
++  const pad: Obstacle = {
++    type: "rect",
++    layers: ["top"],
++    center: { x: 0, y: 0 },
++    width: 0.3 * Math.SQRT2,
++    height: 0.3 * Math.SQRT2,
++    connectedTo: [],
++  }
++  expect(getMarks([{ ...pad, ccwRotationDegrees: 45 }])).toEqual([false])
++  expect(getMarks([pad])).toEqual([true])
++})
+diff --git a/tests/features/mark-nodes-without-via-site-z-layers.test.ts b/tests/features/mark-nodes-without-via-site-z-layers.test.ts
+new file mode 100644
+index 0000000..353f395
+--- /dev/null
++++ b/tests/features/mark-nodes-without-via-site-z-layers.test.ts
+@@ -0,0 +1,49 @@
++import { expect, test } from "bun:test"
++import { ConnectivityMap } from "circuit-json-to-connectivity-map"
++import { markNodesWithoutViaSite } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite"
++import type { CapacityMeshNode } from "lib/types/capacity-mesh-types"
++import type { Obstacle, SimpleRouteJson } from "lib/types/srj-types"
++
++// A 1 x 1 mm two-layer node at the origin. With a 0.3 mm via and 0.1 mm
++// via-to-pad clearance, via centers lie in [-0.35, 0.35] on each axis and must
++// stay 0.25 mm from the pad.
++const node: CapacityMeshNode = {
++  capacityMeshNodeId: "node",
++  center: { x: 0, y: 0 },
++  width: 1,
++  height: 1,
++  layer: "top",
++  availableZ: [0, 1],
++}
++
++const getMarks = (obstacles: Obstacle[], layerCount = 2): boolean[] => {
++  const srj: SimpleRouteJson = {
++    layerCount,
++    minTraceWidth: 0.1,
++    obstacles,
++    connections: [],
++    bounds: { minX: -2, maxX: 2, minY: -2, maxY: 2 },
++  }
++  return markNodesWithoutViaSite({
++    nodes: [node],
++    srj,
++    connMap: new ConnectivityMap({}),
++    viaDiameter: 0.3,
++    viaToPadClearance: 0.1,
++  }).map((marked) => marked._lacksViaSite === true)
++}
++
++test("canonical __zLayers decide which copper limits a node's vias", (): void => {
++  // The same 0.8 mm pad covers every via center of the node. Its canonical
++  // layers on a four-layer board are the two the node does not offer.
++  const pad: Obstacle = {
++    type: "rect",
++    layers: ["top"],
++    center: { x: 0, y: 0 },
++    width: 0.8,
++    height: 0.8,
++    connectedTo: [],
++  }
++  expect(getMarks([pad], 4)).toEqual([true])
++  expect(getMarks([{ ...pad, __zLayers: [2, 3] }], 4)).toEqual([false])
++})
+diff --git a/tests/repro/pipeline9-a13-via-without-legal-site.test.ts b/tests/repro/pipeline9-a13-via-without-legal-site.test.ts
+index 96270cb..bd52c32 100644
+--- a/tests/repro/pipeline9-a13-via-without-legal-site.test.ts
++++ b/tests/repro/pipeline9-a13-via-without-legal-site.test.ts
+@@ -178,7 +178,7 @@ test("A13 vias sit closer to pads than the declared via clearance", async (): Pr
+       error.center!.y >= frame.minY &&
+       error.center!.y <= frame.maxY,
+   )
+-  expect(frameFindings.length).toBeGreaterThan(0)
++  expect(frameFindings).toEqual([])
+   const frameGraphics = getFrameGraphics(graphics, frame)
+   frameGraphics.rects = [
+     ...(frameGraphics.rects ?? []),
