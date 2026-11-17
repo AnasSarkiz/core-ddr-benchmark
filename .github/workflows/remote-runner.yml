@@ -32,8 +32,8 @@ jobs:
       - name: Origin
         run: |
           cd autorouter
-          cp ../harness-repo/harness/diag/node-origin.ts .
-          POINT='{"x":5.136,"y":5.869}' bun node-origin.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz > origin.log 2>&1 || true
+          cp ../harness-repo/harness/diag/pair-track.ts .
+          NETS=source_net_20,source_net_8 POINT='{"x":7.91,"y":-2.55}' bun pair-track.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz > origin.log 2>&1 || true
       - name: Emit
         if: always()
-        run: cd autorouter && grep -E "^(ORIGIN|COMPONENT|TOPOKEYS)|rror" origin.log | cut -c1-700
+        run: cd autorouter && grep -E "^(PAIR|STAGES)|rror" origin.log | cut -c1-700
