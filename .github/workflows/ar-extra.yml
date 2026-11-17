@@ -28,13 +28,13 @@ jobs:
           F=tests/repro/pipeline9-a13-via-without-legal-site.test.ts
           git apply ../harness-repo/harness/ar-exp/detail-test.patch
           bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"; head -10 tsc.log
-          bun test $F --timeout 900000 > r1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" r1.log
+          bun test $F --timeout 900000 > r1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Updating|Writing" r1.log
           bun test $F --timeout 900000 > r2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" r2.log
           git status --short
           echo "=====REPRO-BEGIN====="; tar -czf - tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site-via-pad-detail.snap.svg | base64 -w 160; echo "=====REPRO-END====="
           git apply ../harness-repo/harness/ar-exp/fix-lib.patch
           sed -i 's|  expect(frameFindings.length).toBeGreaterThan(0)|  expect(frameFindings).toEqual([])|' $F
-          BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > f1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" f1.log
+          FORCE_BUN_UPDATE_SNAPSHOTS=1 BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > f1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Updating|Writing" f1.log
           bun test $F --timeout 900000 > f2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Expected|Received" f2.log | head
           git status --short
           echo "=====FIX-BEGIN====="; tar -czf - tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*.snap.svg | base64 -w 160; echo "=====FIX-END====="

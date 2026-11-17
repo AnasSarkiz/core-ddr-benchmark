@@ -1,5 +1,5 @@
 diff --git a/tests/repro/pipeline9-a13-via-without-legal-site.test.ts b/tests/repro/pipeline9-a13-via-without-legal-site.test.ts
-index 2a3549c..6341700 100644
+index 2a3549c..96270cb 100644
 --- a/tests/repro/pipeline9-a13-via-without-legal-site.test.ts
 +++ b/tests/repro/pipeline9-a13-via-without-legal-site.test.ts
 @@ -1,13 +1,99 @@
@@ -131,14 +131,14 @@ index 2a3549c..6341700 100644
 +      stroke: "#94a3b8",
 +    },
 +  ]
-+  const frameCaption = `<g data-testid="frame-via-pad-findings"><rect x="12" y="12" width="616" height="44" rx="6" fill="white" stroke="#7c3aed"/><text x="24" y="40" font-family="Arial, sans-serif" font-size="20" font-weight="600" fill="#7c3aed">5 x 4 mm detail: via-to-pad findings under ${input.minViaEdgeToPadEdgeClearance} mm: ${frameFindings.length}</text></g>`
-+  await expect(
-+    getSvgFromGraphicsObject(frameGraphics, {
-+      backgroundColor: "white",
-+      svgWidth: 640,
-+      svgHeight: 512,
-+    }).replace("</svg>", `${frameCaption}</svg>`),
-+  ).toMatchSvgSnapshot(import.meta.path, {
++  // The caption sits in its own band above the drawing.
++  const frameSvg = getSvgFromGraphicsObject(frameGraphics, {
++    backgroundColor: "white",
++    svgWidth: 640,
++    svgHeight: 512,
++  }).replace("<svg ", '<svg x="0" y="68" ')
++  const framedDetail = `<svg width="640" height="580" viewBox="0 0 640 580" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="white"/><g data-testid="frame-via-pad-findings"><rect x="12" y="12" width="616" height="44" rx="6" fill="white" stroke="#7c3aed"/><text x="24" y="40" font-family="Arial, sans-serif" font-size="20" font-weight="600" fill="#7c3aed">5 x 4 mm detail: via-to-pad findings under ${input.minViaEdgeToPadEdgeClearance} mm: ${frameFindings.length}</text></g>${frameSvg}</svg>`
++  await expect(framedDetail).toMatchSvgSnapshot(import.meta.path, {
 +    svgName: "via-pad-detail",
 +    tolerance: 0,
 +  })
