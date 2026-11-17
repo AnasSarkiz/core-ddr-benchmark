@@ -80,10 +80,10 @@ index 2dedc9c..0a4bfb7 100644
        try {
          const result = this.nativeSingleCarrier.next()
 diff --git a/lib/types.ts b/lib/types.ts
-index 515d650..4a72a88 100644
+index 515d650..bbd242f 100644
 --- a/lib/types.ts
 +++ b/lib/types.ts
-@@ -92,6 +92,25 @@ export interface SimpleRouteJson {
+@@ -92,6 +92,23 @@ export interface SimpleRouteJson {
      traceGap?: number
      maxUncoupledLength?: number
    }>
@@ -98,11 +98,9 @@ index 515d650..4a72a88 100644
 +  buses?: Bus[]
 +  minTraceWidth: number
 +  minTraceToPadEdgeClearance?: number
-+  minViaEdgeToPadEdgeClearance?: number
 +  minViaPadDiameter?: number
 +  minViaHoleDiameter?: number
 +  minViaHoleEdgeToViaHoleEdgeClearance?: number
-+  minPadEdgeToPadEdgeClearance?: number
 +  minBoardEdgeClearance?: number
 +  allowViaInPad?: boolean
 +  allowBlindAndBuriedVias?: boolean

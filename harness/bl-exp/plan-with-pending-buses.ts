@@ -8,11 +8,9 @@ type PhysicalRuleName = Exclude<
 const PHYSICAL_RULE_NAMES: PhysicalRuleName[] = [
   "minTraceWidth",
   "minTraceToPadEdgeClearance",
-  "minViaEdgeToPadEdgeClearance",
   "minViaPadDiameter",
   "minViaHoleDiameter",
   "minViaHoleEdgeToViaHoleEdgeClearance",
-  "minPadEdgeToPadEdgeClearance",
   "minBoardEdgeClearance",
   "allowViaInPad",
   "allowBlindAndBuriedVias",
@@ -22,7 +20,8 @@ const PHYSICAL_RULE_NAMES: PhysicalRuleName[] = [
  * caller still has to route. Laying out one bus without the next can leave
  * the next one no legal carrier: an earlier byte's carriers may enclose every
  * via site of a later byte. Only later phases with the current request's
- * physical rules are planned with it, since one request carries one rule set.
+ * physical rules, as this solver reads them, are planned with it, since one
+ * request carries one rule set.
  * The caller returns only the current connections' copper; the later buses are
  * routed again by their own phases. Returns undefined when there is nothing to
  * plan with. Board coordinates in mm, +X right, +Y up. */

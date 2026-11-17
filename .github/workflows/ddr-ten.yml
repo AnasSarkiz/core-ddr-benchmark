@@ -1,0 +1,67 @@
+name: Ten DDR boards, Core main plus pending routing access
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/ddr-ten.trigger']
+
+jobs:
+  board:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
+        variant: [bus-main, planned]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/core
+          ref: main
+          path: core
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - name: Core main with #5586
+        run: |
+          cd core
+          git checkout -q 701339c13c9f1cba5c71bf9801fac787a60de937
+          git fetch -q origin fix/h3-phase-future-intent
+          git -c user.name=ci -c user.email=ci@example.com merge --no-edit -q FETCH_HEAD
+          git log --oneline -2
+          bun install --ignore-scripts > /dev/null
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
+          path: solver
+          persist-credentials: false
+      - name: Build bus-lanes under test and place it in Core
+        run: |
+          cd solver
+          if [ "${{ matrix.variant }}" = planned ]; then cp ../harness-repo/harness/bl-exp/plan-with-pending-buses.ts lib/ && git apply ../harness-repo/harness/bl-exp/pending-bus-plan.patch && git status --short; fi
+          bun install > /dev/null 2>&1
+          bun run build 2>&1 | tail -2
+          cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js
+      - name: Route
+        run: |
+          cd core
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
+          tail -12 route.log
+      - name: Print the report
+        if: always()
+        run: |
+          cd core
+          echo "=====REPORT====="
+          cat ddr-benchmark-results/report.md
+          echo "=====END-REPORT====="
+          grep -iE "No path|ran out|AutorouterError" route.log | cut -c1-300 | head -5
+          cd ddr-benchmark-results/${{ matrix.circuit }}
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - progress.json assessment.json findings.json $(ls phase-*.srj.json 2>/dev/null) | base64 -w 160
+          echo "=====TARBALL-END====="
