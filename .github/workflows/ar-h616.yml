@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [base, split]
+        only: [cmn_94, topology_merge_931, cmn_114, cmn_281]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -29,9 +29,8 @@ jobs:
         run: |
           cd autorouter
           bun install > /dev/null 2>&1
-          if [ "${{ matrix.variant }}" = split ]; then git apply ../harness-repo/harness/ar-exp/split-nodes.patch; fi
+          git apply ../harness-repo/harness/ar-exp/split-nodes.patch
+          python3 ../harness-repo/harness/ar-exp/split-only.py
           cp ../harness-repo/harness/diag/h616-full.ts .
-          bun h616-full.ts ${{ matrix.variant }} > h.log 2>&1 || true
-          grep -E "^H616" h.log | cut -c1-900
-          start=$(date +%s); bun test tests/bugs/bugreport110/motherboard-power-full-route.test.ts --timeout 900000 > m.log 2>&1 || true; end=$(date +%s)
-          echo "MOTHERBOARD ${{ matrix.variant }} seconds=$((end-start)) $(grep -E '^\((pass|fail)\)' m.log | cut -c1-120)"
+          SPLIT_ONLY=${{ matrix.only }} bun h616-full.ts only-${{ matrix.only }} > h.log 2>&1 || true
+          grep -E "^H616" h.log | head -1 | cut -c1-400
