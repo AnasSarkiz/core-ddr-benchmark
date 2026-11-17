@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: main
+          ref: 8da00b27530a97bc6e1d76b2bedd96e8c9087ad5
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -29,9 +29,9 @@ jobs:
       - name: Apply the repro test and the fix
         run: |
           cd autorouter
-          cp -r ../harness-repo/harness/overlay/. .
-          python3 ../harness-repo/harness/ar-exp/board-clearance.py
-          sed -i 's|  expect(closeTracePairs).toHaveLength(6)|  expect(closeTracePairs).toEqual([])|' tests/repro/pipeline9-a13-declared-trace-clearance.test.ts
+          cp -r ../harness-repo/harness/ar-overlay/. .
+          git apply ../harness-repo/harness/ar-exp/split-nodes.patch
+          sed -i 's|  expect(viaPadErrors.length).toBeGreaterThan(0)|  expect(viaPadErrors).toEqual([])|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
           git status --short
       - name: Generate balanced test plans
         run: cd autorouter && bun scripts/generate-balanced-test-plan.ts
@@ -68,4 +68,4 @@ jobs:
           echo "=====FAILED====="
           grep -E "^\(fail\)" suite.log | cut -c1-200
           echo "=====CHANGED====="
-          git status --short | grep -v "pipeline9-a13-declared-trace-clearance\|Pipeline9BoundedRegionalRepairSolver" | head -40
+          git status --short | grep -v "pipeline9-a13-via-without-legal-site\|AutoroutingPipeline9_PreloadedTraceGraph/" | head -40
