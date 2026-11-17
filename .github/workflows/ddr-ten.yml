@@ -44,7 +44,7 @@ jobs:
       - name: Build bus-lanes under test and place it in Core
         run: |
           cd solver
-          if [ "${{ matrix.variant }}" = planned ]; then cp ../harness-repo/harness/bl-exp/plan-with-pending-buses.ts lib/ && git apply ../harness-repo/harness/bl-exp/pending-bus-plan.patch && git status --short; fi
+          if [ "${{ matrix.variant }}" = planned ]; then git apply ../harness-repo/harness/bl-exp/pending-bus-plan.patch && git status --short; fi
           bun install > /dev/null 2>&1
           bun run build 2>&1 | tail -2
           cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js
