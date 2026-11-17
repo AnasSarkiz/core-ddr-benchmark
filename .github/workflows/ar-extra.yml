@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 0294e7f
+          ref: repro/a13-via-without-legal-site
           path: autorouter
           persist-credentials: false
           fetch-depth: 0
