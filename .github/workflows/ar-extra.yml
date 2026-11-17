@@ -1,4 +1,4 @@
-name: Autorouter no-via-site mark, OrangeCrab via roundoff snapshot
+name: A13 via detail snapshot, repro and fix
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 jobs:
   snap:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -25,19 +25,16 @@ jobs:
         run: |
           cd autorouter
           bun install > /dev/null 2>&1
-          bun install --ignore-scripts --cwd tests/repro/orangecrab-via-roundoff > /dev/null 2>&1
-          F=tests/repro/pipeline9-orangecrab-via-roundoff.test.ts
-          bun test $F --timeout 900000 > b.log 2>&1 || true; grep -E "^\((pass|fail)\)" b.log
-          git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch
-          bun test $F --timeout 900000 > f.log 2>&1 || true; grep -E "^\((pass|fail)\)" f.log; grep -vE "^\s+at " f.log | grep -E "^error|Expected|Received" | head -5
-          BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > u.log 2>&1 || true; grep -E "^\((pass|fail)\)" u.log
-          bun test $F --timeout 900000 > r.log 2>&1 || true; grep -E "^\((pass|fail)\)" r.log
-          grep -nE "expect\(|toBe|Snapshot" $F | head -20
-          for s in $(git status --short | grep "__snapshots__" | awk '{print $2}'); do
-            echo "SNAP $s"
-            echo "  OLD $(git show HEAD:"$s" | grep -oE "<text[^>]*>[^<]*</text>" | sed -E 's/<[^>]+>//g' | tr '\n' '|' | cut -c1-300)"
-            echo "  NEW $(grep -oE "<text[^>]*>[^<]*</text>" "$s" | sed -E 's/<[^>]+>//g' | tr '\n' '|' | cut -c1-300)"
-          done
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - $(git status --short | grep "__snapshots__" | awk '{print $2}') | base64 -w 160
-          echo "=====TARBALL-END====="
+          F=tests/repro/pipeline9-a13-via-without-legal-site.test.ts
+          git apply ../harness-repo/harness/ar-exp/detail-test.patch
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"; head -10 tsc.log
+          bun test $F --timeout 900000 > r1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" r1.log
+          bun test $F --timeout 900000 > r2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" r2.log
+          git status --short
+          echo "=====REPRO-BEGIN====="; tar -czf - tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site-via-pad-detail.snap.svg | base64 -w 160; echo "=====REPRO-END====="
+          git apply ../harness-repo/harness/ar-exp/fix-lib.patch
+          sed -i 's|  expect(frameFindings.length).toBeGreaterThan(0)|  expect(frameFindings).toEqual([])|' $F
+          BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > f1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" f1.log
+          bun test $F --timeout 900000 > f2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Expected|Received" f2.log | head
+          git status --short
+          echo "=====FIX-BEGIN====="; tar -czf - tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*.snap.svg | base64 -w 160; echo "=====FIX-END====="
