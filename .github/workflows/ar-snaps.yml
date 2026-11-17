@@ -1,4 +1,4 @@
-name: Autorouter repro and fix snapshots
+name: Autorouter no-via-site mark, snapshots and same-runner timing
 
 on:
   push:
@@ -8,51 +8,59 @@ on:
 jobs:
   snaps:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        state: [repro, fix]
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 8da00b27530a97bc6e1d76b2bedd96e8c9087ad5
+          ref: 7d8e63c573589261bd56f567c022adfb97c70233
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
-      - name: Overlay
-        run: |
-          cd autorouter
-          bun install > /dev/null 2>&1
-          cp -r ../harness-repo/harness/ar-overlay/. .
-          if [ "${{ matrix.state }}" = fix ]; then
-            git apply ../harness-repo/harness/ar-exp/split-nodes.patch
-            sed -i 's|  expect(viaPadErrors.length).toBeGreaterThan(0)|  expect(viaPadErrors).toEqual([])|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
-            sed -i 's|^test("A13 vias sit closer to pads than the declared via clearance"|test("A13 vias keep the declared clearance from pads"|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
-          fi
-          git status --short
-          bunx biome format tests/repro/pipeline9-a13-via-without-legal-site.test.ts lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph 2>&1 | tail -6
-          bunx tsc --noEmit 2>&1 | tail -10
       - name: Write snapshots, then run against them
         run: |
           cd autorouter
-          F=tests/repro/pipeline9-a13-via-without-legal-site.test.ts
-          BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > s1.log 2>&1 || true
-          grep -E "^\((pass|fail)\)| pass$| fail$|rror|Expected|Received" s1.log | head -20
-          sha256sum tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*
-          bun test $F --timeout 900000 > s2.log 2>&1 || true
-          grep -E "^\((pass|fail)\)| pass$| fail$" s2.log | head
-          sha256sum tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*
-          grep -o "Relaxed DRC errors: [0-9]*\|Vias under [0-9. m]*from a pad: [0-9]*" tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*
-      - name: Emit
-        if: always()
+          bun install > /dev/null 2>&1
+          git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch
+          mapfile -t F < ../harness-repo/harness/ar-exp/fail-files.txt
+          BUN_UPDATE_SNAPSHOTS=1 bun test "${F[@]}" --timeout 1800000 > s1.log 2>&1 || true
+          grep -E "^ *[0-9]+ (pass|fail)$" s1.log
+          bun test "${F[@]}" --timeout 1800000 > s2.log 2>&1 || true
+          grep -E "^ *[0-9]+ (pass|fail)$|^\(fail\)" s2.log
+          git status --short
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - $(git status --short | grep "__snapshots__" | awk '{print $2}') | base64 -w 160
+          echo "=====TARBALL-END====="
+  timing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: 7d8e63c573589261bd56f567c022adfb97c70233
+          path: autorouter
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.4.3
+      - name: Time base then fix on one runner
         run: |
           cd autorouter
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site* | base64 -w 160
-          echo "=====TARBALL-END====="
+          bun install > /dev/null 2>&1
+          cp ../harness-repo/harness/diag/h616-full.ts ../harness-repo/harness/diag/a13-count.ts .
+          for v in base fix base2 fix2; do
+            git checkout -q lib
+            case $v in fix*) git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch;; esac
+            bun h616-full.ts $v > h.log 2>&1 || true; grep -E "^H616 $v solved" h.log | cut -c1-120
+            bun a13-count.ts $v > a.log 2>&1 || true; grep -E "^A13" a.log | cut -c1-120
+            start=$(date +%s); bun test tests/bugs/bugreport110/motherboard-power-full-route.test.ts --timeout 1800000 > m.log 2>&1 || true; end=$(date +%s)
+            echo "MOTHERBOARD $v seconds=$((end-start)) $(grep -E '^\((pass|fail)\)' m.log | cut -c1-60)"
+          done
+          git clean -fdq lib
