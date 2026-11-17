@@ -13,48 +13,15 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  ar:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [base, split-nodes]
-    steps:
-      - uses: actions/checkout@v4
-        with: { path: harness-repo }
-      - uses: actions/checkout@v4
-        with:
-          repository: tscircuit/tscircuit-autorouter
-          ref: 8da00b27530a97bc6e1d76b2bedd96e8c9087ad5
-          path: autorouter
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: 1.4.3
-      - run: cd autorouter && bun install > /dev/null 2>&1
-      - name: Route the A13 remaining request
-        run: |
-          cd autorouter
-          if [ "${{ matrix.variant }}" != base ]; then git apply ../harness-repo/harness/ar-exp/${{ matrix.variant }}.patch && git status --short && bunx tsc --noEmit 2>&1 | tail -5; fi
-          cp ../harness-repo/harness/diag/ar-run.ts ../harness-repo/harness/diag/hd-via.ts .
-          bun ar-run.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz /tmp/out.json 900 1 > run.log 2>&1 || true
-          WATCH='{"x":4.65,"y":5.864,"w":0.5,"h":0.32}' bun hd-via.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz > hd.log 2>&1 || true
-      - name: Emit
-        if: always()
-        run: |
-          cd autorouter
-          grep -E "^(RESULT|DRC|DRCERR)" run.log | cut -c1-260
-          grep -E "^(HDVIA|NODE)" hd.log | cut -c1-300
-
   arddr:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
+        circuit: [butterstick]
         variant: [base, split-nodes]
+        repeat: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
