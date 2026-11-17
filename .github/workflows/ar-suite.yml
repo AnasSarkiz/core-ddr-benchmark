@@ -1,4 +1,4 @@
-name: Autorouter suite with the declared-clearance change
+name: Autorouter suite, base vs via-site fraction
 
 on:
   push:
@@ -13,26 +13,33 @@ jobs:
       fail-fast: false
       matrix:
         node: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        variant: [base, fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 8da00b27530a97bc6e1d76b2bedd96e8c9087ad5
+          ref: 7d8e63c573589261bd56f567c022adfb97c70233
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
       - run: cd autorouter && git rev-parse HEAD && bun install
-      - name: Apply the repro test and the fix
+      - name: Apply the fix
         run: |
           cd autorouter
-          cp -r ../harness-repo/harness/ar-overlay/. .
-          git apply ../harness-repo/harness/ar-exp/split-nodes.patch
-          sed -i 's|  expect(viaPadErrors.length).toBeGreaterThan(0)|  expect(viaPadErrors).toEqual([])|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
+          if [ "${{ matrix.variant }}" = fix ]; then
+            git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch
+            sed -i 's|  expect(viaPadErrors.length).toBeGreaterThan(0)|  expect(viaPadErrors).toEqual([])|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
+          fi
           git status --short
+      - name: Typecheck
+        if: matrix.node == 1
+        run: |
+          cd autorouter
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"; head -20 tsc.log
       - name: Generate balanced test plans
         run: cd autorouter && bun scripts/generate-balanced-test-plan.ts
         env:
@@ -68,4 +75,4 @@ jobs:
           echo "=====FAILED====="
           grep -E "^\(fail\)" suite.log | cut -c1-200
           echo "=====CHANGED====="
-          git status --short | grep -v "pipeline9-a13-via-without-legal-site\|AutoroutingPipeline9_PreloadedTraceGraph/" | head -40
+          git status --short | grep -v "pipeline9-a13-via-without-legal-site\|^ M lib/\|^?? lib/" | head -40

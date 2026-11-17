@@ -1,0 +1,252 @@
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
+index 03c147e..62d381c 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
+@@ -1,6 +1,8 @@
+ import { getDifferentialPairsForPostProcessing } from "lib/utils/getDifferentialPairsForPostProcessing"
+ import type { SolverRuntimeExecutor } from "@tscircuit/solver-utils"
+ import { Pipeline9EffortCleanupSolver } from "./Pipeline9EffortCleanupSolver"
++import { getViaToPadClearance } from "lib/utils/getViaToPadClearance"
++import { addViaSiteFractions } from "./addViaSiteFractions"
+ import { createPipeline9AutoroutingDrcEvaluator } from "./createPipeline9AutoroutingDrcEvaluator"
+ import { RectDiffPipeline } from "@tscircuit/rectdiff"
+ import type { PowerTraceExpanderOptions } from "@tscircuit/power-trace-expander"
+@@ -438,7 +440,16 @@ export class AutoroutingPipelineSolver9_PreloadedTraceGraph extends BaseSolver {
+       ],
+       {
+         onSolved: (cms) => {
+-          cms.capacityNodes = cms.nodeDimensionSubdivisionSolver!.outputNodes
++          cms.capacityNodes = addViaSiteFractions({
++            nodes: cms.nodeDimensionSubdivisionSolver!.outputNodes,
++            srj: cms.srj,
++            connMap: cms.connMap,
++            viaDiameter: cms.viaDiameter,
++            viaToPadClearance:
++              getViaToPadClearance(cms.srj) ??
++              cms.srj.defaultObstacleMargin ??
++              0.15,
++          })
+         },
+       },
+     ),
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts
+index edb17c3..69b8569 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalFallbackSolver.ts
+@@ -37,7 +37,7 @@ type Pipeline9RegionalFallbackSolverParams = {
+   captureSearchDebug?: boolean
+ }
+ 
+-const getPointToObstacleDistance = (
++export const getPointToObstacleDistance = (
+   point: { x: number; y: number },
+   obstacle: Obstacle,
+ ): number => {
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/addViaSiteFractions.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/addViaSiteFractions.ts
+new file mode 100644
+index 0000000..d27dd5f
+--- /dev/null
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/addViaSiteFractions.ts
+@@ -0,0 +1,136 @@
++import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
++import type { CapacityMeshNode } from "lib/types/capacity-mesh-types"
++import type { Obstacle, SimpleRouteJson } from "lib/types/srj-types"
++import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
++import { getPointToObstacleDistance } from "./Pipeline9RegionalFallbackSolver"
++
++type Bounds = { minX: number; maxX: number; minY: number; maxY: number }
++type AddViaSiteFractionsParams = {
++  nodes: CapacityMeshNode[]
++  srj: SimpleRouteJson
++  connMap: ConnectivityMap
++  viaDiameter: number
++  viaToPadClearance: number
++}
++type HardObstacle = { obstacle: Obstacle; bounds: Bounds; zLayers: number[] }
++
++/** Spacing of the sampled via centers, in mm. */
++const VIA_CENTER_SAMPLE_STEP = 0.025
++/** Most samples per axis, so a large node costs at most 30 × 30 checks. */
++const MAX_VIA_CENTER_SAMPLES_PER_AXIS = 30
++
++const getObstacleBounds = (obstacle: Obstacle): Bounds => {
++  const rotationRadians = ((obstacle.ccwRotationDegrees ?? 0) * Math.PI) / 180
++  const cos = Math.abs(Math.cos(rotationRadians))
++  const sin = Math.abs(Math.sin(rotationRadians))
++  const halfWidth = (obstacle.width / 2) * cos + (obstacle.height / 2) * sin
++  const halfHeight = (obstacle.width / 2) * sin + (obstacle.height / 2) * cos
++  return {
++    minX: obstacle.center.x - halfWidth,
++    maxX: obstacle.center.x + halfWidth,
++    minY: obstacle.center.y - halfHeight,
++    maxY: obstacle.center.y + halfHeight,
++  }
++}
++
++/**
++ * Record, on each free-space node that can hold a via, the share of its via
++ * centers that keep the via-to-pad clearance from copper its vias cannot touch.
++ * Path planning prices layer changes by node area; this lets it price them by
++ * the area where a via can actually go.
++ *
++ * Global free-space nodes may border copper directly, and the high-density
++ * solvers keep a via inside its node, so a node flush with pads or fixed traces
++ * can have far less room for a via than its size suggests, or none. Pads of
++ * nets this request routes are skipped: their own vias may sit beside them.
++ * Copper on layers the node does not offer, such as a plane, is left to the
++ * stages that already handle vias through it. Component topology nodes, which
++ * apply their own via rules, nodes too small for any via, and nodes with no
++ * copper in reach are returned unchanged. Board coordinates in mm, +X right,
++ * +Y up.
++ */
++export const addViaSiteFractions = ({
++  nodes,
++  srj,
++  connMap,
++  viaDiameter,
++  viaToPadClearance,
++}: AddViaSiteFractionsParams): CapacityMeshNode[] => {
++  const routedNetIds = new Set(
++    srj.connections.map(
++      (connection) =>
++        connMap.getNetConnectedToId(connection.name) ?? connection.name,
++    ),
++  )
++  const isRoutedNetObstacle = (obstacle: Obstacle): boolean =>
++    [obstacle.obstacleId, ...obstacle.connectedTo].some((id) => {
++      if (!id) return false
++      const netId = connMap.getNetConnectedToId(id)
++      return netId !== undefined && routedNetIds.has(netId)
++    })
++  const keepOut = viaDiameter / 2 + viaToPadClearance
++  const hardObstacles: HardObstacle[] = srj.obstacles
++    .filter((obstacle) => !isRoutedNetObstacle(obstacle))
++    .map((obstacle) => ({
++      obstacle,
++      bounds: getObstacleBounds(obstacle),
++      zLayers:
++        obstacle.zLayers ??
++        obstacle.layers.map((layer) => mapLayerNameToZ(layer, srj.layerCount)),
++    }))
++  return nodes.map((node): CapacityMeshNode => {
++    if (
++      node._isComponentTopologyNode ||
++      node._containsTarget ||
++      node._containsObstacle ||
++      node.availableZ.length < 2
++    )
++      return node
++    const centers: Bounds = {
++      minX: node.center.x - node.width / 2 + viaDiameter / 2,
++      maxX: node.center.x + node.width / 2 - viaDiameter / 2,
++      minY: node.center.y - node.height / 2 + viaDiameter / 2,
++      maxY: node.center.y + node.height / 2 - viaDiameter / 2,
++    }
++    if (centers.minX > centers.maxX || centers.minY > centers.maxY) return node
++    const nearby = hardObstacles.filter(
++      ({ bounds, zLayers }) =>
++        zLayers.some((z) => node.availableZ.includes(z)) &&
++        bounds.minX - keepOut < centers.maxX &&
++        bounds.maxX + keepOut > centers.minX &&
++        bounds.minY - keepOut < centers.maxY &&
++        bounds.maxY + keepOut > centers.minY,
++    )
++    if (nearby.length === 0) return node
++    const [xCount, yCount] = [
++      centers.maxX - centers.minX,
++      centers.maxY - centers.minY,
++    ].map((span) =>
++      Math.min(
++        MAX_VIA_CENTER_SAMPLES_PER_AXIS,
++        Math.max(2, Math.ceil(span / VIA_CENTER_SAMPLE_STEP) + 1),
++      ),
++    ) as [number, number]
++    let legalCount = 0
++    for (let xIndex = 0; xIndex < xCount; xIndex++) {
++      for (let yIndex = 0; yIndex < yCount; yIndex++) {
++        const point = {
++          x:
++            centers.minX +
++            ((centers.maxX - centers.minX) * xIndex) / (xCount - 1),
++          y:
++            centers.minY +
++            ((centers.maxY - centers.minY) * yIndex) / (yCount - 1),
++        }
++        if (
++          nearby.every(
++            ({ obstacle }) =>
++              getPointToObstacleDistance(point, obstacle) >= keepOut,
++          )
++        )
++          legalCount++
++      }
++    }
++    return { ...node, _viaSiteFraction: legalCount / (xCount * yCount) }
++  })
++}
+diff --git a/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts b/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
+index ea1be88..3c8b79a 100644
+--- a/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
++++ b/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
+@@ -108,6 +108,10 @@ type CandidatePortfolioPhase = "primary" | "alternative" | "complete"
+ // A second global-routing candidate is only worthwhile when the primary
+ // candidate predicts downstream congestion. Selection requires meaningful
+ // trace dispersion without materially increasing predicted failure pressure.
++/** A node with no legal via center still prices a layer change at ten times
++ * its area cost instead of forbidding it: forbidding pushed H616's vias into
++ * crowded nodes nearby and raised its DRC findings from 43 to 124. */
++const MIN_VIA_SITE_FRACTION = 0.1
+ const TRACE_DENSITY_PORTFOLIO_MIN_ROUTE_COUNT = 30
+ const TRACE_DENSITY_PORTFOLIO_MAX_ROUTE_COUNT = 99
+ const TRACE_DENSITY_PORTFOLIO_MIN_PF_SUM = 4
+@@ -390,7 +394,23 @@ const toSerializedRegionData = (
+   netId?: number,
+ ) => {
+   const regionMetadata = region.d as typeof region.d & TinyRegionMetadata
+-  const bounds = regionMetadata.bounds
++  // tiny-hypergraph prices layer changes per unit of region width x height.
++  // A node bordering copper can only hold vias in part of that area, so it is
++  // priced by that part, at least MIN_VIA_SITE_FRACTION of it. Bounds keep the
++  // region drawn at its real size.
++  const viaSiteScale = Math.sqrt(
++    Math.max(region.d._viaSiteFraction ?? 1, MIN_VIA_SITE_FRACTION),
++  )
++  const bounds =
++    regionMetadata.bounds ??
++    (viaSiteScale < 1
++      ? {
++          minX: region.d.center.x - region.d.width / 2,
++          maxX: region.d.center.x + region.d.width / 2,
++          minY: region.d.center.y - region.d.height / 2,
++          maxY: region.d.center.y + region.d.height / 2,
++        }
++      : undefined)
+ 
+   return {
+     capacityMeshNodeId: region.d.capacityMeshNodeId,
+@@ -398,8 +418,8 @@ const toSerializedRegionData = (
+       x: region.d.center.x,
+       y: region.d.center.y,
+     },
+-    width: region.d.width,
+-    height: region.d.height,
++    width: region.d.width * viaSiteScale,
++    height: region.d.height * viaSiteScale,
+     availableZ: [...region.d.availableZ],
+     ...(bounds
+       ? {
+diff --git a/lib/types/capacity-mesh-types.ts b/lib/types/capacity-mesh-types.ts
+index da99c60..9457379 100644
+--- a/lib/types/capacity-mesh-types.ts
++++ b/lib/types/capacity-mesh-types.ts
+@@ -34,6 +34,10 @@ export interface CapacityMeshNode {
+   _soicRegionType?: "center" | "pad" | "pad-gap"
+   _isComponentTopologyNode?: boolean
+   _connectedTo?: string[]
++  /** Share (0 to 1) of the via centers inside the node that keep the
++   * via-to-pad clearance from copper its vias cannot touch. Unset when no such
++   * copper is in reach or the node cannot hold a via. */
++  _viaSiteFraction?: number
+ 
+   _parent?: CapacityMeshNode
+ }
