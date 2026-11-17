@@ -36,4 +36,4 @@ jobs:
           WATCH='{"x":4.65,"y":5.864,"w":0.5,"h":0.32}' bun hd-via.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz > track.log 2>&1 || true
       - name: Emit
         if: always()
-        run: cd autorouter && grep -E "^(HDVIA|NODE|  PORT)|rror" track.log | cut -c1-600 | head -80
+        run: cd autorouter && grep -E "^(HDVIA|HDSTATS|NODE|  PORT)|rror" track.log | cut -c1-600 | head -80

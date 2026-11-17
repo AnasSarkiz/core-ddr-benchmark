@@ -23,14 +23,21 @@ const show = (label: string, routes: any[]): void => {
 show("route", solver.highDensityRouteSolver?.routes)
 show("forceImprove", solver.highDensityForceImproveSolver?.getOutput?.())
 show("repair", solver.highDensityRepairSolver?.getOutput?.())
-// Which capacity node contains the via, and what obstacles the node knew about.
-const nodes = solver.highDensityRouteSolver?.nodePortPoints ?? solver.highDensityRouteSolver?.nodes ?? []
-console.log(`NODES ${nodes.length} keys=${Object.keys(solver.highDensityRouteSolver ?? {}).slice(0, 60).join(",")}`)
+const nodes: any[] = solver.highDensityNodePortPoints ?? []
+const hd = solver.highDensityRouteSolver
+console.log(`HDSTATS ${JSON.stringify(hd?.stats ?? {}).slice(0, 600)}`)
+const via = { x: 5.136, y: 5.869 }
 for (const node of nodes) {
   const c = node.center
-  if (!c) continue
-  if (Math.abs(c.x - 5.19) < node.width / 2 + 0.01 && Math.abs(c.y - 5.84) < node.height / 2 + 0.01) {
-    console.log(`NODE ${node.capacityMeshNodeId} center=(${c.x.toFixed(3)},${c.y.toFixed(3)}) ${node.width?.toFixed?.(3)}x${node.height?.toFixed?.(3)} portPoints=${node.portPoints?.length} keys=${Object.keys(node).join(",")}`)
-    for (const p of node.portPoints ?? []) console.log(`  PORT ${p.connectionName} (${p.x.toFixed(3)},${p.y.toFixed(3)}) z=${p.z}`)
-  }
+  const inside = Math.abs(c.x - via.x) <= node.width / 2 + 1e-6 && Math.abs(c.y - via.y) <= node.height / 2 + 1e-6
+  if (!inside) continue
+  const minX = c.x - node.width / 2
+  const padRight = pad.x + pad.w / 2
+  const nodeBounds = { minX: c.x - node.width / 2 - hd.obstacleMargin, maxX: c.x + node.width / 2 + hd.obstacleMargin, minY: c.y - node.height / 2 - hd.obstacleMargin, maxY: c.y + node.height / 2 + hd.obstacleMargin }
+  const fixedCount = hd.getUpdatedFixedHdRoutes().filter((route: any) => {
+    for (const p of route.route ?? []) if (p.x >= nodeBounds.minX - 0.3 && p.x <= nodeBounds.maxX + 0.3 && p.y >= nodeBounds.minY - 0.3 && p.y <= nodeBounds.maxY + 0.3) return true
+    return false
+  }).length
+  console.log(`NODE ${node.capacityMeshNodeId} center=(${c.x.toFixed(3)},${c.y.toFixed(3)}) size=${node.width.toFixed(3)}x${node.height.toFixed(3)} minX=${minX.toFixed(3)} padRightEdge=${padRight.toFixed(3)} nodeEdgeToPad=${(minX - padRight).toFixed(3)} availableZ=${JSON.stringify(node.availableZ)} fixedRoutesNear(rough)=${fixedCount} obstacleMargin=${hd.obstacleMargin}`)
+  for (const p of node.portPoints ?? []) console.log(`  PORT ${p.connectionName} (${p.x.toFixed(3)},${p.y.toFixed(3)}) z=${p.z}`)
 }
