@@ -13,4 +13,6 @@ const r: any = evaluateRelaxedDrc({ inputSrj: input, srjWithPointPairs: s.srjWit
 const viaPad = r.errorsWithCenters.filter((e: any) => e.type === "pcb_pad_pad_clearance_error" && e.message.startsWith("Via")).length
 const counts: Record<string, number> = {}
 for (const e of r.errors) counts[e.type] = (counts[e.type] ?? 0) + 1
+const centers = r.errorsWithCenters.filter((e: any) => e.type === "pcb_pad_pad_clearance_error" && e.message.startsWith("Via")).map((e: any) => `(${e.center.x.toFixed(2)},${e.center.y.toFixed(2)})`).join(" ")
+console.log(`A13 ${process.argv[2]} viaPadAt=${centers}`)
 console.log(`A13 ${process.argv[2]} solved=${s.solved} traces=${routedTraces.length} seconds=${((performance.now() - started) / 1000).toFixed(1)} viaPad=${viaPad} errors=${r.errors.length} ${JSON.stringify(counts)}`)

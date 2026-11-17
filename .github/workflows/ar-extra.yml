@@ -1,4 +1,4 @@
-name: A13 via detail snapshot, repro and fix
+name: A13 determinism, same code repeated
 
 on:
   push:
@@ -6,9 +6,13 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  snap:
+  run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [a, b]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -25,16 +29,8 @@ jobs:
         run: |
           cd autorouter
           bun install > /dev/null 2>&1
-          F=tests/repro/pipeline9-a13-via-without-legal-site.test.ts
-          git apply ../harness-repo/harness/ar-exp/detail-test.patch
-          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"; head -10 tsc.log
-          bun test $F --timeout 900000 > r1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Updating|Writing" r1.log
-          bun test $F --timeout 900000 > r2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" r2.log
-          git status --short
-          echo "=====REPRO-BEGIN====="; tar -czf - tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site-via-pad-detail.snap.svg | base64 -w 160; echo "=====REPRO-END====="
+          cp ../harness-repo/harness/diag/a13-count.ts .
+          for v in base1 base2; do bun a13-count.ts $v > a.log 2>&1; grep -E "^A13" a.log | cut -c1-200; done
           git apply ../harness-repo/harness/ar-exp/fix-lib.patch
-          sed -i 's|  expect(frameFindings.length).toBeGreaterThan(0)|  expect(frameFindings).toEqual([])|' $F
-          FORCE_BUN_UPDATE_SNAPSHOTS=1 BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > f1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Updating|Writing" f1.log
-          bun test $F --timeout 900000 > f2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Expected|Received" f2.log | head
-          git status --short
-          echo "=====FIX-BEGIN====="; tar -czf - tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*.snap.svg | base64 -w 160; echo "=====FIX-END====="
+          for v in fix1 fix2 fix3; do bun a13-count.ts $v > a.log 2>&1; grep -E "^A13" a.log | cut -c1-200; done
+          bun test tests/repro/pipeline9-a13-via-without-legal-site.test.ts --timeout 900000 > t.log 2>&1; grep -E "^\((pass|fail)\)" t.log
