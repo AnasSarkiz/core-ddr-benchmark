@@ -1,5 +1,5 @@
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
-index 03c147e..09628af 100644
+index 03c147e..6c1a245 100644
 --- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
 @@ -1,4 +1,6 @@
@@ -9,7 +9,7 @@ index 03c147e..09628af 100644
  import type { SolverRuntimeExecutor } from "@tscircuit/solver-utils"
  import { Pipeline9EffortCleanupSolver } from "./Pipeline9EffortCleanupSolver"
  import { createPipeline9AutoroutingDrcEvaluator } from "./createPipeline9AutoroutingDrcEvaluator"
-@@ -423,7 +425,15 @@ export class AutoroutingPipelineSolver9_PreloadedTraceGraph extends BaseSolver {
+@@ -423,7 +425,16 @@ export class AutoroutingPipelineSolver9_PreloadedTraceGraph extends BaseSolver {
        },
        {
          onSolved: (cms) => {
@@ -17,6 +17,7 @@ index 03c147e..09628af 100644
 +          cms.capacityNodes = splitNodesWithoutViaSite({
 +            nodes: cms.topologyMergingSolver!.getOutput(),
 +            srj: cms.srj,
++            connMap: cms.connMap,
 +            viaDiameter: cms.viaDiameter,
 +            viaToPadClearance:
 +              getViaToPadClearance(cms.srj) ??
@@ -41,10 +42,11 @@ index edb17c3..69b8569 100644
  ): number => {
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/splitNodesWithoutViaSite.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/splitNodesWithoutViaSite.ts
 new file mode 100644
-index 0000000..b6262eb
+index 0000000..67e80ee
 --- /dev/null
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/splitNodesWithoutViaSite.ts
-@@ -0,0 +1,135 @@
+@@ -0,0 +1,138 @@
++import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 +import type { CapacityMeshNode } from "lib/types/capacity-mesh-types"
 +import type { Obstacle, SimpleRouteJson } from "lib/types/srj-types"
 +import { getPointToObstacleDistance } from "./Pipeline9RegionalFallbackSolver"
@@ -53,6 +55,7 @@ index 0000000..b6262eb
 +type SplitNodesWithoutViaSiteParams = {
 +  nodes: CapacityMeshNode[]
 +  srj: SimpleRouteJson
++  connMap: ConnectivityMap
 +  viaDiameter: number
 +  viaToPadClearance: number
 +}
@@ -105,24 +108,25 @@ index 0000000..b6262eb
 +export const splitNodesWithoutViaSite = ({
 +  nodes,
 +  srj,
++  connMap,
 +  viaDiameter,
 +  viaToPadClearance,
 +}: SplitNodesWithoutViaSiteParams): CapacityMeshNode[] => {
 +  const routedNetIds = new Set(
-+    srj.connections.flatMap((connection) => [
-+      connection.name,
-+      ...connection.pointsToConnect.flatMap((point) =>
-+        [point.pointId, point.pcb_port_id].filter(
-+          (id): id is string => id !== undefined,
-+        ),
-+      ),
-+    ]),
++    srj.connections.map(
++      (connection) =>
++        connMap.getNetConnectedToId(connection.name) ?? connection.name,
++    ),
 +  )
++  const isRoutedNetObstacle = (obstacle: Obstacle): boolean =>
++    [obstacle.obstacleId, ...obstacle.connectedTo].some((id) => {
++      if (!id) return false
++      const netId = connMap.getNetConnectedToId(id)
++      return netId !== undefined && routedNetIds.has(netId)
++    })
 +  const keepOut = viaDiameter / 2 + viaToPadClearance
 +  const hardObstacles = srj.obstacles
-+    .filter(
-+      (obstacle) => !obstacle.connectedTo.some((id) => routedNetIds.has(id)),
-+    )
++    .filter((obstacle) => !isRoutedNetObstacle(obstacle))
 +    .map((obstacle) => ({ obstacle, bounds: getObstacleBounds(obstacle) }))
 +  return nodes.flatMap((node): CapacityMeshNode[] => {
 +    if (
