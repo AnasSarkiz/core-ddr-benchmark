@@ -32,8 +32,8 @@ jobs:
       - name: Track
         run: |
           cd autorouter
-          cp ../harness-repo/harness/diag/via-track.ts .
-          WATCH='[{"x":4.65,"y":5.864,"w":0.5,"h":0.32}]' bun via-track.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz > track.log 2>&1 || true
+          cp ../harness-repo/harness/diag/ar-run.ts .
+          bun ar-run.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz /tmp/out.json 900 1 > track.log 2>&1 || true
       - name: Emit
         if: always()
-        run: cd autorouter && grep -E "^(TRACK|RESULT|DRC|DRCERR|OUTVIA)|rror" track.log | cut -c1-400 | head -120
+        run: cd autorouter && grep -E "^(STAGE|RESULT|TIMES|STATS|DRC|DRCERR)" track.log | cut -c1-2600 | head -80
