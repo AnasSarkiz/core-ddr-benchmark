@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [surface-log, surface-pending-soft]
+        variant: [sites-pending, sites-pending-surface]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -43,7 +43,7 @@ jobs:
       - name: Route byte 1
         run: |
           cd solver
-          if [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/bl-exp/${{ matrix.variant }}.py; fi
+          if [ "${{ matrix.variant }}" = sites-pending-surface ]; then SURFACE_FIRST=1 python3 ../harness-repo/harness/bl-exp/sites-pending.py; elif [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/bl-exp/${{ matrix.variant }}.py; fi
           cp ../harness-repo/harness/bl-exp/h3-trapped.ts .
           timeout 1800 bun h3-trapped.ts > h3.log 2>&1 || true
       - name: Emit
