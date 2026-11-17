@@ -1,0 +1,58 @@
+name: Autorouter repro and fix snapshots
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/ar-snaps.trigger']
+
+jobs:
+  snaps:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [repro, fix]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: 8da00b27530a97bc6e1d76b2bedd96e8c9087ad5
+          path: autorouter
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.4.3
+      - name: Overlay
+        run: |
+          cd autorouter
+          bun install > /dev/null 2>&1
+          cp -r ../harness-repo/harness/ar-overlay/. .
+          if [ "${{ matrix.state }}" = fix ]; then
+            git apply ../harness-repo/harness/ar-exp/split-nodes.patch
+            sed -i 's|  expect(viaPadErrors.length).toBeGreaterThan(0)|  expect(viaPadErrors).toEqual([])|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
+            sed -i 's|^test("A13 vias sit closer to pads than the declared via clearance"|test("A13 vias keep the declared clearance from pads"|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
+          fi
+          git status --short
+          bunx biome format tests/repro/pipeline9-a13-via-without-legal-site.test.ts lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph 2>&1 | tail -6
+          bunx tsc --noEmit 2>&1 | tail -10
+      - name: Write snapshots, then run against them
+        run: |
+          cd autorouter
+          F=tests/repro/pipeline9-a13-via-without-legal-site.test.ts
+          BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > s1.log 2>&1 || true
+          grep -E "^\((pass|fail)\)| pass$| fail$|rror|Expected|Received" s1.log | head -20
+          sha256sum tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*
+          bun test $F --timeout 900000 > s2.log 2>&1 || true
+          grep -E "^\((pass|fail)\)| pass$| fail$" s2.log | head
+          sha256sum tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*
+          grep -o "Relaxed DRC errors: [0-9]*\|Vias under [0-9. m]*from a pad: [0-9]*" tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site*
+      - name: Emit
+        if: always()
+        run: |
+          cd autorouter
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - tests/repro/__snapshots__/pipeline9-a13-via-without-legal-site* | base64 -w 160
+          echo "=====TARBALL-END====="
