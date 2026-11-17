@@ -1,0 +1,37 @@
+name: Autorouter H616 full board and motherboard, base vs split
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/ar-h616.trigger']
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [base, split]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: 8da00b27530a97bc6e1d76b2bedd96e8c9087ad5
+          path: autorouter
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.4.3
+      - name: Run
+        run: |
+          cd autorouter
+          bun install > /dev/null 2>&1
+          if [ "${{ matrix.variant }}" = split ]; then git apply ../harness-repo/harness/ar-exp/split-nodes.patch; fi
+          cp ../harness-repo/harness/diag/h616-full.ts .
+          bun h616-full.ts ${{ matrix.variant }} > h.log 2>&1 || true
+          grep -E "^H616" h.log | cut -c1-900
+          start=$(date +%s); bun test tests/bugs/bugreport110/motherboard-power-full-route.test.ts --timeout 900000 > m.log 2>&1 || true; end=$(date +%s)
+          echo "MOTHERBOARD ${{ matrix.variant }} seconds=$((end-start)) $(grep -E '^\((pass|fail)\)' m.log | cut -c1-120)"
