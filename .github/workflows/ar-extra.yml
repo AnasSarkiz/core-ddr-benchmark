@@ -1,4 +1,4 @@
-name: Autorouter extra files with the declared-clearance change
+name: Autorouter no-via-site mark, OrangeCrab via roundoff snapshot
 
 on:
   push:
@@ -6,36 +6,38 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  list:
+  snap:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        ref: [repro/a13-declared-trace-clearance, fix/a13-declared-trace-clearance]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: ${{ matrix.ref }}
+          ref: 7d8e63c573589261bd56f567c022adfb97c70233
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
-      - run: cd autorouter && git rev-parse HEAD && bun install > /dev/null 2>&1
-      - name: Checks the PR will run
+      - name: Run
         run: |
           cd autorouter
-          (bun run format:check > fmt.log 2>&1 && echo "FORMAT ok") || (echo "FORMAT failed"; tail -30 fmt.log)
-          (bunx tsc --noEmit > tsc.log 2>&1 && echo "TSC ok") || (echo "TSC failed"; tail -30 tsc.log)
-      - name: List
-        run: |
-          cd autorouter
-          cp ../harness-repo/harness/diag/list-declared-errors.ts ./list-declared-errors.ts
-          bun list-declared-errors.ts > list.log 2>&1 || true
-      - name: Emit
-        if: always()
-        run: cd autorouter && grep "^LIST\|rror" list.log | cut -c1-240 | head -80
+          bun install > /dev/null 2>&1
+          bun install --ignore-scripts --cwd tests/repro/orangecrab-via-roundoff > /dev/null 2>&1
+          F=tests/repro/pipeline9-orangecrab-via-roundoff.test.ts
+          bun test $F --timeout 900000 > b.log 2>&1 || true; grep -E "^\((pass|fail)\)" b.log
+          git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch
+          bun test $F --timeout 900000 > f.log 2>&1 || true; grep -E "^\((pass|fail)\)" f.log; grep -vE "^\s+at " f.log | grep -E "^error|Expected|Received" | head -5
+          BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > u.log 2>&1 || true; grep -E "^\((pass|fail)\)" u.log
+          bun test $F --timeout 900000 > r.log 2>&1 || true; grep -E "^\((pass|fail)\)" r.log
+          grep -nE "expect\(|toBe|Snapshot" $F | head -20
+          for s in $(git status --short | grep "__snapshots__" | awk '{print $2}'); do
+            echo "SNAP $s"
+            echo "  OLD $(git show HEAD:"$s" | grep -oE "<text[^>]*>[^<]*</text>" | sed -E 's/<[^>]+>//g' | tr '\n' '|' | cut -c1-300)"
+            echo "  NEW $(grep -oE "<text[^>]*>[^<]*</text>" "$s" | sed -E 's/<[^>]+>//g' | tr '\n' '|' | cut -c1-300)"
+          done
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - $(git status --short | grep "__snapshots__" | awk '{print $2}') | base64 -w 160
+          echo "=====TARBALL-END====="
