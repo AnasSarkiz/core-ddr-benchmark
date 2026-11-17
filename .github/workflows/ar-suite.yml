@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        node: [4]
         variant: [base, fix]
     steps:
       - uses: actions/checkout@v4
@@ -73,5 +73,8 @@ jobs:
           grep -E "^ *[0-9]+ (pass|fail|skip)$|^Ran [0-9]+ tests" suite.log
           echo "=====FAILED====="
           grep -E "^\(fail\)" suite.log | cut -c1-200
+          echo "=====UNNAMED====="
+          grep -nE "unnamed|^error|Unhandled|^# Unhandled|rror between tests" suite.log | head -20 | cut -c1-250
+          L=$(grep -n "(fail) (unnamed)" suite.log | head -1 | cut -d: -f1); if [ -n "$L" ]; then sed -n "$((L-60)),$((L+2))p" suite.log | grep -vE "^\s+at " | cut -c1-250; fi
           echo "=====CHANGED====="
           git status --short | grep -v "pipeline9-a13-via-without-legal-site\|^ M lib/\|^?? lib/" | head -40
