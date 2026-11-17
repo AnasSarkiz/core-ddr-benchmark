@@ -13,83 +13,38 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  repro:
-    runs-on: ubuntu-24.04
+  baseline:
+    runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
     steps:
       - uses: actions/checkout@v4
-        with: { path: harness-repo }
-      - uses: actions/checkout@v4
         with:
-          repository: tscircuit/tscircuit-autorouter
-          ref: main
-          path: autorouter
+          repository: tscircuit/core
+          ref: 701339c13c9f1cba5c71bf9801fac787a60de937
+          path: core
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.3
-      - run: cd autorouter && git rev-parse HEAD && bun install > /dev/null 2>&1
-      - name: Repro state snapshots
+          bun-version: '1.4.3'
+      - run: cd core && bun install --ignore-scripts > /dev/null && grep -n '"version"' node_modules/@tscircuit/capacity-autorouter/package.json node_modules/@tscircuit/bus-lanes-solver/package.json
+      - name: Route
         run: |
-          cd autorouter
-          cp -r ../harness-repo/harness/overlay/. .
-          bunx tsc --noEmit > tsc.log 2>&1 || true
-          F=tests/repro/pipeline9-a13-declared-trace-clearance.test.ts
-          BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 600000 > r1.log 2>&1 || true
-          sha256sum tests/repro/__snapshots__/pipeline9-a13-declared-trace-clearance*.svg > sha1.txt || true
-          bun test $F --timeout 600000 > r2.log 2>&1 || true
-      - name: Emit
+          cd core
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
+          tail -12 route.log
+      - name: Print the report
         if: always()
         run: |
-          cd autorouter
-          echo "=====TSC====="; tail -15 tsc.log
-          echo "=====R1====="; grep -vE "^\s*$" r1.log | tail -25 | cut -c1-240
-          echo "=====R2====="; grep -vE "^\s*$" r2.log | tail -25 | cut -c1-240
-          cat sha1.txt; git status --short
-          grep -o "Relaxed DRC errors: [0-9]*\|Trace pairs under [0-9. m]*: [0-9]*" tests/repro/__snapshots__/pipeline9-a13-declared-trace-clearance*.svg
+          cd core
+          echo "=====REPORT====="
+          cat ddr-benchmark-results/report.md
+          echo "=====END-REPORT====="
+          grep -iE "error|fail|No path|ran out" route.log | cut -c1-300 | head -20
+          cd ddr-benchmark-results/${{ matrix.circuit }}
           echo "=====TARBALL-BEGIN====="
-          tar -czf - tests/repro/__snapshots__/pipeline9-a13-declared-trace-clearance*.svg | base64 -w 160
-          echo "=====TARBALL-END====="
-  fixsnaps:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with: { path: harness-repo }
-      - uses: actions/checkout@v4
-        with:
-          repository: tscircuit/tscircuit-autorouter
-          ref: main
-          path: autorouter
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: 1.4.3
-      - run: cd autorouter && git rev-parse HEAD && bun install > /dev/null 2>&1
-      - name: Update the changed snapshots, then run against them
-        run: |
-          cd autorouter
-          cp -r ../harness-repo/harness/overlay/. .
-          python3 ../harness-repo/harness/ar-exp/board-clearance.py
-          sed -i 's|  expect(closeTracePairs.length).toBeGreaterThan(0)|  expect(closeTracePairs).toEqual([])|' tests/repro/pipeline9-a13-declared-trace-clearance.test.ts
-          bunx tsc --noEmit > tsc.log 2>&1 || true
-          FILES="tests/repro/pipeline9-a13-declared-trace-clearance.test.ts tests/repro/pipeline9-glider-dqs-fixed-copper.test.ts tests/repro/pipeline9-h3-ddr-strobe-via-access.test.ts tests/repro/pipeline9-ecp5-declared-clearance.test.ts tests/repro/pipeline9-t113-hdmi-ddc-via-spacing.test.ts tests/repro/pipeline9-muse-eink-via-copper-clearance.test.ts tests/repro/pipeline9-ecp5-fixed-copper-clearance.test.ts tests/repro/pipeline9-imx6-ddr-fixed-copper.test.ts tests/repro/pipeline9-orangecrab-through-vias.test.ts tests/bugs/controller-power-expansion.test.tsx tests/repro/pipeline9-orangecrab-through-via-layer-span.test.ts tests/repro/pipeline9-a13-fixed-copper-checks.test.ts tests/repro/pipeline9-ddr-force-clearance.test.ts"
-          BUN_UPDATE_SNAPSHOTS=1 bun test $FILES --timeout 600000 > u1.log 2>&1 || true
-          bun test $FILES --timeout 600000 > u2.log 2>&1 || true
-      - name: Emit
-        if: always()
-        run: |
-          cd autorouter
-          echo "=====TSC====="; tail -15 tsc.log
-          echo "=====U1====="; grep -E "^\(pass\)|^\(fail\)|^ *[0-9]+ (pass|fail)|error:|Expected|Received|differs" u1.log | cut -c1-240
-          echo "=====U2====="; grep -E "^\(pass\)|^\(fail\)|^ *[0-9]+ (pass|fail)|error:|Expected|Received|differs" u2.log | cut -c1-240
-          echo "=====STATUS====="; git status --short
-          echo "=====LABELS====="
-          for f in $(git status --short | awk '{print $2}' | grep -E "snap\.svg$"); do
-            echo "## $f"
-            echo "old: $(git show HEAD:$f 2>/dev/null | grep -oiE '>[^<>]*(error|clearance|via|route)[^<>]*[0-9][^<>]*<' | tr '\n' ' ' | cut -c1-400)"
-            echo "new: $(grep -oiE '>[^<>]*(error|clearance|via|route)[^<>]*[0-9][^<>]*<' $f | tr '\n' ' ' | cut -c1-400)"
-          done
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - $(git status --short | awk '{print $2}' | grep -E "snap\.svg$") | base64 -w 160
+          tar -czf - phase-*.srj.json progress.json assessment.json findings.json render.log 2>/dev/null | base64 -w 160
           echo "=====TARBALL-END====="
