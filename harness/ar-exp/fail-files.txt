@@ -1,9 +1,11 @@
-tests/repro/pipeline9-h3-ddr-disconnected-planner.test.ts
-tests/repro/pipeline9-h616-preloaded-board-clearance.test.ts
-tests/repro/pipeline9-ddr-force-clearance.test.ts
-tests/repro/pipeline9-a13-fixed-copper-checks.test.ts
-tests/repro/pipeline9-orangecrab-through-vias.test.ts
 tests/repro/pipeline9-a13-declared-trace-clearance.test.ts
+tests/repro/pipeline9-a13-fixed-copper-checks.test.ts
+tests/repro/pipeline9-a13-regional-repair-shorts.test.ts
+tests/repro/pipeline9-ddr-force-clearance.test.ts
+tests/repro/pipeline9-h3-ddr-disconnected-planner.test.ts
 tests/repro/pipeline9-h616-native-ddr-clearance.test.ts
+tests/repro/pipeline9-h616-preloaded-board-clearance.test.ts
 tests/repro/pipeline9-orangecrab-through-via-layer-span.test.ts
+tests/repro/pipeline9-orangecrab-through-vias.test.ts
+tests/repro/pipeline9-orangecrab-via-roundoff.test.ts
 tests/repro/pipeline9-a13-via-without-legal-site.test.ts

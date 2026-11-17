@@ -1,4 +1,4 @@
-name: Autorouter fix, failing tests with snapshots rewritten
+name: Main, repro snapshots and fix snapshots
 
 on:
   push:
@@ -8,18 +8,18 @@ on:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, s4]
+        part: [repro, fix0, fix1, fix2, fix3]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 7d8e63c573589261bd56f567c022adfb97c70233
+          ref: bfc6509a20959b11ebdea7e38d7fb5fe0fef2097
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -30,29 +30,32 @@ jobs:
           cd autorouter
           bun install > /dev/null 2>&1
           bun install --ignore-scripts --cwd tests/repro/orangecrab-via-roundoff > /dev/null 2>&1
-          git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch
-          sed -i 's|  expect(viaPadErrors.length).toBeGreaterThan(0)|  expect(viaPadErrors).toEqual([])|' tests/repro/pipeline9-a13-via-without-legal-site.test.ts
-          if [ "${{ matrix.shard }}" = s4 ]; then
-            NODE_COUNT=9 bun scripts/generate-balanced-test-plan.ts > /dev/null 2>&1
-            mapfile -t files < .bun-test-plan/testplans/testplan4.txt
-            for f in "${files[@]}"; do
-              bun test "$f" --timeout 300000 > t.log 2>&1 || true
-              if grep -qE "^\(fail\)|^error|Unhandled" t.log; then echo "########## $f"; grep -vE "^\s+at " t.log | grep -E "^\(fail\)|^error|Unhandled|Expected|Received" | head -8 | cut -c1-220; fi
-            done
+          git apply ../harness-repo/harness/ar-exp/repro-tests.patch
+          git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm repro
+          A=tests/repro/pipeline9-a13-via-without-legal-site.test.ts
+          if [ "${{ matrix.part }}" = repro ]; then
+            FORCE_BUN_UPDATE_SNAPSHOTS=1 BUN_UPDATE_SNAPSHOTS=1 bun test $A --timeout 1800000 > t.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" t.log
+            bun test $A --timeout 1800000 > t.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" t.log
+            git status --short | grep -v "\.log$"
+            for s in $(git status --short | grep "__snapshots__" | awk '{print $2}'); do echo "SNAP $s :: $(grep -oE "<text[^>]*>[^<]*</text>" "$s" | sed -E 's/<[^>]+>//g' | tr '\n' '|' | cut -c1-200)"; done
+            echo "=====OUT-BEGIN====="; tar -czf - $(git status --short | grep "__snapshots__" | awk '{print $2}') | base64 -w 160; echo "=====OUT-END====="
             exit 0
           fi
-          i=0
+          git apply ../harness-repo/harness/ar-exp/fix-code.patch
+          k=${{ matrix.part }}; k=${k#fix}; i=0
           while read -r f; do
-            if [ $((i % 6)) -eq ${{ matrix.shard }} ]; then
-              BUN_UPDATE_SNAPSHOTS=1 bun test "$f" --timeout 1800000 > t.log 2>&1 || true
-              echo "########## $f $(grep -cE '^\(pass\)' t.log) pass $(grep -cE '^\(fail\)' t.log) fail"
-              grep -vE "^\s+at |^bun test v" t.log | grep -E "^error|Expected|Received|^\s+[-+] |toBe|toEqual|toBeLessThan|toBeGreaterThan" | head -12 | cut -c1-220
+            if [ $((i % 4)) -eq $k ]; then
+              FORCE_BUN_UPDATE_SNAPSHOTS=1 BUN_UPDATE_SNAPSHOTS=1 bun test "$f" --timeout 1800000 > t.log 2>&1 || true
+              bun test "$f" --timeout 1800000 > t2.log 2>&1 || true
+              echo "########## $f update:$(grep -cE '^\(fail\)' t.log)fail rerun:$(grep -cE '^\(pass\)' t2.log)pass/$(grep -cE '^\(fail\)' t2.log)fail"
+              grep -vE "^\s+at " t2.log | grep -E "^error|Expected|Received" | head -6 | cut -c1-200
             fi
             i=$((i+1))
           done < ../harness-repo/harness/ar-exp/fail-files.txt
-          echo "=====SNAPTEXT====="
           for s in $(git status --short | grep "__snapshots__" | awk '{print $2}'); do
-            old=$(git show HEAD:"$s" 2>/dev/null | grep -oE "<text[^>]*>[^<]*</text>" | sed -E 's/<[^>]+>//g' | grep -iE "error|via|drc|clearance|trace|[0-9]" | tr '\n' '|' | cut -c1-300)
-            new=$(grep -oE "<text[^>]*>[^<]*</text>" "$s" | sed -E 's/<[^>]+>//g' | grep -iE "error|via|drc|clearance|trace|[0-9]" | tr '\n' '|' | cut -c1-300)
+            old=$(git show HEAD:"$s" 2>/dev/null | grep -oE "<text[^>]*>[^<]*</text>" | sed -E 's/<[^>]+>//g' | tr '\n' '|' | cut -c1-220)
+            new=$(grep -oE "<text[^>]*>[^<]*</text>" "$s" | sed -E 's/<[^>]+>//g' | tr '\n' '|' | cut -c1-220)
+            if cmp -s <(git show HEAD:"$s") "$s"; then continue; fi
             echo "SNAP $s"; echo "  OLD $old"; echo "  NEW $new"
           done
+          echo "=====OUT-BEGIN====="; tar -czf - $(git status --short | grep "__snapshots__" | awk '{print $2}') | base64 -w 160; echo "=====OUT-END====="
