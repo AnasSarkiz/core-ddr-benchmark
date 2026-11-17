@@ -19,12 +19,13 @@ const segDist = (a: Seg, b: Seg): number => {
 }
 const near = (s: Seg): boolean => Math.hypot((s.x1 + s.x2) / 2 - at.x, (s.y1 + s.y2) / 2 - at.y) < 1.5
 const fromHd = (routes: any[], net: string): Seg[] =>
-  (routes ?? []).filter((r) => r.connectionName === net || r.rootConnectionName === net).flatMap((r) =>
+  (routes ?? []).filter((r) => String(r.connectionName).startsWith(net) || String(r.rootConnectionName ?? "").startsWith(net)).flatMap((r) =>
     r.route.slice(0, -1).flatMap((p: any, i: number) => {
       const q = r.route[i + 1]
       return p.z === q.z ? [{ x1: p.x, y1: p.y, x2: q.x, y2: q.y, z: String(p.z), r: r.traceThickness / 2 }] : []
     }),
   )
+const _unused = 0
 const fromPcb = (traces: any[], net: string): Seg[] =>
   traces.filter((t) => String(t.connection_name ?? t.pcb_trace_id).startsWith(net)).flatMap((t) =>
     t.route.slice(0, -1).flatMap((p: any, i: number) => {
@@ -52,6 +53,11 @@ while (!solver.solved && !solver.failed) {
   if (last === "highDensityRouteSolver") report("hdRoute", fromHd(solver.highDensityRouteSolver.routes, netA!), fromHd(solver.highDensityRouteSolver.routes, netB!))
   if (last === "highDensityForceImproveSolver") { const r = solver.highDensityForceImproveSolver.getOutput(); report("forceImprove", fromHd(r, netA!), fromHd(r, netB!)) }
   if (last === "highDensityRepairSolver") { const r = solver.highDensityRepairSolver.getOutput(); report("hdRepair", fromHd(r, netA!), fromHd(r, netB!)) }
+  if (last === "highDensityStitchSolver") { const r = solver.highDensityStitchSolver.mergedHdRoutes; report("stitch", fromHd(r, netA!), fromHd(r, netB!)) }
+  if (last === "traceSimplificationSolver") { const r = solver.traceSimplificationSolver.simplifiedHdRoutes; report("simplify", fromHd(r, netA!), fromHd(r, netB!)) }
+  if (last === "traceWidthSolver") { const r = solver.traceWidthSolver.getHdRoutesWithWidths(); report("width", fromHd(r, netA!), fromHd(r, netB!)) }
+  if (last === "globalDrcForceImproveSolver") { try { const r = solver.globalDrcForceImproveSolver.getOutput?.()?.hdRoutes ?? solver.globalDrcForceImproveSolver.getOutput?.(); report("globalDrc", fromHd(r, netA!), fromHd(r, netB!)) } catch (e) { console.log(`PAIR globalDrc n/a ${String(e).slice(0, 80)}`) } }
+  if (last === "pipeline9JointDrcRepairSolver") { try { const o = solver.pipeline9JointDrcRepairSolver.getOutput?.(); const r = o?.hdRoutes ?? o?.newHdRoutes ?? o; report("jointRepair", fromHd(r, netA!), fromHd(r, netB!)); console.log(`JOINTKEYS ${Object.keys(o ?? {}).join(",")}`) } catch (e) { console.log(`PAIR jointRepair n/a ${String(e).slice(0, 80)}`) } }
   last = phase
 }
 const out = solver.getOutputSimplifiedPcbTraces()
