@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [trace-expanded]
+        variant: [trace-choices, cap200k]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -43,9 +43,9 @@ jobs:
       - name: Route byte 1
         run: |
           cd solver
-          if [ "${{ matrix.variant }}" = sites-pending-surface ]; then SURFACE_FIRST=1 python3 ../harness-repo/harness/bl-exp/sites-pending.py; elif [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/bl-exp/${{ matrix.variant }}.py; fi
+          if [ "${{ matrix.variant }}" = cap200k ]; then STEP_CAP=200000 python3 ../harness-repo/harness/bl-exp/trace-choices.py; elif [ "${{ matrix.variant }}" = sites-pending-surface ]; then SURFACE_FIRST=1 python3 ../harness-repo/harness/bl-exp/sites-pending.py; elif [ "${{ matrix.variant }}" != base ]; then python3 ../harness-repo/harness/bl-exp/${{ matrix.variant }}.py; fi
           cp ../harness-repo/harness/bl-exp/h3-trapped.ts .
           timeout 1800 bun h3-trapped.ts > h3.log 2>&1 || true
       - name: Emit
         if: always()
-        run: cd solver && grep -E "^(RESULT|ROUTES|ROUTE|TRAPPED|EXP)|rror" h3.log | uniq -c | cut -c1-300 | head -120
+        run: cd solver && grep -E "^(RESULT|ROUTES|ROUTE|TRAPPED|EXP (ends|pairsearch|rejected))|rror" h3.log | uniq -c | cut -c1-300 | head -80
