@@ -261,8 +261,8 @@ test("H3 byte 0 leaves later byte 1 signals without a bottom-layer carrier", asy
   })
   await expect([
     ...circuit,
-    note({ id: "status_detail", text: status, x: 2, y: 5.6, fontSize: 0.22 }),
-    note({ id: "scope_detail", text: scope, x: 2, y: 5.15, fontSize: 0.16 }),
+    note({ id: "status_detail", text: status, x: 2, y: 6.5, fontSize: 0.22 }),
+    note({ id: "scope_detail", text: scope, x: 2, y: 6.1, fontSize: 0.16 }),
   ]).toMatchPcbSnapshot({
     testPath: import.meta.path,
     snapshotName: "detail",
@@ -270,7 +270,7 @@ test("H3 byte 0 leaves later byte 1 signals without a bottom-layer carrier", asy
       ...svgOptions,
       width: 1600,
       height: 1100,
-      viewport: { minX: -7, maxX: 11, minY: -3.5, maxY: 6 },
+      viewport: { minX: -7, maxX: 11, minY: -3.5, maxY: 6.9 },
     },
   })
 }, 900_000)
