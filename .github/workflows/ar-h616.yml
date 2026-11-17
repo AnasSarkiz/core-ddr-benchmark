@@ -12,14 +12,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        only: [none, cmn_281]
+        mode: [none, split, scale, both]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 8da00b27530a97bc6e1d76b2bedd96e8c9087ad5
+          ref: 7d8e63c573589261bd56f567c022adfb97c70233
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -30,8 +30,10 @@ jobs:
           cd autorouter
           bun install > /dev/null 2>&1
           git apply ../harness-repo/harness/ar-exp/split-nodes.patch
-          python3 ../harness-repo/harness/ar-exp/split-only.py
-          cp ../harness-repo/harness/diag/node281.ts .
-          SPLIT_ONLY=${{ matrix.only }} bun node281.ts only-${{ matrix.only }} > h.log 2>&1 || true
-          grep -E "^N281" h.log | cut -c1-1300
-          tail -5 h.log
+          python3 ../harness-repo/harness/ar-exp/via-site-cost.py
+          cp ../harness-repo/harness/diag/h616-full.ts ../harness-repo/harness/diag/a13-count.ts .
+          export VIA_SITE_MODE=${{ matrix.mode }}
+          bun a13-count.ts ${{ matrix.mode }} > a.log 2>&1 || true
+          grep -E "^(A13|VIASITE)" a.log | cut -c1-500; tail -3 a.log | cut -c1-300
+          bun h616-full.ts ${{ matrix.mode }} > h.log 2>&1 || true
+          grep -E "^(H616|VIASITE)" h.log | head -2 | cut -c1-500; tail -3 h.log | cut -c1-300
