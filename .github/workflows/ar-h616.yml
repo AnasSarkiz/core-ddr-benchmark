@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        only: [cmn_94, topology_merge_931, cmn_114, cmn_281]
+        only: [none, cmn_281]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -31,6 +31,7 @@ jobs:
           bun install > /dev/null 2>&1
           git apply ../harness-repo/harness/ar-exp/split-nodes.patch
           python3 ../harness-repo/harness/ar-exp/split-only.py
-          cp ../harness-repo/harness/diag/h616-full.ts .
-          SPLIT_ONLY=${{ matrix.only }} bun h616-full.ts only-${{ matrix.only }} > h.log 2>&1 || true
-          grep -E "^H616" h.log | head -1 | cut -c1-400
+          cp ../harness-repo/harness/diag/node281.ts .
+          SPLIT_ONLY=${{ matrix.only }} bun node281.ts only-${{ matrix.only }} > h.log 2>&1 || true
+          grep -E "^N281" h.log | cut -c1-1300
+          tail -5 h.log
