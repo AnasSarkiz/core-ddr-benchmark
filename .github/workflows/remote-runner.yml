@@ -13,38 +13,27 @@ env:
   BENCHMARK_RUN_IDS: '43755978071 43762402853'
 
 jobs:
-  baseline:
-    runs-on: ubuntu-latest
+  track:
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
     steps:
       - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
         with:
-          repository: tscircuit/core
-          ref: 701339c13c9f1cba5c71bf9801fac787a60de937
-          path: core
+          repository: tscircuit/tscircuit-autorouter
+          ref: main
+          path: autorouter
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v1
         with:
-          bun-version: '1.4.3'
-      - run: cd core && bun install --ignore-scripts > /dev/null && grep -n '"version"' node_modules/@tscircuit/capacity-autorouter/package.json node_modules/@tscircuit/bus-lanes-solver/package.json
-      - name: Route
+          bun-version: 1.4.3
+      - run: cd autorouter && git rev-parse HEAD && bun install > /dev/null 2>&1
+      - name: Track
         run: |
-          cd core
-          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
-          tail -12 route.log
-      - name: Print the report
+          cd autorouter
+          cp ../harness-repo/harness/diag/via-track.ts .
+          WATCH='[{"x":4.65,"y":5.864,"w":0.5,"h":0.32}]' bun via-track.ts ../harness-repo/harness/diag/a13-remaining-v60.json.gz > track.log 2>&1 || true
+      - name: Emit
         if: always()
-        run: |
-          cd core
-          echo "=====REPORT====="
-          cat ddr-benchmark-results/report.md
-          echo "=====END-REPORT====="
-          grep -iE "error|fail|No path|ran out" route.log | cut -c1-300 | head -20
-          cd ddr-benchmark-results/${{ matrix.circuit }}
-          echo "=====TARBALL-BEGIN====="
-          tar -czf - phase-*.srj.json progress.json assessment.json findings.json render.log 2>/dev/null | base64 -w 160
-          echo "=====TARBALL-END====="
+        run: cd autorouter && grep -E "^(TRACK|RESULT|DRC|DRCERR|OUTVIA)|rror" track.log | cut -c1-400 | head -120
