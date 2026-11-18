@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [fix]
+        variant: [fix, rulefix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -31,7 +31,7 @@ jobs:
           git apply ../harness-repo/harness/ar-exp/repro-tests.patch 2>/dev/null
           v=${{ matrix.variant }}
           case $v in *fix) git apply ../harness-repo/harness/ar-exp/fix-code.patch;; esac
-          case $v in rule*) git apply ../harness-repo/harness/ar-exp/no-short-trade.patch;; esac
+          case $v in rule*) git apply ../harness-repo/harness/ar-exp/no-short-trade.patch && echo "RULE applied $(grep -c isPipeline9CopperContact lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts)";; esac
           bun install > /dev/null 2>&1
           cp ../harness-repo/harness/diag/pad-track.ts .
-          POINTS='[[-5.42,3.46],[-6.21,3.48],[-6.29,2.79],[-6.57,1.86]]' bun pad-track.ts tests/fixtures/assets/a13-fixed-copper/remaining64-bus060.srj.json.gz $v > p.log 2>&1 || true; grep -E "^PAD $v (EVAL|b01\[(refine|prepare-via))" p.log | cut -c1-300; tail -3 p.log | cut -c1-200
+          POINTS='[[-5.42,3.46],[-6.21,3.48],[-6.29,2.79],[-6.57,1.86]]' bun pad-track.ts tests/fixtures/assets/a13-fixed-copper/remaining64-bus060.srj.json.gz $v > p.log 2>&1 || true; grep -E "^PAD $v (EVAL|final)" p.log | cut -c1-300; tail -3 p.log | cut -c1-200
