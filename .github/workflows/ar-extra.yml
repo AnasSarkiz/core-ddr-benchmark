@@ -1,4 +1,4 @@
-name: New main, A13 native copper contacts base vs fix
+name: New main, A13 native pad overlaps by stage
 
 on:
   push:
@@ -26,12 +26,12 @@ jobs:
           cd autorouter
           git apply ../harness-repo/harness/ar-exp/repro-tests.patch
           git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm repro
-          cp ../harness-repo/harness/diag/a13-contacts.ts /tmp/
+          cp ../harness-repo/harness/diag/a13-contacts.ts ../harness-repo/harness/diag/pad-track.ts /tmp/
           for v in base fix; do
             git checkout -q -- . && git clean -fdq lib tests/features
             case $v in fix) git apply ../harness-repo/harness/ar-exp/fix-code.patch;; esac
             bun install > /dev/null 2>&1
-            cp /tmp/a13-contacts.ts .
-            bun a13-contacts.ts $v > c.log 2>&1 || true; grep -E "^CONTACT" c.log | cut -c1-320; tail -3 c.log | cut -c1-200
-            rm -f a13-contacts.ts
+            cp /tmp/pad-track.ts .
+            POINTS='[[-5.42,3.46],[-6.21,3.48],[-6.29,2.79],[-6.57,1.86],[-5.61,1.23]]' bun pad-track.ts tests/fixtures/assets/a13-fixed-copper/remaining64-bus060.srj.json.gz $v > p.log 2>&1 || true; grep -E "^PAD" p.log | cut -c1-260; tail -3 p.log | cut -c1-200
+            rm -f pad-track.ts
           done
