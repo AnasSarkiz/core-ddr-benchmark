@@ -1,0 +1,46 @@
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
+index 8e44ee6..eed6e54 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
+@@ -129,14 +129,36 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
+     return score + 1
+   }, 0)
+ 
++/** True when the error reports copper of two nets touching, not a clearance shortfall. */
++const isPipeline9CopperContact = (error: Pipeline9DrcError): boolean =>
++  (typeof error.actual_clearance === "number" && error.actual_clearance <= 0) ||
++  (typeof error.message === "string" &&
++    error.message.includes("(accidental contact)"))
++
++/**
++ * A candidate is better when it has fewer copper contacts, or as many contacts
++ * and fewer errors, or as many of both and a smaller clearance shortfall. A
++ * short is never traded for clearance shortfalls, however many it removes.
++ */
+ export const isPipeline9DrcCandidateBetter = (
+   candidateErrors: Pipeline9DrcError[],
+   currentErrors: Pipeline9DrcError[],
+-) =>
+-  candidateErrors.length < currentErrors.length ||
+-  (candidateErrors.length === currentErrors.length &&
+-    getDrcIssueScore(candidateErrors) <
+-      getDrcIssueScore(currentErrors) - SCORE_EPSILON)
++): boolean => {
++  const candidateContactCount = candidateErrors.filter(
++    isPipeline9CopperContact,
++  ).length
++  const currentContactCount = currentErrors.filter(
++    isPipeline9CopperContact,
++  ).length
++  if (candidateContactCount !== currentContactCount)
++    return candidateContactCount < currentContactCount
++  return (
++    candidateErrors.length < currentErrors.length ||
++    (candidateErrors.length === currentErrors.length &&
++      getDrcIssueScore(candidateErrors) <
++        getDrcIssueScore(currentErrors) - SCORE_EPSILON)
++  )
++}
+ 
+ export const getPipeline9RouteIndexByTraceId = ({
+   routes,
