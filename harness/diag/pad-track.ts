@@ -49,7 +49,11 @@ while (!solver.solved && !solver.failed) {
   if (last === "traceSimplificationSolver") report("simplify", solver.traceSimplificationSolver.simplifiedHdRoutes)
   if (last === "traceWidthSolver") report("width", solver.traceWidthSolver.getHdRoutesWithWidths())
   if (last === "globalDrcForceImproveSolver") report("globalDrc", solver.globalDrcForceImproveSolver.getOutput())
-  if (last === "pipeline9JointDrcRepairSolver") report("jointRepair", solver.pipeline9JointDrcRepairSolver.getOutput())
+  if (last === "pipeline9JointDrcRepairSolver") {
+    report("jointRepair", solver.pipeline9JointDrcRepairSolver.getOutput())
+    const st = solver.pipeline9JointDrcRepairSolver.stats ?? {}
+    console.log(`JSTATS ${label} ${JSON.stringify(Object.fromEntries(Object.entries(st).filter(([, v]) => typeof v !== "object")))}`)
+  }
   if (last === "effortCleanupSolver") report("cleanup", solver.effortCleanupSolver.getOutput())
   if (last === "lengthMatchingPostProcessingSolver") { try { report("lengthMatch", solver.getNewTracesBeforePowerExpansion()) } catch (e) { console.log(`PAD ${label} lengthMatch n/a ${String(e).slice(0, 100)}`) } }
   last = phase

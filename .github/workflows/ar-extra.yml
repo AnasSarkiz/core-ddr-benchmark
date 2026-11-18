@@ -32,6 +32,6 @@ jobs:
             case $v in fix) git apply ../harness-repo/harness/ar-exp/fix-code.patch;; esac
             bun install > /dev/null 2>&1
             cp /tmp/pad-track.ts .
-            POINTS='[[-5.42,3.46],[-6.21,3.48],[-6.29,2.79],[-6.57,1.86],[-5.61,1.23]]' bun pad-track.ts tests/fixtures/assets/a13-fixed-copper/remaining64-bus060.srj.json.gz $v > p.log 2>&1 || true; grep -E "^PAD" p.log | cut -c1-260; tail -3 p.log | cut -c1-200
+            POINTS='[[-5.42,3.46],[-6.21,3.48],[-6.29,2.79],[-6.57,1.86],[-5.61,1.23]]' bun pad-track.ts tests/fixtures/assets/a13-fixed-copper/remaining64-bus060.srj.json.gz $v > p.log 2>&1 || true; grep -E "^(PAD|JSTATS)" p.log | cut -c1-6000; tail -3 p.log | cut -c1-200
             rm -f pad-track.ts
           done
