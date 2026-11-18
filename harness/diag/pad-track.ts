@@ -39,12 +39,23 @@ const report = (stage: string, routes: any[]): void => {
 const solver: any = new AutoroutingPipelineSolver9_PreloadedTraceGraph(srj, { cacheProvider: null })
 let last = ""
 let lastSub = ""
+let lastB01 = ""
 while (!solver.solved && !solver.failed) {
   solver.step()
   const jr = solver.pipeline9JointDrcRepairSolver
   if (jr && !jr.solved) {
     const sub = jr.activeSubSolver?.constructor?.name ?? "none"
     if (sub !== lastSub) { if (lastSub) { try { report(`joint<${lastSub}>`, jr.getOutput()) } catch (e) { console.log(`PAD ${label} joint<${lastSub}> n/a`) } } lastSub = sub }
+    const b01 = jr.regionalB01RepairSolver
+    if (b01) {
+      const ph = `${b01.phase}|${b01.cleanup?.kind ?? "-"}|acc=${b01.acceptedCandidateCount}`
+      if (ph !== lastB01) {
+        lastB01 = ph
+        if (b01.currentRoutes) report(`b01[${ph}] current`, b01.currentRoutes)
+        if (b01.cleanup?.routes) report(`b01[${ph}] cleanup`, b01.cleanup.routes)
+        if (b01.safeTraceLayerSolver?.solved) report(`b01[${ph}] safeLayerOut`, b01.safeTraceLayerSolver.getOutput())
+      }
+    }
   }
   const phase = solver.getCurrentPhase()
   if (phase === last) continue

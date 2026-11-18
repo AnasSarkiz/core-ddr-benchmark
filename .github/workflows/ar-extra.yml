@@ -34,4 +34,4 @@ jobs:
           case $v in rule*) git apply ../harness-repo/harness/ar-exp/no-short-trade.patch;; esac
           bun install > /dev/null 2>&1
           cp ../harness-repo/harness/diag/pad-track.ts .
-          POINTS='[[-5.42,3.46],[-6.21,3.48],[-6.29,2.79],[-6.57,1.86]]' bun pad-track.ts tests/fixtures/assets/a13-fixed-copper/remaining64-bus060.srj.json.gz $v > p.log 2>&1 || true; grep -E "^PAD $v (width|globalDrc|joint|jointRepair)" p.log | cut -c1-420; tail -3 p.log | cut -c1-200
+          POINTS='[[-5.42,3.46],[-6.21,3.48],[-6.29,2.79],[-6.57,1.86]]' bun pad-track.ts tests/fixtures/assets/a13-fixed-copper/remaining64-bus060.srj.json.gz $v > p.log 2>&1 || true; grep -E "^PAD $v (globalDrc|joint|b01|jointRepair)" p.log | cut -c1-300; tail -3 p.log | cut -c1-200
