@@ -1,4 +1,4 @@
-name: Capture native A13 joint repair input with the fix
+name: Refine pad-contact repro and guard
 
 on:
   push:
@@ -8,11 +8,7 @@ on:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [fix]
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -28,12 +24,21 @@ jobs:
       - name: Run
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/repro-tests.patch 2>/dev/null
-          v=${{ matrix.variant }}
-          case $v in *fix) git apply ../harness-repo/harness/ar-exp/fix-code.patch;; esac
-          case $v in guard*) git apply ../harness-repo/harness/ar-exp/refine-no-new-contact.patch && echo "GUARD applied";; esac
           bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/capture-joint.ts .
-          bun capture-joint.ts tests/fixtures/assets/a13-fixed-copper/remaining64-bus060.srj.json.gz /tmp/joint.json.gz > j.log 2>&1 || true; grep -E "^CAPTURED|rror" j.log | head -5
-          ls -la /tmp/joint.json.gz; sha256sum /tmp/joint.json.gz
-          echo "=====OUT-BEGIN====="; base64 -w 160 /tmp/joint.json.gz; echo "=====OUT-END====="
+          git apply ../harness-repo/harness/ar-exp/guard-repro.patch
+          F=tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
+          bunx biome format --write $F > /dev/null 2>&1
+          git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm repro
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"; head -10 tsc.log
+          bun test $F --timeout 900000 > r1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Expected|Received" r1.log | head
+          bun test $F --timeout 900000 > r2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" r2.log | head -3
+          mkdir -p ../out/repro && cp $F ../out/repro/ && cp tests/repro/__snapshots__/pipeline9-a13-refine-pad-contacts*.snap.svg ../out/repro/
+          git apply ../harness-repo/harness/ar-exp/refine-no-new-contact.patch
+          bunx biome format --write lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts > /dev/null 2>&1
+          sed -i 's|  expect(getPadContacts(after.errors).length).toBeGreaterThan(0)|  expect(getPadContacts(after.errors)).toEqual([])|' $F
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC-fix exit=$? lines=$(wc -l < tsc.log)"; head -10 tsc.log
+          FORCE_BUN_UPDATE_SNAPSHOTS=1 BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > f1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Expected|Received" f1.log | head
+          bun test $F --timeout 900000 > f2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" f2.log | head -3
+          bun run format:check > fc.log 2>&1; echo "FORMAT exit=$?"
+          mkdir -p ../out/fix && cp tests/repro/__snapshots__/pipeline9-a13-refine-pad-contacts*.snap.svg ../out/fix/ && git diff HEAD -- lib $F > ../out/fix/fix.patch
+          cd ../out && echo "=====OUT-BEGIN=====" && tar -czf - repro fix | base64 -w 160 && echo "=====OUT-END====="
