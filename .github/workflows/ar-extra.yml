@@ -1,4 +1,4 @@
-name: New main, refine no-new-contact guard
+name: Capture native A13 joint repair input with the fix
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [guard, guardfix]
+        variant: [fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -33,7 +33,7 @@ jobs:
           case $v in *fix) git apply ../harness-repo/harness/ar-exp/fix-code.patch;; esac
           case $v in guard*) git apply ../harness-repo/harness/ar-exp/refine-no-new-contact.patch && echo "GUARD applied";; esac
           bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/a13-contacts.ts ../harness-repo/harness/diag/a13-count.ts ../harness-repo/harness/diag/h616-full.ts .
-          bun a13-contacts.ts $v > c.log 2>&1 || true; grep -E "^CONTACT $v" c.log | cut -c1-200
-          bun a13-count.ts $v > a.log 2>&1 || true; grep -E "^A13 $v (solved|viaPadAt)" a.log | cut -c1-260
-          bun h616-full.ts $v > h.log 2>&1 || true; grep -E "^H616 $v solved" h.log | cut -c1-220
+          cp ../harness-repo/harness/diag/capture-joint.ts .
+          bun capture-joint.ts tests/fixtures/assets/a13-fixed-copper/remaining64-bus060.srj.json.gz /tmp/joint.json.gz > j.log 2>&1 || true; grep -E "^CAPTURED|rror" j.log | head -5
+          ls -la /tmp/joint.json.gz; sha256sum /tmp/joint.json.gz
+          echo "=====OUT-BEGIN====="; base64 -w 160 /tmp/joint.json.gz; echo "=====OUT-END====="
