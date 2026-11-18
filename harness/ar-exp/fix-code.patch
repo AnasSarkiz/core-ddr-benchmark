@@ -237,55 +237,34 @@ index 0000000..48ef7aa
 +  })
 +}
 diff --git a/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts b/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
-index ea1be88..9a68046 100644
+index ea1be88..c9e3eb9 100644
 --- a/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
 +++ b/lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
-@@ -108,6 +108,10 @@ type CandidatePortfolioPhase = "primary" | "alternative" | "complete"
+@@ -105,6 +105,12 @@ export type DownstreamCandidateSummary = {
+ 
+ type CandidatePortfolioPhase = "primary" | "alternative" | "complete"
+ 
++/** A node with no legal via center prices a layer change as if only this share
++ * of it could hold vias (ten times its area cost) instead of forbidding it:
++ * forbidding layer changes there pushed H616's vias into crowded nodes nearby
++ * and raised its DRC findings from 43 to 124. */
++const NO_VIA_SITE_AREA_FRACTION = 0.1
++
  // A second global-routing candidate is only worthwhile when the primary
  // candidate predicts downstream congestion. Selection requires meaningful
  // trace dispersion without materially increasing predicted failure pressure.
-+/** A node with no legal via center prices a layer change at ten times its area
-+ * cost instead of forbidding it: forbidding layer changes there pushed H616's
-+ * vias into crowded nodes nearby and raised its DRC findings from 43 to 124. */
-+const NO_VIA_SITE_AREA_FRACTION = 0.1
- const TRACE_DENSITY_PORTFOLIO_MIN_ROUTE_COUNT = 30
- const TRACE_DENSITY_PORTFOLIO_MAX_ROUTE_COUNT = 99
- const TRACE_DENSITY_PORTFOLIO_MIN_PF_SUM = 4
-@@ -390,7 +394,22 @@ const toSerializedRegionData = (
-   netId?: number,
- ) => {
-   const regionMetadata = region.d as typeof region.d & TinyRegionMetadata
--  const bounds = regionMetadata.bounds
-+  // tiny-hypergraph prices layer changes per unit of region width x height.
-+  // A node with no legal via center is priced as if it had only
-+  // NO_VIA_SITE_AREA_FRACTION of its area. Bounds keep it drawn at full size.
-+  const areaScale = region.d._lacksViaSite
-+    ? Math.sqrt(NO_VIA_SITE_AREA_FRACTION)
-+    : 1
-+  const bounds =
-+    regionMetadata.bounds ??
-+    (region.d._lacksViaSite
-+      ? {
-+          minX: region.d.center.x - region.d.width / 2,
-+          maxX: region.d.center.x + region.d.width / 2,
-+          minY: region.d.center.y - region.d.height / 2,
-+          maxY: region.d.center.y + region.d.height / 2,
-+        }
-+      : undefined)
- 
-   return {
-     capacityMeshNodeId: region.d.capacityMeshNodeId,
-@@ -398,8 +417,8 @@ const toSerializedRegionData = (
-       x: region.d.center.x,
-       y: region.d.center.y,
-     },
--    width: region.d.width,
--    height: region.d.height,
-+    width: region.d.width * areaScale,
-+    height: region.d.height * areaScale,
-     availableZ: [...region.d.availableZ],
-     ...(bounds
-       ? {
+@@ -420,6 +426,11 @@ const toSerializedRegionData = (
+         : [...region.d._offBoardConnectedCapacityMeshNodeIds],
+     _qfpRegionType: regionMetadata._qfpRegionType,
+     _isNarrowQfpPadGap: regionMetadata._isNarrowQfpPadGap,
++    // tiny-hypergraph divides only the via term of the region cost by this
++    // share of the area; trace density and geometry keep the full node.
++    ...(region.d._lacksViaSite
++      ? { viaAreaFraction: NO_VIA_SITE_AREA_FRACTION }
++      : {}),
+     ...(netId !== undefined ? { netId } : {}),
+   }
+ }
 diff --git a/lib/types/capacity-mesh-types.ts b/lib/types/capacity-mesh-types.ts
 index da99c60..66c2e64 100644
 --- a/lib/types/capacity-mesh-types.ts
@@ -300,6 +279,19 @@ index da99c60..66c2e64 100644
  
    _parent?: CapacityMeshNode
  }
+diff --git a/package.json b/package.json
+index 0353019..76ea106 100644
+--- a/package.json
++++ b/package.json
+@@ -102,7 +102,7 @@
+     "recharts": "^2.15.1",
+     "tailwind-merge": "^3.2.0",
+     "terser": "^5.43.1",
+-    "tiny-hypergraph": "git+https://github.com/tscircuit/tiny-hypergraph.git#f1fe8edcfb3dfde8fd644d09d81bad18743144b3",
++    "tiny-hypergraph": "git+https://github.com/tscircuit/tiny-hypergraph.git#6a00f0406e131a2765179e052e45f07efd2f5ae7",
+     "tiny-hypergraph-poly": "git+https://github.com/tscircuit/tiny-hypergraph.git#7b93b4c",
+     "tsup": "^8.3.6",
+     "tscircuit-for-pipeline9-fixtures": "npm:tscircuit@0.0.2467",
 diff --git a/tests/features/mark-nodes-without-via-site-circle-pad.test.ts b/tests/features/mark-nodes-without-via-site-circle-pad.test.ts
 new file mode 100644
 index 0000000..d322913

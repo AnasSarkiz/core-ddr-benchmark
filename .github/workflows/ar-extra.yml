@@ -1,4 +1,4 @@
-name: Bump tiny-hypergraph pin for the via-only input
+name: New main, A13 and H616 base vs fix
 
 on:
   push:
@@ -6,16 +6,16 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  pin:
+  run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 626c2a0d87572c539124cc6b13b611e6ad14e81e
+          ref: ce89da32c1c31f84ad5f5a753a665ac056df66a9
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -24,13 +24,17 @@ jobs:
       - name: Run
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/ar-via-area.patch
-          sed -i 's|tiny-hypergraph.git#f1fe8edcfb3dfde8fd644d09d81bad18743144b3|tiny-hypergraph.git#705012a249948c62bbe2b5077f009b9e801e6d3f|' package.json
-          grep -n '"tiny-hypergraph"' package.json
-          bun install > install.log 2>&1; echo "INSTALL exit=$?"; tail -3 install.log
-          grep -n "viaAreaFraction" node_modules/tiny-hypergraph/lib/computeRegionCost.ts | head -2
-          git status --short | grep -v node_modules
-          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"
-          bun run format:check > fc.log 2>&1; echo "FORMAT exit=$?"
-          bun test tests/repro/pipeline9-a13-via-without-legal-site.test.ts --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)"
-          echo "=====PIN-BEGIN====="; git diff -- package.json bun.lock | base64 -w 160; echo "=====PIN-END====="
+          git apply ../harness-repo/harness/ar-exp/repro-tests.patch
+          git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm repro
+          cp ../harness-repo/harness/diag/a13-count.ts ../harness-repo/harness/diag/h616-full.ts /tmp/
+          for v in base1 fix1 base2 fix2; do
+            git checkout -q -- . && git clean -fdq lib tests/features
+            case $v in fix*) git apply ../harness-repo/harness/ar-exp/fix-code.patch;; esac
+            bun install > /dev/null 2>&1
+            echo "$v tinyHasFraction=$(grep -c viaAreaFraction node_modules/tiny-hypergraph/lib/computeRegionCost.ts)"
+            cp /tmp/a13-count.ts /tmp/h616-full.ts .
+            bun a13-count.ts $v > a.log 2>&1 || true; grep -E "^A13 $v (solved|viaPadAt)" a.log | cut -c1-260
+            grep -E "^A13 $v STAGES" a.log | python3 -c "import sys,json; [print('A13', l.split()[1], {k: v for k, v in json.loads(l.split(' ',3)[3]).items() if v > 1500}) for l in sys.stdin]"
+            bun h616-full.ts $v > h.log 2>&1 || true; grep -E "^H616 $v solved" h.log | cut -c1-220
+            rm -f a13-count.ts h616-full.ts
+          done

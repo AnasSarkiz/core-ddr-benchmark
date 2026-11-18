@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: bfc6509a20959b11ebdea7e38d7fb5fe0fef2097
+          ref: ce89da32c1c31f84ad5f5a753a665ac056df66a9
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -33,6 +33,8 @@ jobs:
           git apply ../harness-repo/harness/ar-exp/repro-tests.patch
           if [ "${{ matrix.variant }}" = fix ]; then
             git apply ../harness-repo/harness/ar-exp/fix-code.patch
+            bun install > /dev/null 2>&1
+            grep -c viaAreaFraction node_modules/tiny-hypergraph/lib/computeRegionCost.ts
           fi
           git status --short
       - name: Typecheck
