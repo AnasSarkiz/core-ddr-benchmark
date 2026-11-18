@@ -48,6 +48,10 @@ while (!solver.solved && !solver.failed) {
   if (last === "highDensityStitchSolver") report("stitch", solver.highDensityStitchSolver.mergedHdRoutes)
   if (last === "traceSimplificationSolver") report("simplify", solver.traceSimplificationSolver.simplifiedHdRoutes)
   if (last === "traceWidthSolver") report("width", solver.traceWidthSolver.getHdRoutesWithWidths())
+  if (last === "globalDrcForceImproveSolver") report("globalDrc", solver.globalDrcForceImproveSolver.getOutput())
+  if (last === "pipeline9JointDrcRepairSolver") report("jointRepair", solver.pipeline9JointDrcRepairSolver.getOutput())
+  if (last === "effortCleanupSolver") report("cleanup", solver.effortCleanupSolver.getOutput())
+  if (last === "lengthMatchingPostProcessingSolver") { try { report("lengthMatch", solver.getNewTracesBeforePowerExpansion()) } catch (e) { console.log(`PAD ${label} lengthMatch n/a ${String(e).slice(0, 100)}`) } }
   last = phase
 }
 report("final", solver.getOutputSimplifiedPcbTraces())
