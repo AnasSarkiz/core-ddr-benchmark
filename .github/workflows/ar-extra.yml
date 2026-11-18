@@ -1,4 +1,4 @@
-name: New main, no-short-trade rule with and without the fix
+name: New main, joint repair sub-solver pad gaps
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [base, rule, fix, rulefix]
+        variant: [fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -33,7 +33,5 @@ jobs:
           case $v in *fix) git apply ../harness-repo/harness/ar-exp/fix-code.patch;; esac
           case $v in rule*) git apply ../harness-repo/harness/ar-exp/no-short-trade.patch;; esac
           bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/a13-contacts.ts ../harness-repo/harness/diag/a13-count.ts ../harness-repo/harness/diag/h616-full.ts .
-          bun a13-contacts.ts $v > c.log 2>&1 || true; grep -E "^CONTACT $v relaxed" c.log | cut -c1-200
-          bun a13-count.ts $v > a.log 2>&1 || true; grep -E "^A13 $v (solved|viaPadAt)" a.log | cut -c1-260
-          bun h616-full.ts $v > h.log 2>&1 || true; grep -E "^H616 $v solved" h.log | cut -c1-220
+          cp ../harness-repo/harness/diag/pad-track.ts .
+          POINTS='[[-5.42,3.46],[-6.21,3.48],[-6.29,2.79],[-6.57,1.86]]' bun pad-track.ts tests/fixtures/assets/a13-fixed-copper/remaining64-bus060.srj.json.gz $v > p.log 2>&1 || true; grep -E "^PAD $v (width|globalDrc|joint|jointRepair)" p.log | cut -c1-420; tail -3 p.log | cut -c1-200
