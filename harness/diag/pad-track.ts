@@ -52,7 +52,16 @@ while (!solver.solved && !solver.failed) {
       if (ph !== lastB01) {
         lastB01 = ph
         if (b01.currentRoutes) report(`b01[${ph}] current`, b01.currentRoutes)
-        if (b01.cleanup?.routes) report(`b01[${ph}] cleanup`, b01.cleanup.routes)
+        if (b01.cleanup?.routes) {
+          report(`b01[${ph}] cleanup`, b01.cleanup.routes)
+          if (b01.phase === "refine" || b01.phase === "prepare-via-pad-projection") {
+            const res: any = b01.params.drcEvaluator({ hdRoutes: b01.cleanup.routes, traces: [] })
+            const errs: any[] = Array.isArray(res) ? res : (res.errorsWithCenters ?? res.errors)
+            const near = errs.filter((e: any) => e.center && points.some(([x, y]) => Math.hypot(e.center.x - x, e.center.y - y) < 0.6))
+            console.log(`PAD ${label} EVAL b01[${ph}] total=${errs.length} near=${near.length} evaluator=${b01.params.drcEvaluator.name || "anon"}`)
+            for (const e of near.slice(0, 8)) console.log(`PAD ${label} EVAL   ${e.type} ac=${e.actual_clearance} (${e.center.x.toFixed(2)},${e.center.y.toFixed(2)}) ${String(e.message ?? "").slice(0, 120)}`)
+          }
+        }
         if (b01.safeTraceLayerSolver?.solved) report(`b01[${ph}] safeLayerOut`, b01.safeTraceLayerSolver.getOutput())
       }
     }
