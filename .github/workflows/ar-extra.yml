@@ -1,4 +1,4 @@
-name: Via-only cost input, tiny-hypergraph checks and A13 H616
+name: Bump tiny-hypergraph pin for the via-only input
 
 on:
   push:
@@ -6,35 +6,9 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  tiny:
+  pin:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with: { path: harness-repo }
-      - uses: actions/checkout@v4
-        with:
-          repository: tscircuit/tiny-hypergraph
-          ref: 40e3c7a980d9dd3840c429e92006603d2c868790
-          path: tiny
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: 1.4.3
-      - name: Run
-        run: |
-          cd tiny
-          git log --oneline -1
-          bun install > /dev/null 2>&1
-          git apply ../harness-repo/harness/ar-exp/tiny-via-area.patch && git status --short
-          bun run format > /dev/null 2>&1; bun run format:check > fc.log 2>&1; echo "FORMAT exit=$?"
-          echo "=====FMT-BEGIN====="; git diff -- lib tests | base64 -w 160; echo "=====FMT-END====="
-          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"; head -10 tsc.log
-          bun test tests/region-via-area-fraction-cost.test.ts tests/region-via-area-fraction-load.test.ts 2>&1 | grep -E "^\((pass|fail)\)|^error|Expected|Received| pass$| fail$"
-          timeout 1500 bun test > all.log 2>&1; echo "ALL exit=$?"; grep -E "^ *[0-9]+ (pass|fail)$|^\(fail\)" all.log | head -20
-  autorouter:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -50,23 +24,13 @@ jobs:
       - name: Run
         run: |
           cd autorouter
-          bun install > /dev/null 2>&1
-          patch -p1 -d node_modules/tiny-hypergraph < ../harness-repo/harness/ar-exp/tiny-via-area.patch | tail -6
-          git apply ../harness-repo/harness/ar-exp/ar-via-area.patch && git status --short | grep -v node_modules
-          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"; head -10 tsc.log
-          cp ../harness-repo/harness/diag/a13-count.ts ../harness-repo/harness/diag/h616-full.ts .
-          git stash -q
-          BASE=0b21420fae878160e19136675584836677597303
-          git fetch -q --depth 5 origin $BASE
-          for v in base1 viaonly1 base2 viaonly2; do
-            git checkout -q 626c2a0d87572c539124cc6b13b611e6ad14e81e -- lib; git clean -fdq lib
-            case $v in base*) git checkout -q $BASE -- lib; git clean -fdq lib;; viaonly*) git stash apply -q;; esac
-            bun a13-count.ts $v > a.log 2>&1 || true; grep -E "^A13 $v (solved|viaPadAt|STAGES)" a.log | cut -c1-1500
-            bun h616-full.ts $v > h.log 2>&1 || true; grep -E "^H616 $v solved" h.log | cut -c1-200
-          done
-          git checkout -q 626c2a0d87572c539124cc6b13b611e6ad14e81e -- lib; git clean -fdq lib; git stash pop -q
-          bun install --ignore-scripts --cwd tests/repro/orangecrab-via-roundoff > /dev/null 2>&1
-          for f in tests/repro/pipeline9-a13-via-without-legal-site.test.ts tests/repro/pipeline9-a13-declared-trace-clearance.test.ts tests/repro/pipeline9-a13-fixed-copper-checks.test.ts tests/repro/pipeline9-a13-regional-repair-shorts.test.ts tests/repro/pipeline9-h616-native-ddr-clearance.test.ts tests/repro/pipeline9-h616-preloaded-board-clearance.test.ts tests/repro/pipeline9-h3-ddr-disconnected-planner.test.ts tests/repro/pipeline9-ddr-force-clearance.test.ts tests/repro/pipeline9-orangecrab-through-vias.test.ts tests/repro/pipeline9-orangecrab-through-via-layer-span.test.ts tests/repro/pipeline9-orangecrab-via-roundoff.test.ts; do
-            bun test "$f" --timeout 1800000 > t.log 2>&1 || true
-            echo "########## $f $(grep -cE '^\(pass\)' t.log)pass/$(grep -cE '^\(fail\)' t.log)fail"
-          done
+          git apply ../harness-repo/harness/ar-exp/ar-via-area.patch
+          sed -i 's|tiny-hypergraph.git#f1fe8edcfb3dfde8fd644d09d81bad18743144b3|tiny-hypergraph.git#705012a249948c62bbe2b5077f009b9e801e6d3f|' package.json
+          grep -n '"tiny-hypergraph"' package.json
+          bun install > install.log 2>&1; echo "INSTALL exit=$?"; tail -3 install.log
+          grep -n "viaAreaFraction" node_modules/tiny-hypergraph/lib/computeRegionCost.ts | head -2
+          git status --short | grep -v node_modules
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"
+          bun run format:check > fc.log 2>&1; echo "FORMAT exit=$?"
+          bun test tests/repro/pipeline9-a13-via-without-legal-site.test.ts --timeout 900000 2>&1 | grep -E "^\((pass|fail)\)"
+          echo "=====PIN-BEGIN====="; git diff -- package.json bun.lock | base64 -w 160; echo "=====PIN-END====="
