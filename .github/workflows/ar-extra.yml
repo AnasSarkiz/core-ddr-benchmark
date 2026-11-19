@@ -29,11 +29,16 @@ jobs:
           F=tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
           bunx biome format --write $F > /dev/null 2>&1
           git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm repro
-          python3 - <<'PY'
-from pathlib import Path
-p=Path("tests/repro/pipeline9-a13-refine-pad-contacts.test.ts"); t=p.read_text()
-t=t.replace("  expect(getPadContacts(before.errors)).toEqual([])","  console.log(`BEFORE ${getPadContacts(before.errors).length}\n${getPadContacts(before.errors).join('\n')}`)\n  console.log(`AFTER ${getPadContacts(after.errors).length}\n${getPadContacts(after.errors).join('\n')}`)")
-p.write_text(t)
-PY
-          bun test $F --timeout 900000 > r1.log 2>&1 || true; grep -E "^(BEFORE|AFTER)|overlaps with pcb_smtpad|^\((pass|fail)\)" r1.log | head -80 | cut -c1-200
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$? lines=$(wc -l < tsc.log)"; head -10 tsc.log
+          bun test $F --timeout 900000 > r1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Expected|Received|^[-+] " r1.log | head -20
+          bun test $F --timeout 900000 > r2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" r2.log | head -3
+          mkdir -p ../out/repro && cp $F ../out/repro/ && cp tests/repro/__snapshots__/pipeline9-a13-refine-pad-contacts*.snap.svg ../out/repro/
+          git apply ../harness-repo/harness/ar-exp/refine-no-new-contact.patch
+          bunx biome format --write lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts > /dev/null 2>&1
+          sed -i 's|  expect(getPadContacts(after.errors).length).toBeGreaterThan(0)|  expect(getPadContacts(after.errors)).toEqual([])|' $F
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC-fix exit=$? lines=$(wc -l < tsc.log)"; head -10 tsc.log
+          FORCE_BUN_UPDATE_SNAPSHOTS=1 BUN_UPDATE_SNAPSHOTS=1 bun test $F --timeout 900000 > f1.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error|Expected|Received" f1.log | head
+          bun test $F --timeout 900000 > f2.log 2>&1 || true; grep -E "^\((pass|fail)\)|^error" f2.log | head -3
+          bun run format:check > fc.log 2>&1; echo "FORMAT exit=$?"
+          mkdir -p ../out/fix && cp tests/repro/__snapshots__/pipeline9-a13-refine-pad-contacts*.snap.svg ../out/fix/ && git diff HEAD -- lib $F > ../out/fix/fix.patch
           cd ../out && echo "=====OUT-BEGIN=====" && tar -czf - repro fix | base64 -w 160 && echo "=====OUT-END====="
