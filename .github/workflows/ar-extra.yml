@@ -1,4 +1,4 @@
-name: Check typed participant ids before pushing
+name: Prove the A13 test catches new contacts (typed ids)
 
 on:
   push:
@@ -27,6 +27,6 @@ jobs:
           git apply ../harness-repo/harness/ar-exp/fix-v5.patch
           git status --short
           bun install > /dev/null 2>&1
-          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$?"; head -20 tsc.log
-          bunx biome format . > fmt.log 2>&1; echo "FMT exit=$?"; grep -B2 -A20 "×\|Formatter would" fmt.log | head -60
-          bun test tests/features/pipeline9-drc-candidate-new-contact.test.ts tests/repro/pipeline9-a13-refine-pad-contacts.test.ts --timeout 9999999 2>&1 | grep -E "error:|touches|Expected|Received|\(pass\)|\(fail\)" | head -20
+          sed -i 's/rejectNewContacts: true,/rejectNewContacts: false,/' lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
+          git diff --stat
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-a13-refine-pad-contacts.test.ts --timeout 9999999 2>&1 | grep -E "error:|touches|Expected|Received|\(pass\)|\(fail\)" | head -20

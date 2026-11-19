@@ -15,28 +15,41 @@ index 68ccb8b..2bf9ef1 100644
          ) {
            cleanup.routes = refinedRoutes
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
-index 8e44ee6..10c63ca 100644
+index 8e44ee6..d932f6f 100644
 --- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
-@@ -9,6 +9,8 @@ export type Pipeline9CollapsedTraceParticipant = {
- 
- export type Pipeline9DrcError = Record<string, unknown> & {
-   __collapsed_trace_participants?: Pipeline9CollapsedTraceParticipant[]
-+  /** Set when copper touches: the two objects in contact. */
-+  contact_ids?: readonly [string, string]
- }
- 
- export type Pipeline9PreloadRepairTraceIds = ReadonlySet<string> & {
-@@ -129,14 +131,48 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
+@@ -129,14 +129,70 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
      return score + 1
    }, 0)
  
++/**
++ * Identifies a short on a trace error by the objects touching, whichever
++ * side reported it. Undefined when the error is not copper in contact.
++ */
++export const getPipeline9DrcContactKey = (
++  error: Pipeline9DrcError,
++): string | undefined => {
++  const isContact =
++    error.type === "pcb_trace_error" &&
++    typeof error.actual_clearance === "number" &&
++    error.actual_clearance < 0
++  if (!isContact) return undefined
++  if (typeof error.pcb_smtpad_id === "string") {
++    return `${error.pcb_trace_id} touches ${error.pcb_smtpad_id}`
++  }
++  if (typeof error.pcb_plated_hole_id === "string") {
++    return `${error.pcb_trace_id} touches ${error.pcb_plated_hole_id}`
++  }
++  // A trace touching another trace or its via: both traces are listed.
++  if (!Array.isArray(error.pcb_trace_ids)) return undefined
++  return [...error.pcb_trace_ids].sort().join(" touches ")
++}
++
 +const getContactKeys = (errors: Pipeline9DrcError[]): Set<string> => {
 +  const contactKeys = new Set<string>()
 +  for (const error of errors) {
-+    if (!error.contact_ids) continue
-+    const [firstId, secondId] = [...error.contact_ids].sort()
-+    contactKeys.add(`${firstId}\n${secondId}`)
++    const contactKey = getPipeline9DrcContactKey(error)
++    if (contactKey) contactKeys.add(contactKey)
 +  }
 +  return contactKeys
 +}
@@ -82,7 +95,7 @@ index 8e44ee6..10c63ca 100644
  export const getPipeline9RouteIndexByTraceId = ({
    routes,
 diff --git a/package.json b/package.json
-index ddad31c..d6bd3d1 100644
+index ddad31c..90fef3f 100644
 --- a/package.json
 +++ b/package.json
 @@ -115,7 +115,7 @@
@@ -90,7 +103,7 @@ index ddad31c..d6bd3d1 100644
      "high-density-repair01": "git+https://github.com/tscircuit/high-density-repair01.git#e22f93833714f5fa64f80a198800949a04e077b5",
      "high-density-repair02": "https://codeload.github.com/tscircuit/high-density-repair02/tar.gz/cac656f51535aca0d9c7f09e5860b4e82a78f3cf",
 -    "high-density-repair03": "https://codeload.github.com/tscircuit/high-density-repair03/tar.gz/6d7bfa862fb2fe1636bf164e7935cd61964a06b5",
-+    "high-density-repair03": "https://codeload.github.com/tscircuit/high-density-repair03/tar.gz/5a47761fb10b68470e00d6ce6fc4c2e8ffbbf871",
++    "high-density-repair03": "https://codeload.github.com/tscircuit/high-density-repair03/tar.gz/7730f31ac4b2b6199d124667a0d2e3b91c259bb0",
      "@tscircuit/high-density-a01": "git+https://github.com/tscircuit/high-density-a01.git#85ee23a25403bbb79be14b6d0783e592928a85a0",
      "@tscircuit/high-density-a13": "git+https://github.com/tscircuit/high-density-a01.git#c6812cebd44b09f29f2fee929837b313b822f2ae",
      "@tscircuit/high-density-b01": "git+https://github.com/tscircuit/high-density-b01.git#0acce21dc32a279788f88d884618630c82405590"
