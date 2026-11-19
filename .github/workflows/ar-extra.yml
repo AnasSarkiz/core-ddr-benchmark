@@ -1,4 +1,4 @@
-name: Check typed contacts before pushing
+name: Check typed participant ids before pushing
 
 on:
   push:
