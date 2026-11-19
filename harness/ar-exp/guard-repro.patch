@@ -5173,10 +5173,10 @@ HcmV?d00001
 
 diff --git a/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts b/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
 new file mode 100644
-index 0000000..8522c93
+index 0000000..aae1c55
 --- /dev/null
 +++ b/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,143 @@
 +import { expect, test } from "bun:test"
 +import { readFileSync } from "node:fs"
 +import { gunzipSync } from "node:zlib"
@@ -5282,8 +5282,10 @@ index 0000000..8522c93
 +  joint.solve()
 +  expect(joint.solved).toBe(true)
 +
++  // Evaluate the way joint repair does: the original request plus the copper
++  // it routes around.
 +  const evaluate = createPipeline9AutoroutingDrcEvaluator({
-+    inputSrj: fixture.srj,
++    inputSrj: fixture.originalSrj,
 +    srjWithPointPairs: fixture.srj,
 +  })
 +  const toTraces = (hdRoutes: HighDensityRoute[]): SimplifiedPcbTrace[] =>
@@ -5292,7 +5294,7 @@ index 0000000..8522c93
 +      originalConnections: fixture.originalSrj.connections,
 +      hdRoutes,
 +      layerCount: fixture.layerCount,
-+      obstacles: fixture.srj.obstacles,
++      obstacles: fixture.obstacles,
 +      defaultViaHoleDiameter: fixture.defaultViaHoleDiameter,
 +      connMap,
 +    })
