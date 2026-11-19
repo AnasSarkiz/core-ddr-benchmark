@@ -5173,10 +5173,10 @@ HcmV?d00001
 
 diff --git a/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts b/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
 new file mode 100644
-index 0000000..aae1c55
+index 0000000..bf00578
 --- /dev/null
 +++ b/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
-@@ -0,0 +1,143 @@
+@@ -0,0 +1,148 @@
 +import { expect, test } from "bun:test"
 +import { readFileSync } from "node:fs"
 +import { gunzipSync } from "node:zlib"
@@ -5245,8 +5245,9 @@ index 0000000..aae1c55
 + * Joint repair input captured on the native A13 remaining phase (64 signals
 + * beside four routed data bytes), with tscircuit-autorouter#3906 applied: the
 + * routes entering Pipeline9JointDrcRepairSolver. The regional repair's refine
-+ * step moves source_net_77 off earlier copper and onto five RAM pads of other
-+ * nets, then keeps the result because it has fewer DRC errors.
++ * step moves source_net_77 off earlier copper and onto RAM pads of other nets
++ * it did not touch before, then keeps the result because it has fewer DRC
++ * errors.
 + */
 +test("A13 joint repair moves a trace onto pads of other nets", async (): Promise<void> => {
 +  const fixture = JSON.parse(
@@ -5300,14 +5301,19 @@ index 0000000..aae1c55
 +    })
 +  const before = evaluate(toTraces(fixture.newHdRoutes))
 +  const after = evaluate(toTraces(joint.getOutput()))
-+  const getPadContacts = (errors: Record<string, unknown>[]): string[] =>
++  // A contact's id names the trace and the pad it overlaps.
++  const getPadContactIds = (errors: Record<string, unknown>[]): string[] =>
 +    errors
 +      .filter(
 +        (error) =>
 +          typeof error.message === "string" &&
 +          error.message.includes("overlaps with pcb_smtpad"),
 +      )
-+      .map((error) => error.message as string)
++      .map((error) => String(error.pcb_trace_error_id))
++  const inputContactIds = new Set(getPadContactIds(before.errors))
++  const newPadContactIds = getPadContactIds(after.errors).filter(
++    (id) => !inputContactIds.has(id),
++  )
 +
 +  await expect(renderFrame(before.circuitJson, fixture.srj)).toMatchSvgSnapshot(
 +    import.meta.path,
@@ -5317,6 +5323,5 @@ index 0000000..aae1c55
 +    import.meta.path,
 +    { svgName: "joint-output" },
 +  )
-+  expect(getPadContacts(before.errors)).toEqual([])
-+  expect(getPadContacts(after.errors).length).toBeGreaterThan(0)
++  expect(newPadContactIds.length).toBeGreaterThan(0)
 +})
