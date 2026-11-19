@@ -1,4 +1,4 @@
-name: Guard pair on latest main
+name: Raw DRC contact errors
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -25,9 +25,6 @@ jobs:
         run: |
           cd autorouter
           bun install > /dev/null 2>&1
-          git apply ../harness-repo/harness/ar-exp/guard-repro.patch && echo REPRO
-          F=tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
-          bun test $F --timeout 900000 > r.log 2>&1 || true; echo "REPRO-TEST $(grep -E '^\((pass|fail)\)' r.log | cut -c1-90)"
-          git apply ../harness-repo/harness/ar-exp/guard-fix.patch && echo FIX
-          bun test $F --timeout 900000 > f.log 2>&1 || true; echo "FIX-TEST $(grep -E '^\((pass|fail)\)' f.log | cut -c1-90)"
-          grep -vE '^\s+at ' f.log | grep -E '^error|Expected|Received' | head -5
+          cp ../harness-repo/harness/diag/contact-errors.ts .
+          bun contact-errors.ts > c.log 2>&1 || true
+          grep -E "^CASE" c.log | cut -c1-900; tail -5 c.log | cut -c1-300
