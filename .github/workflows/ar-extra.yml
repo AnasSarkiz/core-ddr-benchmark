@@ -66,9 +66,11 @@ jobs:
           for v in base guard base guard; do
             rm -rf node_modules/@tscircuit/capacity-autorouter/dist
             cp -r ../dist-$v node_modules/@tscircuit/capacity-autorouter/dist
+            rm -rf ddr-benchmark-results
             start=$(date +%s)
             bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route-$v.log 2>&1 || true
             end=$(date +%s)
             issues=$(grep -E "DRC issues" ddr-benchmark-results/report.md | sed 's/.*| //')
             echo "TIMING ${{ matrix.circuit }} $v $((end-start))s drc=$issues"
+            grep -iE "cache|skip" route-$v.log | head -3
           done
