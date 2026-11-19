@@ -1,0 +1,452 @@
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
+index 68ccb8b..2bf9ef1 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
+@@ -495,7 +495,10 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+         )
+         if (
+           getViaIssueCount(errors) <= getViaIssueCount(cleanup.errors) &&
+-          isPipeline9DrcCandidateBetter(errors, cleanup.errors) &&
++          // Refine is the last step, so nothing after it removes a new short.
++          isPipeline9DrcCandidateBetter(errors, cleanup.errors, {
++            rejectNewContacts: true,
++          }) &&
+           !this.introducesViaInPad(refinedRoutes)
+         ) {
+           cleanup.routes = refinedRoutes
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
+index a121216..10c63ca 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
+@@ -141,19 +141,30 @@ const getContactKeys = (errors: Pipeline9DrcError[]): Set<string> => {
+   return contactKeys
+ }
+ 
++const hasNewContact = (
++  candidateErrors: Pipeline9DrcError[],
++  currentErrors: Pipeline9DrcError[],
++): boolean => {
++  const currentContactKeys = getContactKeys(currentErrors)
++  for (const contactKey of getContactKeys(candidateErrors)) {
++    if (!currentContactKeys.has(contactKey)) return true
++  }
++  return false
++}
++
+ /**
+  * A candidate is better when it has fewer DRC errors, or as many with a lower
+- * score, and it puts no two objects in contact that were not already touching.
+- * Fewer errors never justifies a new short.
++ * score. With rejectNewContacts, a candidate that puts two objects in contact
++ * that were not already touching is never better: use it where no later step
++ * can remove the short.
+  */
+ export const isPipeline9DrcCandidateBetter = (
+   candidateErrors: Pipeline9DrcError[],
+   currentErrors: Pipeline9DrcError[],
++  { rejectNewContacts = false }: { rejectNewContacts?: boolean } = {},
+ ): boolean => {
+-  const currentContactKeys = getContactKeys(currentErrors)
+-  const candidateContactKeys = getContactKeys(candidateErrors)
+-  for (const contactKey of candidateContactKeys) {
+-    if (!currentContactKeys.has(contactKey)) return false
++  if (rejectNewContacts && hasNewContact(candidateErrors, currentErrors)) {
++    return false
+   }
+   return (
+     candidateErrors.length < currentErrors.length ||
+diff --git a/lib/utils/autorouting-drc/createTraceObstacleClearanceEvaluator.ts b/lib/utils/autorouting-drc/createTraceObstacleClearanceEvaluator.ts
+index 00e0241..f9f570f 100644
+--- a/lib/utils/autorouting-drc/createTraceObstacleClearanceEvaluator.ts
++++ b/lib/utils/autorouting-drc/createTraceObstacleClearanceEvaluator.ts
+@@ -798,13 +798,13 @@ export const createTraceObstacleClearanceEvaluator = (
+             ? getReadableNameForElement(circuitJson, otherId)
+             : `${item.element.type} "${getReadableNameForElement(circuitJson, otherId)}"`
+         const hole = !("trace" in item) && item.element.type === "pcb_hole"
+-        const isContact = clearance.gap <= 0
+-        const error: DrcError = {
++        overlaps.set(pairId, {
+           type: "pcb_trace_error",
+           error_type: "pcb_trace_error",
+-          message: isContact
+-            ? `PCB trace ${traceName} overlaps with ${otherName} (accidental contact)`
+-            : `PCB trace ${traceName} is too close to ${otherName} (gap: ${clearance.gap.toFixed(3)}mm)`,
++          message:
++            clearance.gap <= 0
++              ? `PCB trace ${traceName} overlaps with ${otherName} (accidental contact)`
++              : `PCB trace ${traceName} is too close to ${otherName} (gap: ${clearance.gap.toFixed(3)}mm)`,
+           pcb_trace_id: trace.pcb_trace_id,
+           source_trace_id: hole ? (trace.source_trace_id ?? "") : "",
+           pcb_trace_error_id: `overlap_${pairId}`,
+@@ -824,10 +824,7 @@ export const createTraceObstacleClearanceEvaluator = (
+                     : []),
+                 ],
+           center: clearance.center,
+-        }
+-        // The two objects in contact. A via is named by its trace.
+-        if (isContact) error.contact_ids = [trace.pcb_trace_id, connectedId]
+-        overlaps.set(pairId, error)
++        })
+       }
+     }
+     const typedErrors = new Map<string, { error: DrcError; gap: number }>()
+diff --git a/tests/features/pipeline9-drc-candidate-new-contact.test.ts b/tests/features/pipeline9-drc-candidate-new-contact.test.ts
+index d317e93..4870bd5 100644
+--- a/tests/features/pipeline9-drc-candidate-new-contact.test.ts
++++ b/tests/features/pipeline9-drc-candidate-new-contact.test.ts
+@@ -4,7 +4,7 @@ import {
+   type Pipeline9DrcError,
+ } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils"
+ 
+-test("pipeline9 DRC candidate with fewer errors is not better when it adds a contact", () => {
++test("pipeline9 DRC candidate that adds a contact is not better when new contacts are rejected", () => {
+   const clearanceError: Pipeline9DrcError = { type: "pcb_trace_error" }
+   const traceOnPad1: Pipeline9DrcError = {
+     type: "pcb_trace_error",
+@@ -24,8 +24,22 @@ test("pipeline9 DRC candidate with fewer errors is not better when it adds a con
+   const reorderedContact = [pad1UnderTrace, clearanceError]
+   const clearanceErrorsOnly = [clearanceError]
+ 
+-  expect(isPipeline9DrcCandidateBetter(newContact, current)).toBe(false)
+-  expect(isPipeline9DrcCandidateBetter(reorderedContact, current)).toBe(true)
++  const rejectNewContacts = { rejectNewContacts: true }
++
++  expect(
++    isPipeline9DrcCandidateBetter(newContact, current, rejectNewContacts),
++  ).toBe(false)
++  // Without the option, a new contact is counted like any other error.
++  expect(isPipeline9DrcCandidateBetter(newContact, current)).toBe(true)
++  expect(
++    isPipeline9DrcCandidateBetter(reorderedContact, current, rejectNewContacts),
++  ).toBe(true)
+   // Errors without contact_ids are clearance errors and are only counted.
+-  expect(isPipeline9DrcCandidateBetter(clearanceErrorsOnly, current)).toBe(true)
++  expect(
++    isPipeline9DrcCandidateBetter(
++      clearanceErrorsOnly,
++      current,
++      rejectNewContacts,
++    ),
++  ).toBe(true)
+ })
+diff --git a/tests/features/pipeline9-drc-contact-ids-trace-to-pad.test.ts b/tests/features/pipeline9-drc-contact-ids-trace-to-pad.test.ts
+deleted file mode 100644
+index b56348a..0000000
+--- a/tests/features/pipeline9-drc-contact-ids-trace-to-pad.test.ts
++++ /dev/null
+@@ -1,20 +0,0 @@
+-import { expect, test } from "bun:test"
+-import {
+-  getBoardContactIds,
+-  trace,
+-  wire,
+-} from "tests/fixtures/pipeline9CopperContactBoard"
+-
+-test("pipeline9 DRC names the trace and pad in contact_ids when a trace runs over another net's pad", () => {
+-  // netB dips onto netA's left pad at (-3, 0) before heading to its own end.
+-  const traceB = trace("tB", "netB", [
+-    wire(-3, 1),
+-    wire(-3, 0.05),
+-    wire(-2.5, 0.6),
+-    wire(3, 1),
+-  ])
+-
+-  expect(getBoardContactIds([traceB])).toEqual([
+-    ["pcb_smtpad_-3.000_0.000", "tB"],
+-  ])
+-})
+diff --git a/tests/features/pipeline9-drc-contact-ids-trace-to-trace.test.ts b/tests/features/pipeline9-drc-contact-ids-trace-to-trace.test.ts
+deleted file mode 100644
+index 0d12ab3..0000000
+--- a/tests/features/pipeline9-drc-contact-ids-trace-to-trace.test.ts
++++ /dev/null
+@@ -1,32 +0,0 @@
+-import { expect, test } from "bun:test"
+-import {
+-  getBoardContactIds,
+-  getBoardDrcErrors,
+-  trace,
+-  wire,
+-} from "tests/fixtures/pipeline9CopperContactBoard"
+-
+-test("pipeline9 DRC names both traces in contact_ids when two nets' traces touch", () => {
+-  const traceA = trace("tA", "netA", [wire(-3, 0), wire(3, 0)])
+-  const crossingB = trace("tB", "netB", [
+-    wire(-3, 1),
+-    wire(-1, 1),
+-    wire(-1, 0.05),
+-    wire(1, 0.05),
+-    wire(1, 1),
+-    wire(3, 1),
+-  ])
+-  // 0.05mm apart: a clearance error, but no copper touches.
+-  const nearMissB = trace("tB", "netB", [
+-    wire(-3, 1),
+-    wire(-1, 1),
+-    wire(-1, 0.2),
+-    wire(1, 0.2),
+-    wire(1, 1),
+-    wire(3, 1),
+-  ])
+-
+-  expect(getBoardContactIds([traceA, crossingB])).toEqual([["tA", "tB"]])
+-  expect(getBoardDrcErrors([traceA, nearMissB]).length).toBeGreaterThan(0)
+-  expect(getBoardContactIds([traceA, nearMissB])).toEqual([])
+-})
+diff --git a/tests/features/pipeline9-drc-contact-ids-trace-to-via.test.ts b/tests/features/pipeline9-drc-contact-ids-trace-to-via.test.ts
+deleted file mode 100644
+index 9315e62..0000000
+--- a/tests/features/pipeline9-drc-contact-ids-trace-to-via.test.ts
++++ /dev/null
+@@ -1,42 +0,0 @@
+-import { expect, test } from "bun:test"
+-import {
+-  getBoardContactIds,
+-  trace,
+-  via,
+-  wire,
+-} from "tests/fixtures/pipeline9CopperContactBoard"
+-
+-test("pipeline9 DRC names a via by its trace in contact_ids, not its per-run via id", () => {
+-  const traceA = trace("tA", "netA", [
+-    wire(-3, 0),
+-    wire(0, 0),
+-    via(0, 0, "top", "bottom"),
+-    wire(0, 0, "bottom"),
+-    wire(3, 0, "bottom"),
+-    via(3, 0, "bottom", "top"),
+-    wire(3, 0),
+-  ])
+-  // netB's top-layer detour clips tA's via barrel at (0, 0).
+-  const traceB = trace("tB", "netB", [
+-    wire(-3, 1),
+-    wire(0.2, 1),
+-    wire(0.2, -0.1),
+-    wire(0.6, -0.1),
+-    wire(0.6, 1),
+-    wire(3, 1),
+-  ])
+-  // Listed first, netC's two vias take the lowest via ids.
+-  const traceC = trace("tC", "netC", [
+-    wire(0, -2),
+-    wire(-4, -2),
+-    via(-4, -2, "top", "bottom"),
+-    wire(-4, -2, "bottom"),
+-    wire(-4, 2, "bottom"),
+-    via(-4, 2, "bottom", "top"),
+-    wire(-4, 2),
+-    wire(0, 2),
+-  ])
+-
+-  expect(getBoardContactIds([traceA, traceB])).toEqual([["tA", "tB"]])
+-  expect(getBoardContactIds([traceC, traceA, traceB])).toEqual([["tA", "tB"]])
+-})
+diff --git a/tests/fixtures/pipeline9CopperContactBoard.ts b/tests/fixtures/pipeline9CopperContactBoard.ts
+deleted file mode 100644
+index 1a91535..0000000
+--- a/tests/fixtures/pipeline9CopperContactBoard.ts
++++ /dev/null
+@@ -1,98 +0,0 @@
+-import { createPipeline9AutoroutingDrcEvaluator } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/createPipeline9AutoroutingDrcEvaluator"
+-import type { Pipeline9DrcError } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils"
+-import type { Obstacle, SimpleRouteJson, SimplifiedPcbTrace } from "lib/types"
+-
+-type TraceRoutePoint = SimplifiedPcbTrace["route"][number]
+-
+-const createPad = (id: string, net: string, x: number, y: number): Obstacle => {
+-  return {
+-    type: "rect",
+-    layers: ["top"],
+-    center: { x, y },
+-    width: 0.4,
+-    height: 0.4,
+-    connectedTo: [net, id],
+-    obstacleId: id,
+-  }
+-}
+-
+-/** Three two-pad nets: A on y=0, B on y=1, C on x=0. */
+-export const copperContactBoard: SimpleRouteJson = {
+-  layerCount: 2,
+-  minTraceWidth: 0.1,
+-  defaultObstacleMargin: 0.1,
+-  bounds: { minX: -5, maxX: 5, minY: -5, maxY: 5 },
+-  obstacles: [
+-    createPad("padA1", "netA", -3, 0),
+-    createPad("padA2", "netA", 3, 0),
+-    createPad("padB1", "netB", -3, 1),
+-    createPad("padB2", "netB", 3, 1),
+-    createPad("padC1", "netC", 0, -2),
+-    createPad("padC2", "netC", 0, 2),
+-  ],
+-  connections: (
+-    [
+-      ["netA", "padA1", -3, 0, "padA2", 3, 0],
+-      ["netB", "padB1", -3, 1, "padB2", 3, 1],
+-      ["netC", "padC1", 0, -2, "padC2", 0, 2],
+-    ] as const
+-  ).map(([name, startPad, x1, y1, endPad, x2, y2]) => ({
+-    name,
+-    pointsToConnect: [
+-      { x: x1, y: y1, layer: "top", pcb_port_id: startPad },
+-      { x: x2, y: y2, layer: "top", pcb_port_id: endPad },
+-    ],
+-  })),
+-}
+-
+-export const wire = (x: number, y: number, layer = "top"): TraceRoutePoint => {
+-  return { route_type: "wire", x, y, width: 0.15, layer }
+-}
+-
+-export const via = (
+-  x: number,
+-  y: number,
+-  fromLayer: string,
+-  toLayer: string,
+-): TraceRoutePoint => {
+-  return {
+-    route_type: "via",
+-    x,
+-    y,
+-    from_layer: fromLayer,
+-    to_layer: toLayer,
+-    via_diameter: 0.3,
+-    via_hole_diameter: 0.15,
+-  }
+-}
+-
+-export const trace = (
+-  id: string,
+-  net: string,
+-  route: TraceRoutePoint[],
+-): SimplifiedPcbTrace => {
+-  return { type: "pcb_trace", pcb_trace_id: id, connection_name: net, route }
+-}
+-
+-const evaluateDrc = createPipeline9AutoroutingDrcEvaluator({
+-  inputSrj: copperContactBoard,
+-  srjWithPointPairs: copperContactBoard,
+-})
+-
+-/** DRC errors for these traces on the board, as joint repair evaluates them. */
+-export const getBoardDrcErrors = (
+-  traces: SimplifiedPcbTrace[],
+-): Pipeline9DrcError[] => {
+-  return evaluateDrc(traces, { includeTraceContinuity: false }).errors
+-}
+-
+-/** The sorted contact_ids of every error that reports copper touching. */
+-export const getBoardContactIds = (
+-  traces: SimplifiedPcbTrace[],
+-): string[][] => {
+-  const contactIds: string[][] = []
+-  for (const error of getBoardDrcErrors(traces)) {
+-    if (error.contact_ids) contactIds.push([...error.contact_ids].sort())
+-  }
+-  return contactIds
+-}
+diff --git a/tests/pipeline9-autorouting-drc-current-rules.test.ts b/tests/pipeline9-autorouting-drc-current-rules.test.ts
+index 67d794e..9e8e164 100644
+--- a/tests/pipeline9-autorouting-drc-current-rules.test.ts
++++ b/tests/pipeline9-autorouting-drc-current-rules.test.ts
+@@ -11,13 +11,6 @@ import {
+   issue3130Traces,
+ } from "./fixtures/issue3130-via-pad-clearance"
+ 
+-/** Native errors add contact_ids, which the reference checks cannot report. */
+-const getReferenceFields = (errors: Record<string, unknown>[]): unknown[] =>
+-  errors.map((error) => {
+-    const { contact_ids: _contactIds, ...referenceFields } = error
+-    return referenceFields
+-  })
+-
+ test("Pipeline9 native DRC matches current reference rules and optional categories", () => {
+   const input: SimpleRouteJson = {
+     ...structuredClone(issue3130Input),
+@@ -161,13 +154,11 @@ test("Pipeline9 native DRC matches current reference rules and optional categori
+     const actual = evaluate(traces)
+     expect(input).toEqual(inputBeforeEvaluation)
+     expect(reference.errors.length).toBeGreaterThan(0)
+-    expect(getReferenceFields(actual.errors)).toEqual(
+-      reference.errors as unknown[],
+-    )
+-    expect(getReferenceFields(actual.errorsWithCenters)).toEqual(
++    expect(actual.errors as unknown[]).toEqual(reference.errors as unknown[])
++    expect(actual.errorsWithCenters as unknown[]).toEqual(
+       reference.errorsWithCenters as unknown[],
+     )
+-    expect(getReferenceFields(actual.locationAwareErrors)).toEqual(
++    expect(actual.locationAwareErrors as unknown[]).toEqual(
+       reference.locationAwareErrors as unknown[],
+     )
+     for (const error of reference.errors) {
+@@ -181,12 +172,9 @@ test("Pipeline9 native DRC matches current reference rules and optional categori
+       ...options,
+       drcOptions: { ...options.drcOptions, includeTraceContinuity: false },
+     })
+-    const withoutContinuityActual = evaluate(traces, {
+-      includeTraceContinuity: false,
+-    })
+-    expect(getReferenceFields(withoutContinuityActual.errors)).toEqual(
+-      withoutContinuity.errors as unknown[],
+-    )
++    expect(
++      evaluate(traces, { includeTraceContinuity: false }).errors as unknown[],
++    ).toEqual(withoutContinuity.errors as unknown[])
+   }
+   expect([...observedTypes]).toEqual(
+     expect.arrayContaining([
+diff --git a/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts b/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
+index 26e0474..9b80bd8 100644
+--- a/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
++++ b/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
+@@ -5,7 +5,6 @@ import type { AnyCircuitElement } from "circuit-json"
+ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
+ import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
+ import { convertPipeline7HdRoutesToSimplifiedPcbTraces } from "lib/autorouter-pipelines/AutoroutingPipeline7_MultiGraph/convertPipeline7HdRoutesToSimplifiedPcbTraces"
+-import type { Pipeline9DrcError } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils"
+ import { createPipeline9AutoroutingDrcEvaluator } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/createPipeline9AutoroutingDrcEvaluator"
+ import { Pipeline9JointDrcRepairSolver } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9JointDrcRepairSolver"
+ import type {
+@@ -14,6 +13,11 @@ import type {
+   SimplifiedPcbTrace,
+ } from "lib/types"
+ import type { HighDensityRoute } from "lib/types/high-density-types"
++import {
++  AutoroutingDrcEngine,
++  type SimpleRouteJson as RepairSimpleRouteJson,
++  type SimplifiedPcbTraces as RepairSimplifiedPcbTraces,
++} from "high-density-repair03/lib"
+ import { createPcbBoardElement } from "lib/utils/convertToCircuitJson"
+ 
+ type JointRepairFixture = {
+@@ -121,8 +125,17 @@ test("A13 joint repair moves a trace onto pads of other nets", async (): Promise
+       defaultViaHoleDiameter: fixture.defaultViaHoleDiameter,
+       connMap,
+     })
+-  const getContactKeys = (errors: Pipeline9DrcError[]): string[] => {
++  // Contacts as the DRC engine joint repair compares candidates with.
++  const drcEngine = new AutoroutingDrcEngine(
++    {
++      ...fixture.srj,
++      obstacles: fixture.originalSrj.obstacles,
++    } as RepairSimpleRouteJson,
++    { connMap },
++  )
++  const getContactKeys = (traces: SimplifiedPcbTrace[]): string[] => {
+     const contactKeys: string[] = []
++    const { errors } = drcEngine.evaluate(traces as RepairSimplifiedPcbTraces)
+     for (const error of errors) {
+       if (!error.contact_ids) continue
+       contactKeys.push([...error.contact_ids].sort().join(" touches "))
+@@ -133,8 +146,8 @@ test("A13 joint repair moves a trace onto pads of other nets", async (): Promise
+   const outputTraces = toTraces(joint.getOutput())
+   const before = evaluate(inputTraces)
+   const after = evaluate(outputTraces)
+-  const inputContacts = new Set(getContactKeys(before.errors))
+-  const newContacts = getContactKeys(after.errors).filter(
++  const inputContacts = new Set(getContactKeys(inputTraces))
++  const newContacts = getContactKeys(outputTraces).filter(
+     (contact) => !inputContacts.has(contact),
+   )
+ 

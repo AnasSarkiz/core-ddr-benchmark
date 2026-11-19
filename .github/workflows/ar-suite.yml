@@ -1,4 +1,4 @@
-name: Autorouter suite on main, guard repro vs guard fix
+name: Autorouter suite on the refine contact rule
 
 on:
   push:
@@ -13,14 +13,14 @@ jobs:
       fail-fast: false
       matrix:
         node: [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        variant: [base, fix]
+        variant: [fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: ce89da32c1c31f84ad5f5a753a665ac056df66a9
+          ref: ea0f7f8ed1f543aa8a2c79255b65ab05cf5e6241
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -30,10 +30,7 @@ jobs:
       - name: Apply the fix
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/guard-repro.patch
-          if [ "${{ matrix.variant }}" = fix ]; then
-            git apply ../harness-repo/harness/ar-exp/guard-fix.patch
-          fi
+          git apply ../harness-repo/harness/ar-exp/fix-v4.patch
           git status --short
       - name: Typecheck
         if: matrix.node == 1

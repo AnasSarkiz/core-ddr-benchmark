@@ -1,4 +1,4 @@
-name: Diagnose new-contact rejections on srj33 sample 3
+name: Prove the A13 test catches new contacts
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [as-is, remap]
+        variant: [no-rule]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -28,9 +28,8 @@ jobs:
       - name: Run srj33 sample 3 and A13
         run: |
           cd autorouter
-          if [ "${{ matrix.variant }}" = remap ]; then git apply ../harness-repo/harness/ar-exp/contact-remap.patch; fi
-          python3 ../harness-repo/harness/ar-exp/instr-contacts.py
+          git apply ../harness-repo/harness/ar-exp/fix-v4.patch
+          sed -i 's/rejectNewContacts: true,/rejectNewContacts: false,/' lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
           git diff --stat
           bun install > /dev/null 2>&1
-          bun test tests/features/pipeline9-srj33-sample3-contact-regional-repair.test.ts --timeout 9999999 2>&1 | grep -E "NEWCONTACT|Expected|Received|\(pass\)|\(fail\)" | head -40
-          bun test tests/repro/pipeline9-a13-refine-pad-contacts.test.ts --timeout 9999999 2>&1 | grep -E "NEWCONTACT|\(pass\)|\(fail\)" | head -12
+          bun test tests/repro/pipeline9-a13-refine-pad-contacts.test.ts --timeout 9999999 2>&1 | grep -E "touches|\(pass\)|\(fail\)" | head -12
