@@ -1,4 +1,4 @@
-name: Ten DDR boards, autorouter main vs guard plus 3906
+name: Ten DDR boards, autorouter main vs structured refine guard (alone and with 3906)
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
-        variant: [ar-base, ar-fix]
+        variant: [ar-base, ar-guard, ar-both]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -50,13 +50,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: ce89da32c1c31f84ad5f5a753a665ac056df66a9
+          ref: 8bc7eeee1d42c94eb72f32460dc03f54add143e5
           path: autorouter
           persist-credentials: false
       - name: Build the autorouter under test and place it in Core
         run: |
           cd autorouter
-          if [ "${{ matrix.variant }}" = ar-fix ]; then git apply --include='lib/*' ../harness-repo/harness/ar-exp/guard-fix.patch && git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/fix-code.patch && git status --short; fi
+          if [ "${{ matrix.variant }}" != ar-base ]; then git apply --include='lib/*' ../harness-repo/harness/ar-exp/guard-v2.patch; fi
+          if [ "${{ matrix.variant }}" = ar-both ]; then git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/fix-code.patch; fi
+          git status --short
           bun install > /dev/null 2>&1
           bun run build > build.log 2>&1; tail -3 build.log
           grep '"version"' ../core/node_modules/@tscircuit/capacity-autorouter/package.json
