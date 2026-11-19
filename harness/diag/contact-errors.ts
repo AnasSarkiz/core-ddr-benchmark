@@ -15,13 +15,15 @@ const wire = (x: number, y: number, layer = "top") => ({ route_type: "wire", x, 
 const trace = (id: string, net: string, route: any[]) => ({ type: "pcb_trace", pcb_trace_id: id, connection_name: net, route })
 const cases: Record<string, any[]> = {
   traceOnTrace: [trace("tA", "netA", [wire(-3, 0), wire(3, 0)]), trace("tB", "netB", [wire(-3, 1), wire(-1, 1), wire(-1, 0.05), wire(1, 0.05), wire(1, 1), wire(3, 1)])],
-  traceOnPad: [trace("tA", "netA", [wire(-3, 0), wire(3, 0)]), trace("tB", "netB", [wire(-3, 1), wire(-3.1, 0.3), wire(3, 1)])],
+  traceOnPad: [trace("tA", "netA", [wire(-3, 0), wire(3, 0)]), trace("tB", "netB", [wire(-3, 1), wire(-3, 0.05), wire(-2.5, 0.6), wire(3, 1)])],
+  viaOnPad: [trace("tA", "netA", [wire(-3, 0), wire(3, 0)]), trace("tB", "netB", [wire(-3, 1), wire(-2.95, 0.15), { route_type: "via", x: -2.95, y: 0.15, from_layer: "top", to_layer: "bottom", via_diameter: 0.3, hole_diameter: 0.15 }, wire(-2.95, 0.15, "bottom"), wire(3, 1, "bottom"), { route_type: "via", x: 3, y: 1, from_layer: "bottom", to_layer: "top", via_diameter: 0.3, hole_diameter: 0.15 }, wire(3, 1)])],
   traceOnVia: [trace("tA", "netA", [wire(-3, 0), wire(0, 0), { route_type: "via", x: 0, y: 0, from_layer: "top", to_layer: "bottom", via_diameter: 0.3, hole_diameter: 0.15 }, wire(0, 0, "bottom"), wire(3, 0, "bottom"), { route_type: "via", x: 3, y: 0, from_layer: "bottom", to_layer: "top", via_diameter: 0.3, hole_diameter: 0.15 }, wire(3, 0)]), trace("tB", "netB", [wire(-3, 1), wire(-0.1, 1), wire(-0.1, 0.1), wire(0.1, 0.1), wire(0.1, 1), wire(3, 1)])],
   nearMiss: [trace("tA", "netA", [wire(-3, 0), wire(3, 0)]), trace("tB", "netB", [wire(-3, 1), wire(-1, 1), wire(-1, 0.2), wire(1, 0.2), wire(1, 1), wire(3, 1)])],
 }
-const evaluate = createPipeline9AutoroutingDrcEvaluator({ inputSrj: srj, srjWithPointPairs: srj })
+const evaluate = createPipeline9AutoroutingDrcEvaluator({ inputSrj: srj, srjWithPointPairs: srj, drcOptions: { traceClearance: 0, viaClearance: 0 } })
 for (const [name, traces] of Object.entries(cases)) {
   const result: any = evaluate(traces as any)
+  for (const v of result.circuitJson.filter((e: any) => e.type === "pcb_via")) console.log(`CASE ${name}   VIA ${JSON.stringify(v)}`)
   const errs = result.errorsWithCenters ?? result.errors
   console.log(`CASE ${name} errors=${errs.length}`)
   for (const e of errs) console.log(`CASE ${name}   ${JSON.stringify(e)}`)
