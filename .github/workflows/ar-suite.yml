@@ -1,4 +1,4 @@
-name: Autorouter suite on main, repro vs fix
+name: Autorouter suite on main, guard repro vs guard fix
 
 on:
   push:
@@ -30,11 +30,9 @@ jobs:
       - name: Apply the fix
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/repro-tests.patch
+          git apply ../harness-repo/harness/ar-exp/guard-repro.patch
           if [ "${{ matrix.variant }}" = fix ]; then
-            git apply ../harness-repo/harness/ar-exp/fix-code.patch
-            bun install > /dev/null 2>&1
-            grep -c viaAreaFraction node_modules/tiny-hypergraph/lib/computeRegionCost.ts
+            git apply ../harness-repo/harness/ar-exp/guard-fix.patch
           fi
           git status --short
       - name: Typecheck

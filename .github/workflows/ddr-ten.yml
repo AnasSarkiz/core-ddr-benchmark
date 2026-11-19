@@ -1,4 +1,4 @@
-name: Ten DDR boards, autorouter main vs fix
+name: Ten DDR boards, autorouter main vs guard
 
 on:
   push:
@@ -56,7 +56,7 @@ jobs:
       - name: Build the autorouter under test and place it in Core
         run: |
           cd autorouter
-          if [ "${{ matrix.variant }}" = ar-fix ]; then git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/fix-code.patch && git status --short; fi
+          if [ "${{ matrix.variant }}" = ar-fix ]; then git apply --include='lib/*' ../harness-repo/harness/ar-exp/guard-fix.patch && git status --short; fi
           bun install > /dev/null 2>&1
           bun run build > build.log 2>&1; tail -3 build.log
           grep '"version"' ../core/node_modules/@tscircuit/capacity-autorouter/package.json
