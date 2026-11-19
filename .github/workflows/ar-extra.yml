@@ -1,4 +1,4 @@
-name: BeaglePlay same runner, base vs guard
+name: Guard pair on latest main
 
 on:
   push:
@@ -8,14 +8,14 @@ on:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: ce89da32c1c31f84ad5f5a753a665ac056df66a9
+          ref: 8bc7eeee1d42c94eb72f32460dc03f54add143e5
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -25,11 +25,9 @@ jobs:
         run: |
           cd autorouter
           bun install > /dev/null 2>&1
-          F=$(grep -rlF "BeaglePlay DDR4 routes without clearance or port errors" tests | head -1); echo "FILE $F"
-          for v in base guard base2 guard2; do
-            git checkout -q -- lib
-            case $v in guard*) git apply --include='lib/*' ../harness-repo/harness/ar-exp/guard-fix.patch;; esac
-            start=$(date +%s); bun test "$F" --timeout 3600000 > t.log 2>&1 || true; end=$(date +%s)
-            echo "BP $v seconds=$((end-start)) $(grep -E '^\((pass|fail)\)' t.log | cut -c1-80)"
-            grep -vE '^\s+at ' t.log | grep -E '^error|Expected|Received|^[-+] ' | head -8 | sed "s/^/BP $v   /" | cut -c1-200
-          done
+          git apply ../harness-repo/harness/ar-exp/guard-repro.patch && echo REPRO
+          F=tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
+          bun test \$F --timeout 900000 > r.log 2>&1 || true; echo "REPRO-TEST \$(grep -E '^\((pass|fail)\)' r.log | cut -c1-90)"
+          git apply ../harness-repo/harness/ar-exp/guard-fix.patch && echo FIX
+          bun test \$F --timeout 900000 > f.log 2>&1 || true; echo "FIX-TEST \$(grep -E '^\((pass|fail)\)' f.log | cut -c1-90)"
+          grep -vE '^\s+at ' f.log | grep -E '^error|Expected|Received' | head -5
