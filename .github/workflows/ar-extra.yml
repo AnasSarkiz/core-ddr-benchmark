@@ -1,4 +1,4 @@
-name: Same-runner timing, autorouter main vs structured refine guard
+name: Regenerate the A13 refine snapshot
 
 on:
   push:
@@ -6,71 +6,26 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  board:
+  snap:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        circuit: [a13, h616, imx6, butterstick]
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-        with: { path: harness-repo }
-      - uses: actions/checkout@v4
         with:
-          repository: tscircuit/core
-          ref: main
-          path: core
-          fetch-depth: 0
+          repository: tscircuit/tscircuit-autorouter
+          ref: f943c0e482ca3f2c35b62996e2f08dfabcf50ef1
+          path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
-      - name: Core main with #5586
-        run: |
-          cd core
-          git checkout -q 701339c13c9f1cba5c71bf9801fac787a60de937
-          git fetch -q origin fix/h3-phase-future-intent
-          git -c user.name=ci -c user.email=ci@example.com merge --no-edit -q FETCH_HEAD
-          bun install --ignore-scripts > /dev/null
-      - uses: actions/checkout@v4
-        with:
-          repository: tscircuit/bus-lanes-solver
-          ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
-          path: solver
-          persist-credentials: false
-      - name: Build bus-lanes main and place it in Core
-        run: |
-          cd solver
-          bun install > /dev/null 2>&1
-          bun run build 2>&1 | tail -2
-          cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js
-      - uses: actions/checkout@v4
-        with:
-          repository: tscircuit/tscircuit-autorouter
-          ref: 8bc7eeee1d42c94eb72f32460dc03f54add143e5
-          path: autorouter
-          persist-credentials: false
-      - name: Build both autorouters
+      - name: Update the A13 snapshot
         run: |
           cd autorouter
           bun install > /dev/null 2>&1
-          bun run build > build.log 2>&1; tail -2 build.log
-          cp -r dist ../dist-base
-          git apply --include='lib/*' ../harness-repo/harness/ar-exp/guard-v2.patch
-          bun run build > build.log 2>&1; tail -2 build.log
-          cp -r dist ../dist-guard
-      - name: Route base, guard, base, guard on this runner
-        run: |
-          cd core
-          for v in base guard base guard; do
-            rm -rf node_modules/@tscircuit/capacity-autorouter/dist
-            cp -r ../dist-$v node_modules/@tscircuit/capacity-autorouter/dist
-            rm -rf ddr-benchmark-results
-            start=$(date +%s)
-            bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route-$v.log 2>&1 || true
-            end=$(date +%s)
-            issues=$(grep -E "DRC issues" ddr-benchmark-results/report.md | sed 's/.*| //')
-            echo "TIMING ${{ matrix.circuit }} $v $((end-start))s drc=$issues"
-            grep -iE "cache|skip" route-$v.log | head -3
-          done
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-a13-refine-pad-contacts.test.ts --timeout 9999999 2>&1 | tail -25 || true
+          git status --short
+          echo "=====SNAP====="
+          base64 -w0 tests/repro/__snapshots__/pipeline9-a13-refine-pad-contacts-joint-output.snap.svg
+          echo
+          echo "=====END====="
