@@ -1,4 +1,4 @@
-name: Regenerate the A13 refine snapshot
+name: Diagnose new-contact rejections on srj33 sample 3
 
 on:
   push:
@@ -6,10 +6,16 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  snap:
+  diag:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [as-is, remap]
     steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
@@ -19,13 +25,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
-      - name: Update the A13 snapshot
+      - name: Run srj33 sample 3 and A13
         run: |
           cd autorouter
+          if [ "${{ matrix.variant }}" = remap ]; then git apply ../harness-repo/harness/ar-exp/contact-remap.patch; fi
+          python3 ../harness-repo/harness/ar-exp/instr-contacts.py
+          git diff --stat
           bun install > /dev/null 2>&1
-          BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-a13-refine-pad-contacts.test.ts --timeout 9999999 2>&1 | tail -25 || true
-          git status --short
-          echo "=====SNAP====="
-          base64 -w0 tests/repro/__snapshots__/pipeline9-a13-refine-pad-contacts-joint-output.snap.svg
-          echo
-          echo "=====END====="
+          bun test tests/features/pipeline9-srj33-sample3-contact-regional-repair.test.ts --timeout 9999999 2>&1 | grep -E "NEWCONTACT|Expected|Received|\(pass\)|\(fail\)" | head -40
+          bun test tests/repro/pipeline9-a13-refine-pad-contacts.test.ts --timeout 9999999 2>&1 | grep -E "NEWCONTACT|\(pass\)|\(fail\)" | head -12

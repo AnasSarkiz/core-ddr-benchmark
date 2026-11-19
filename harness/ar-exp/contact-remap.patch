@@ -1,0 +1,32 @@
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9JointDrcRepairSolver.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9JointDrcRepairSolver.ts
+index 8d35616..3dfe4b4 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9JointDrcRepairSolver.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9JointDrcRepairSolver.ts
+@@ -519,8 +519,17 @@ export const remapDrcTraceIds = (
+             encodedOtherEvaluationTraceId,
+           ) ?? encodedOtherEvaluationTraceId)
+       : undefined
++    const contactEvaluationIds: string[] = Array.isArray(error.contact_ids)
++      ? error.contact_ids
++      : []
++    const contactSolverIds = contactEvaluationIds.map(
++      (id) => solverTraceIdByEvaluationTraceId.get(id) ?? id,
++    )
+     const remappingChangesIdentity =
+       primarySolverTraceId !== primaryEvaluationTraceId ||
++      contactSolverIds.some(
++        (id, idIndex) => id !== contactEvaluationIds[idIndex],
++      ) ||
+       explicitSolverTraceIds.some(
+         (traceId, traceIndex) =>
+           traceId !== explicitEvaluationTraceIds[traceIndex],
+@@ -536,6 +545,9 @@ export const remapDrcTraceIds = (
+       ...(Array.isArray(error.pcb_trace_ids)
+         ? { pcb_trace_ids: explicitSolverTraceIds }
+         : {}),
++      ...(contactEvaluationIds.length > 0
++        ? { contact_ids: contactSolverIds }
++        : {}),
+       ...(primarySolverTraceId && encodedOtherSolverTraceId
+         ? {
+             pcb_trace_error_id: `overlap_${primarySolverTraceId}_${encodedOtherSolverTraceId}`,
