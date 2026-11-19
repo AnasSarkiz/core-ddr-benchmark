@@ -1,5 +1,21 @@
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
+index 68ccb8b..2bf9ef1 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
+@@ -495,7 +495,10 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+         )
+         if (
+           getViaIssueCount(errors) <= getViaIssueCount(cleanup.errors) &&
+-          isPipeline9DrcCandidateBetter(errors, cleanup.errors) &&
++          // Refine is the last step, so nothing after it removes a new short.
++          isPipeline9DrcCandidateBetter(errors, cleanup.errors, {
++            rejectNewContacts: true,
++          }) &&
+           !this.introducesViaInPad(refinedRoutes)
+         ) {
+           cleanup.routes = refinedRoutes
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
-index 8e44ee6..a121216 100644
+index 8e44ee6..10c63ca 100644
 --- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
 @@ -9,6 +9,8 @@ export type Pipeline9CollapsedTraceParticipant = {
@@ -11,7 +27,7 @@ index 8e44ee6..a121216 100644
  }
  
  export type Pipeline9PreloadRepairTraceIds = ReadonlySet<string> & {
-@@ -129,14 +131,37 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
+@@ -129,14 +131,48 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
      return score + 1
    }, 0)
  
@@ -25,10 +41,22 @@ index 8e44ee6..a121216 100644
 +  return contactKeys
 +}
 +
++const hasNewContact = (
++  candidateErrors: Pipeline9DrcError[],
++  currentErrors: Pipeline9DrcError[],
++): boolean => {
++  const currentContactKeys = getContactKeys(currentErrors)
++  for (const contactKey of getContactKeys(candidateErrors)) {
++    if (!currentContactKeys.has(contactKey)) return true
++  }
++  return false
++}
++
 +/**
 + * A candidate is better when it has fewer DRC errors, or as many with a lower
-+ * score, and it puts no two objects in contact that were not already touching.
-+ * Fewer errors never justifies a new short.
++ * score. With rejectNewContacts, a candidate that puts two objects in contact
++ * that were not already touching is never better: use it where no later step
++ * can remove the short.
 + */
  export const isPipeline9DrcCandidateBetter = (
    candidateErrors: Pipeline9DrcError[],
@@ -38,11 +66,10 @@ index 8e44ee6..a121216 100644
 -  (candidateErrors.length === currentErrors.length &&
 -    getDrcIssueScore(candidateErrors) <
 -      getDrcIssueScore(currentErrors) - SCORE_EPSILON)
++  { rejectNewContacts = false }: { rejectNewContacts?: boolean } = {},
 +): boolean => {
-+  const currentContactKeys = getContactKeys(currentErrors)
-+  const candidateContactKeys = getContactKeys(candidateErrors)
-+  for (const contactKey of candidateContactKeys) {
-+    if (!currentContactKeys.has(contactKey)) return false
++  if (rejectNewContacts && hasNewContact(candidateErrors, currentErrors)) {
++    return false
 +  }
 +  return (
 +    candidateErrors.length < currentErrors.length ||
@@ -54,41 +81,6 @@ index 8e44ee6..a121216 100644
  
  export const getPipeline9RouteIndexByTraceId = ({
    routes,
-diff --git a/lib/utils/autorouting-drc/createTraceObstacleClearanceEvaluator.ts b/lib/utils/autorouting-drc/createTraceObstacleClearanceEvaluator.ts
-index f9f570f..00e0241 100644
---- a/lib/utils/autorouting-drc/createTraceObstacleClearanceEvaluator.ts
-+++ b/lib/utils/autorouting-drc/createTraceObstacleClearanceEvaluator.ts
-@@ -798,13 +798,13 @@ export const createTraceObstacleClearanceEvaluator = (
-             ? getReadableNameForElement(circuitJson, otherId)
-             : `${item.element.type} "${getReadableNameForElement(circuitJson, otherId)}"`
-         const hole = !("trace" in item) && item.element.type === "pcb_hole"
--        overlaps.set(pairId, {
-+        const isContact = clearance.gap <= 0
-+        const error: DrcError = {
-           type: "pcb_trace_error",
-           error_type: "pcb_trace_error",
--          message:
--            clearance.gap <= 0
--              ? `PCB trace ${traceName} overlaps with ${otherName} (accidental contact)`
--              : `PCB trace ${traceName} is too close to ${otherName} (gap: ${clearance.gap.toFixed(3)}mm)`,
-+          message: isContact
-+            ? `PCB trace ${traceName} overlaps with ${otherName} (accidental contact)`
-+            : `PCB trace ${traceName} is too close to ${otherName} (gap: ${clearance.gap.toFixed(3)}mm)`,
-           pcb_trace_id: trace.pcb_trace_id,
-           source_trace_id: hole ? (trace.source_trace_id ?? "") : "",
-           pcb_trace_error_id: `overlap_${pairId}`,
-@@ -824,7 +824,10 @@ export const createTraceObstacleClearanceEvaluator = (
-                     : []),
-                 ],
-           center: clearance.center,
--        })
-+        }
-+        // The two objects in contact. A via is named by its trace.
-+        if (isContact) error.contact_ids = [trace.pcb_trace_id, connectedId]
-+        overlaps.set(pairId, error)
-       }
-     }
-     const typedErrors = new Map<string, { error: DrcError; gap: number }>()
 diff --git a/package.json b/package.json
 index ddad31c..d6bd3d1 100644
 --- a/package.json
