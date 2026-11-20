@@ -1,4 +1,4 @@
-name: Check final-phase contact rule before pushing
+name: H616 under each final-phase contact check
 
 on:
   push:
@@ -6,9 +6,13 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  check:
+  h616:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [both, no-projection-check, no-safe-layer-check]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -21,12 +25,15 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
-      - name: Check
+      - name: Run H616
         run: |
           cd autorouter
           git apply ../harness-repo/harness/ar-exp/fix-v6.patch
-          git status --short
+          F=lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
+          if [ "${{ matrix.variant }}" = no-projection-check ]; then sed -i 's/    if (!introducesPipeline9DrcContact(errors, cleanup.errors)) {/    if (true) {/' $F; fi
+          if [ "${{ matrix.variant }}" = no-safe-layer-check ]; then python3 ../harness-repo/harness/ar-exp/drop-safe-layer-check.py; fi
+          git diff --stat
           bun install > /dev/null 2>&1
-          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$?"; head -20 tsc.log
-          bunx biome format . > fmt.log 2>&1; echo "FMT exit=$?"; grep -B2 -A20 "Formatter would" fmt.log | head -60
-          bun test tests/features/pipeline9-drc-candidate-new-contact.test.ts tests/repro/pipeline9-a13-refine-pad-contacts.test.ts tests/features/pipeline9-srj33-sample3-contact-regional-repair.test.ts --timeout 9999999 2>&1 | grep -E "error:|touches|Expected|Received|\(pass\)|\(fail\)" | head -20
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-h616-full-board-ddr-clearance.test.ts --timeout 9999999 > out.log 2>&1 || true
+          grep -E "error:|Expected|Received|\(pass\)|\(fail\)|^\s+[-+] " out.log | head -30
+          git status --short tests
