@@ -1,4 +1,4 @@
-name: H616 under each final-phase contact check
+name: H616 DRC with and without the projection contact check
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [both, no-projection-check, no-safe-layer-check]
+        variant: [both, no-projection-check]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -32,8 +32,9 @@ jobs:
           F=lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
           if [ "${{ matrix.variant }}" = no-projection-check ]; then sed -i 's/    if (!introducesPipeline9DrcContact(errors, cleanup.errors)) {/    if (true) {/' $F; fi
           if [ "${{ matrix.variant }}" = no-safe-layer-check ]; then python3 ../harness-repo/harness/ar-exp/drop-safe-layer-check.py; fi
+          python3 ../harness-repo/harness/ar-exp/h616-print.py
           git diff --stat
           bun install > /dev/null 2>&1
           BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-h616-full-board-ddr-clearance.test.ts --timeout 9999999 > out.log 2>&1 || true
-          grep -E "error:|Expected|Received|\(pass\)|\(fail\)|^\s+[-+] " out.log | head -30
+          grep -E "H616DIAG|\(pass\)|\(fail\)" out.log | head -10
           git status --short tests
