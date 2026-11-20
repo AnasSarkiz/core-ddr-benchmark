@@ -1,4 +1,4 @@
-name: Prove the A13 test catches new contacts (typed ids)
+name: Check final-phase contact rule before pushing
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 7b4bce6e1d807713af10cb707043eb04ef477eb1
+          ref: 2004d10e16be12c9c3773e1fb7ea8384552a1b4e
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
@@ -24,9 +24,9 @@ jobs:
       - name: Check
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/fix-v5.patch
+          git apply ../harness-repo/harness/ar-exp/fix-v6.patch
           git status --short
           bun install > /dev/null 2>&1
-          sed -i 's/rejectNewContacts: true,/rejectNewContacts: false,/' lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
-          git diff --stat
-          BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-a13-refine-pad-contacts.test.ts --timeout 9999999 2>&1 | grep -E "error:|touches|Expected|Received|\(pass\)|\(fail\)" | head -20
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$?"; head -20 tsc.log
+          bunx biome format . > fmt.log 2>&1; echo "FMT exit=$?"; grep -B2 -A20 "Formatter would" fmt.log | head -60
+          bun test tests/features/pipeline9-drc-candidate-new-contact.test.ts tests/repro/pipeline9-a13-refine-pad-contacts.test.ts tests/features/pipeline9-srj33-sample3-contact-regional-repair.test.ts --timeout 9999999 2>&1 | grep -E "error:|touches|Expected|Received|\(pass\)|\(fail\)" | head -20

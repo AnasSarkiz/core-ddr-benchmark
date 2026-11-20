@@ -1,0 +1,209 @@
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
+index 2bf9ef1..c279ee1 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
+@@ -31,6 +31,7 @@ import {
+ import {
+   getPipeline9DrcErrors,
+   getPipeline9RouteIndexByTraceId,
++  introducesPipeline9DrcContact,
+   isPipeline9DrcCandidateBetter,
+   isPipeline9DrcErrorOwnedByPreloadRepair,
+   type Pipeline9DrcError,
+@@ -495,7 +496,7 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+         )
+         if (
+           getViaIssueCount(errors) <= getViaIssueCount(cleanup.errors) &&
+-          // Refine is the last step, so nothing after it removes a new short.
++          // Cleanup is final, so nothing after it removes a new short.
+           isPipeline9DrcCandidateBetter(errors, cleanup.errors, {
+             rejectNewContacts: true,
+           }) &&
+@@ -560,11 +561,13 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+       throw new Error(`Regional via-pad projection failed: ${solver.error}`)
+     }
+     if (!solver.solved) return
+-    cleanup.routes = solver.getOutput().slice(0, cleanup.routes.length)
+-    cleanup.errors = getPipeline9DrcErrors(
+-      this.params.drcEvaluator,
+-      cleanup.routes,
+-    )
++    const routes = solver.getOutput().slice(0, cleanup.routes.length)
++    const errors = getPipeline9DrcErrors(this.params.drcEvaluator, routes)
++    // Cleanup is final, so keep the projection only if it adds no short.
++    if (!introducesPipeline9DrcContact(errors, cleanup.errors)) {
++      cleanup.routes = routes
++      cleanup.errors = errors
++    }
+     this.activeSubSolver = null
+     this.phase = "prepare-safe-layer"
+   }
+@@ -626,7 +629,9 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+     const routes = solver.getOutput()
+     const errors = getPipeline9DrcErrors(this.params.drcEvaluator, routes)
+     if (
+-      isPipeline9DrcCandidateBetter(errors, cleanup.errors) &&
++      isPipeline9DrcCandidateBetter(errors, cleanup.errors, {
++        rejectNewContacts: true,
++      }) &&
+       !this.introducesViaInPad(routes)
+     ) {
+       cleanup.routes = routes
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
+index d932f6f..df03b71 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
+@@ -129,45 +129,55 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
+     return score + 1
+   }, 0)
+ 
++/** A short, keyed by what touches; unidentified when its ids are missing. */
++export type Pipeline9DrcContact =
++  | { kind: "identified"; key: string }
++  | { kind: "unidentified" }
++
+ /**
+- * Identifies a short on a trace error by the objects touching, whichever
++ * The short a trace error reports, keyed by the objects touching whichever
+  * side reported it. Undefined when the error is not copper in contact.
+  */
+-export const getPipeline9DrcContactKey = (
++export const getPipeline9DrcContact = (
+   error: Pipeline9DrcError,
+-): string | undefined => {
++): Pipeline9DrcContact | undefined => {
+   const isContact =
+     error.type === "pcb_trace_error" &&
+     typeof error.actual_clearance === "number" &&
+     error.actual_clearance < 0
+   if (!isContact) return undefined
+   if (typeof error.pcb_smtpad_id === "string") {
+-    return `${error.pcb_trace_id} touches ${error.pcb_smtpad_id}`
++    const key = `${error.pcb_trace_id} touches ${error.pcb_smtpad_id}`
++    return { kind: "identified", key }
+   }
+   if (typeof error.pcb_plated_hole_id === "string") {
+-    return `${error.pcb_trace_id} touches ${error.pcb_plated_hole_id}`
++    const key = `${error.pcb_trace_id} touches ${error.pcb_plated_hole_id}`
++    return { kind: "identified", key }
+   }
+   // A trace touching another trace or its via: both traces are listed.
+-  if (!Array.isArray(error.pcb_trace_ids)) return undefined
+-  return [...error.pcb_trace_ids].sort().join(" touches ")
++  if (!Array.isArray(error.pcb_trace_ids)) return { kind: "unidentified" }
++  const key = [...error.pcb_trace_ids].sort().join(" touches ")
++  return { kind: "identified", key }
+ }
+ 
+-const getContactKeys = (errors: Pipeline9DrcError[]): Set<string> => {
+-  const contactKeys = new Set<string>()
+-  for (const error of errors) {
+-    const contactKey = getPipeline9DrcContactKey(error)
+-    if (contactKey) contactKeys.add(contactKey)
+-  }
+-  return contactKeys
+-}
+-
+-const hasNewContact = (
++/**
++ * True when the candidate has a short the current routes do not. A short
++ * without the ids that name it counts as new: it cannot be matched.
++ */
++export const introducesPipeline9DrcContact = (
+   candidateErrors: Pipeline9DrcError[],
+   currentErrors: Pipeline9DrcError[],
+ ): boolean => {
+-  const currentContactKeys = getContactKeys(currentErrors)
+-  for (const contactKey of getContactKeys(candidateErrors)) {
+-    if (!currentContactKeys.has(contactKey)) return true
++  const currentContactKeys = new Set<string>()
++  for (const error of currentErrors) {
++    const contact = getPipeline9DrcContact(error)
++    if (contact?.kind === "identified") currentContactKeys.add(contact.key)
++  }
++  for (const error of candidateErrors) {
++    const contact = getPipeline9DrcContact(error)
++    if (!contact) continue
++    if (contact.kind === "unidentified") return true
++    if (!currentContactKeys.has(contact.key)) return true
+   }
+   return false
+ }
+@@ -183,7 +193,10 @@ export const isPipeline9DrcCandidateBetter = (
+   currentErrors: Pipeline9DrcError[],
+   { rejectNewContacts = false }: { rejectNewContacts?: boolean } = {},
+ ): boolean => {
+-  if (rejectNewContacts && hasNewContact(candidateErrors, currentErrors)) {
++  if (
++    rejectNewContacts &&
++    introducesPipeline9DrcContact(candidateErrors, currentErrors)
++  ) {
+     return false
+   }
+   return (
+diff --git a/tests/features/pipeline9-drc-candidate-new-contact.test.ts b/tests/features/pipeline9-drc-candidate-new-contact.test.ts
+index 9450089..0346b55 100644
+--- a/tests/features/pipeline9-drc-candidate-new-contact.test.ts
++++ b/tests/features/pipeline9-drc-candidate-new-contact.test.ts
+@@ -32,6 +32,13 @@ test("pipeline9 DRC candidate that adds a contact is not better when new contact
+     pcb_smtpad_id: "pad2",
+     actual_clearance: -0.02,
+   }
++  // Copper touches, but nothing names what it touches, so it cannot be
++  // matched against the current contacts.
++  const unidentifiedContact: Pipeline9DrcError = {
++    type: "pcb_trace_error",
++    pcb_trace_id: "tA",
++    actual_clearance: -0.02,
++  }
+   // The same objects 0.05mm apart: a clearance error, not a contact.
+   const traceANearPad2: Pipeline9DrcError = {
+     ...traceAOnPad2,
+@@ -42,6 +49,7 @@ test("pipeline9 DRC candidate that adds a contact is not better when new contact
+   const newContact = [traceAOnPad1, traceAOnTraceB, traceAOnPad2]
+   const sameContacts = [traceAOnPad1, traceBOnViaOfTraceA, clearanceError]
+   const clearanceErrorsOnly = [clearanceError, traceANearPad2]
++  const withUnidentifiedContact = [traceAOnPad1, unidentifiedContact]
+ 
+   const rejectNewContacts = { rejectNewContacts: true }
+ 
+@@ -61,4 +69,12 @@ test("pipeline9 DRC candidate that adds a contact is not better when new contact
+       rejectNewContacts,
+     ),
+   ).toBe(true)
++  // A contact that cannot be identified counts as new.
++  expect(
++    isPipeline9DrcCandidateBetter(
++      withUnidentifiedContact,
++      current,
++      rejectNewContacts,
++    ),
++  ).toBe(false)
+ })
+diff --git a/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts b/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
+index 0c1a055..df924f5 100644
+--- a/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
++++ b/tests/repro/pipeline9-a13-refine-pad-contacts.test.ts
+@@ -5,7 +5,7 @@ import type { AnyCircuitElement } from "circuit-json"
+ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
+ import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
+ import { convertPipeline7HdRoutesToSimplifiedPcbTraces } from "lib/autorouter-pipelines/AutoroutingPipeline7_MultiGraph/convertPipeline7HdRoutesToSimplifiedPcbTraces"
+-import { getPipeline9DrcContactKey } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils"
++import { getPipeline9DrcContact } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils"
+ import { createPipeline9AutoroutingDrcEvaluator } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/createPipeline9AutoroutingDrcEvaluator"
+ import { Pipeline9JointDrcRepairSolver } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9JointDrcRepairSolver"
+ import type {
+@@ -138,8 +138,11 @@ test("A13 joint repair moves a trace onto pads of other nets", async (): Promise
+     const contactKeys: string[] = []
+     const { errors } = drcEngine.evaluate(traces as RepairSimplifiedPcbTraces)
+     for (const error of errors) {
+-      const contactKey = getPipeline9DrcContactKey(error)
+-      if (contactKey) contactKeys.push(contactKey)
++      const contact = getPipeline9DrcContact(error)
++      if (!contact) continue
++      contactKeys.push(
++        contact.kind === "identified" ? contact.key : "unidentified contact",
++      )
+     }
+     return contactKeys
+   }
