@@ -1,4 +1,4 @@
-name: iCEPi vias, engine pin vs contact code
+name: iCEPi snapshot on plain main
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [main, pin-only, code-only]
+        variant: [main]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -35,3 +35,7 @@ jobs:
           BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-icepi-ddr-gap-ports.test.ts --timeout 9999999 > out.log 2>&1 || true
           grep -E "error:|\(pass\)|\(fail\)" out.log | head
           echo "VIAS $(grep -o '<circle' tests/repro/__snapshots__/pipeline9-icepi-ddr-gap-ports.snap.svg | wc -l)"
+          echo "=====SNAP====="
+          base64 -w0 tests/repro/__snapshots__/pipeline9-icepi-ddr-gap-ports.snap.svg
+          echo
+          echo "=====END====="
