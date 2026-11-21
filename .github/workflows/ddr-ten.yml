@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 4e58ac8d4924b682ad33687c43cf7cf87156fc9d
+          ref: 9c99c6bff7acce2aa7193de7aac64132471df724
           path: autorouter
           persist-credentials: false
       - name: Build the autorouter under test and place it in Core
