@@ -1,5 +1,5 @@
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
-index f73e8cc..8b50503 100644
+index f73e8cc..41eea36 100644
 --- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
 @@ -31,6 +31,7 @@ import {
@@ -10,64 +10,7 @@ index f73e8cc..8b50503 100644
    isPipeline9DrcCandidateBetter,
    isPipeline9DrcErrorOwnedByPreloadRepair,
    type Pipeline9DrcError,
-@@ -77,6 +78,12 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
-   private currentErrors: Pipeline9DrcError[] = []
-   private bestRoutes: HighDensityRoute[]
-   private bestErrors: Pipeline9DrcError[] = []
-+  // Search steps may pass through a short that a later step removes, but the
-+  // result may not keep one: it is the latest accepted routes that add no
-+  // short to the input.
-+  private inputErrors: Pipeline9DrcError[] = []
-+  private shortFreeRoutes: HighDensityRoute[]
-+  private shortFreeErrors: Pipeline9DrcError[] = []
-   private fixedRouteCopperSpatialIndex?: FixedRouteCopperSpatialIndex
-   private routeIndexByTraceId = new Map<string, number>()
-   private repairableErrors: Pipeline9DrcError[] = []
-@@ -111,6 +118,7 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
-     })
-     this.currentRoutes = params.routes
-     this.bestRoutes = params.routes
-+    this.shortFreeRoutes = params.routes
-     this.candidateSearchBudget = getPipeline9RegionalRepairSearchBudget(
-       params.routes.length,
-     )
-@@ -131,8 +139,11 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
-       newConnections,
-       syntheticConnectionNames,
-     } = this.params
--    this.currentErrors =
--      initialErrors ?? getPipeline9DrcErrors(drcEvaluator, this.currentRoutes)
-+    // Judge shorts against the input as this evaluator reports it: the given
-+    // initial errors may come from another DRC.
-+    this.inputErrors = getPipeline9DrcErrors(drcEvaluator, this.currentRoutes)
-+    this.currentErrors = initialErrors ?? this.inputErrors
-+    this.shortFreeErrors = this.currentErrors
-     // Accepted candidates never increase the error count across the two passes.
-     this.MAX_ITERATIONS += 16 * this.currentErrors.length
-     this.preloadEligibleDrcIssueCount = this.currentErrors.filter(
-@@ -427,12 +438,21 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
-     this.phase = "commit-error"
-   }
- 
-+  private recordShortFreeRoutes(): void {
-+    if (introducesPipeline9DrcContact(this.currentErrors, this.inputErrors)) {
-+      return
-+    }
-+    this.shortFreeRoutes = this.currentRoutes
-+    this.shortFreeErrors = this.currentErrors
-+  }
-+
-   private commitErrorRepair(): void {
-     if (this.bestRoutes !== this.currentRoutes) {
-       this.currentRoutes = this.bestRoutes
-       this.currentErrors = this.bestErrors
-       this.acceptedCandidateCount++
-       this.acceptedOnPass = true
-+      this.recordShortFreeRoutes()
-     }
-     this.errorIndex++
-     this.phase = this.candidateSearchBudgetExhausted
-@@ -502,7 +522,10 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+@@ -502,7 +503,10 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
          )
          if (
            getViaIssueCount(errors) <= getViaIssueCount(cleanup.errors) &&
@@ -79,7 +22,7 @@ index f73e8cc..8b50503 100644
            !this.introducesViaInPad(refinedRoutes)
          ) {
            cleanup.routes = refinedRoutes
-@@ -564,11 +587,13 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+@@ -564,11 +568,13 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
        throw new Error(`Regional via-pad projection failed: ${solver.error}`)
      }
      if (!solver.solved) return
@@ -98,7 +41,7 @@ index f73e8cc..8b50503 100644
      this.activeSubSolver = null
      this.phase = "prepare-safe-layer"
    }
-@@ -630,7 +655,9 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+@@ -630,7 +636,9 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
      const routes = solver.getOutput()
      const errors = getPipeline9DrcErrors(this.params.drcEvaluator, routes)
      if (
@@ -109,22 +52,6 @@ index f73e8cc..8b50503 100644
        !this.introducesViaInPad(routes)
      ) {
        cleanup.routes = routes
-@@ -658,12 +685,15 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
-     if (!hasForbiddenVia) {
-       this.currentRoutes = cleanup.routes
-       this.currentErrors = cleanup.errors
-+      this.recordShortFreeRoutes()
-     }
-     this.finishRepair()
-   }
- 
-   private finishRepair(): void {
-     this.activeSubSolver = null
-+    this.currentRoutes = this.shortFreeRoutes
-+    this.currentErrors = this.shortFreeErrors
-     if (this.introducesViaInPad(this.currentRoutes)) {
-       this.error = "Pipeline9 regional repair introduced a forbidden via-in-pad"
-       this.failed = true
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
 index 8e44ee6..e4f462c 100644
 --- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
