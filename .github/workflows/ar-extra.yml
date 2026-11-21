@@ -1,4 +1,4 @@
-name: Check final candidate contact rule before pushing
+name: Check both PRs on new main before pushing
 
 on:
   push:
@@ -9,13 +9,17 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        pr: [repro, fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 8e1617374a83c296adfa4bb83c60f52cb65f68e1
+          ref: 9c99c6bff7acce2aa7193de7aac64132471df724
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
@@ -24,10 +28,20 @@ jobs:
       - name: Check
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/fix-v7.patch
-          git status --short
+          git apply ../harness-repo/harness/ar-exp/${{ matrix.pr }}-v8.patch
+          git status --short | head
           bun install > /dev/null 2>&1
           bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$?"; head -20 tsc.log
           bunx biome format . > fmt.log 2>&1; echo "FMT exit=$?"; grep -B2 -A20 "Formatter would" fmt.log | head -60
-          bun test tests/features/pipeline9-drc-candidate-new-contact.test.ts tests/repro/pipeline9-a13-refine-pad-contacts.test.ts tests/features/pipeline9-srj33-sample3-contact-regional-repair.test.ts tests/repro/pipeline9-h616-full-board-ddr-clearance.test.ts --timeout 9999999 > out.log 2>&1 || true
+          if [ "${{ matrix.pr }}" = repro ]; then
+            bun test tests/repro/pipeline9-a13-refine-pad-contacts.test.ts --timeout 9999999 > out.log 2>&1 || true
+          else
+            bun test tests/features/pipeline9-drc-candidate-new-contact.test.ts tests/repro/pipeline9-a13-refine-pad-contacts.test.ts tests/features/pipeline9-srj33-sample3-contact-regional-repair.test.ts --timeout 9999999 > out.log 2>&1 || true
+            BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-h616-full-board-ddr-clearance.test.ts --timeout 9999999 >> out.log 2>&1 || true
+          fi
           grep -E "error:|Expected|Received|\(pass\)|\(fail\)|^\s+[-+] " out.log | head -30
+          git status --short tests
+          echo "=====SNAP====="
+          base64 -w0 tests/repro/__snapshots__/pipeline9-h616-full-board-ddr-clearance.snap.svg
+          echo
+          echo "=====END====="

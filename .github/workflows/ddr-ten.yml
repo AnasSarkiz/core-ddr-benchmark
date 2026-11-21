@@ -1,4 +1,4 @@
-name: Ten DDR boards through Core, main 9c99c6b vs #3971 (and with #3906)
+name: Ten DDR boards through Core, main 9c99c6b vs #3971
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
-        variant: [ar-base, ar-guard, ar-both]
+        variant: [ar-base, ar-guard]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }

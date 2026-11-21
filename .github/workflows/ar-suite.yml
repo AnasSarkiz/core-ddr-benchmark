@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 8e1617374a83c296adfa4bb83c60f52cb65f68e1
+          ref: 9c99c6bff7acce2aa7193de7aac64132471df724
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -29,7 +29,7 @@ jobs:
       - name: Apply the fix
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/fix-v7.patch
+          git apply ../harness-repo/harness/ar-exp/fix-v8.patch
           git status --short
           bun install > /dev/null 2>&1
       - name: Typecheck
