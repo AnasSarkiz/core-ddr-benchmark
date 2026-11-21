@@ -1,5 +1,5 @@
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
-index 68ccb8b..c279ee1 100644
+index 68ccb8b..3b7aedf 100644
 --- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
 @@ -31,6 +31,7 @@ import {
@@ -52,11 +52,26 @@ index 68ccb8b..c279ee1 100644
        !this.introducesViaInPad(routes)
      ) {
        cleanup.routes = routes
+@@ -638,9 +646,13 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+     this.cleanup = undefined
+     const hasForbiddenVia = this.introducesViaInPad(cleanup.routes)
+     if (cleanup.kind === "regular-candidate") {
++      // The cleaned candidate is final: it may not add a short to the best
++      // routes it would replace.
+       if (
+         !hasForbiddenVia &&
+-        isPipeline9DrcCandidateBetter(cleanup.errors, this.bestErrors)
++        isPipeline9DrcCandidateBetter(cleanup.errors, this.bestErrors, {
++          rejectNewContacts: true,
++        })
+       ) {
+         this.bestRoutes = cleanup.routes
+         this.bestErrors = cleanup.errors
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
-index 8e44ee6..df03b71 100644
+index 8e44ee6..e4f462c 100644
 --- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
-@@ -129,14 +129,83 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
+@@ -129,14 +129,99 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
      return score + 1
    }, 0)
  
@@ -77,17 +92,33 @@ index 8e44ee6..df03b71 100644
 +    typeof error.actual_clearance === "number" &&
 +    error.actual_clearance < 0
 +  if (!isContact) return undefined
-+  if (typeof error.pcb_smtpad_id === "string") {
-+    const key = `${error.pcb_trace_id} touches ${error.pcb_smtpad_id}`
-+    return { kind: "identified", key }
++  const unidentified: Pipeline9DrcContact = { kind: "unidentified" }
++  const traceId = error.pcb_trace_id
++  const obstacleIds = [error.pcb_smtpad_id, error.pcb_plated_hole_id].filter(
++    (id) => id !== undefined,
++  )
++  if (obstacleIds.length > 0) {
++    // A trace on a pad or plated hole names one trace and one obstacle.
++    const obstacleId = obstacleIds[0]
++    const isNamed =
++      obstacleIds.length === 1 &&
++      typeof obstacleId === "string" &&
++      obstacleId !== "" &&
++      typeof traceId === "string" &&
++      traceId !== ""
++    if (!isNamed) return unidentified
++    return { kind: "identified", key: `${traceId} touches ${obstacleId}` }
 +  }
-+  if (typeof error.pcb_plated_hole_id === "string") {
-+    const key = `${error.pcb_trace_id} touches ${error.pcb_plated_hole_id}`
-+    return { kind: "identified", key }
-+  }
-+  // A trace touching another trace or its via: both traces are listed.
-+  if (!Array.isArray(error.pcb_trace_ids)) return { kind: "unidentified" }
-+  const key = [...error.pcb_trace_ids].sort().join(" touches ")
++  // A trace touching another trace or its via names two different traces.
++  const traceIds: unknown[] = Array.isArray(error.pcb_trace_ids)
++    ? error.pcb_trace_ids
++    : []
++  const isTracePair =
++    traceIds.length === 2 &&
++    traceIds.every((id) => typeof id === "string" && id !== "") &&
++    traceIds[0] !== traceIds[1]
++  if (!isTracePair) return unidentified
++  const key = traceIds.map(String).sort().join(" touches ")
 +  return { kind: "identified", key }
 +}
 +

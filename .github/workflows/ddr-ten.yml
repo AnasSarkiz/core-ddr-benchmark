@@ -1,4 +1,4 @@
-name: Ten DDR boards through Core, main 4e58ac8 vs #3971 (and with #3906)
+name: Ten DDR boards through Core, main 9c99c6b vs #3971 (and with #3906)
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
-          ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
+          ref: 9c99c6bff7acce2aa7193de7aac64132471df724
           path: solver
           persist-credentials: false
       - name: Build bus-lanes main and place it in Core

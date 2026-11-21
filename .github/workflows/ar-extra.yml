@@ -1,4 +1,4 @@
-name: Regenerate the H616 snapshot with the final-phase contact rule
+name: Check final candidate contact rule before pushing
 
 on:
   push:
@@ -6,38 +6,28 @@ on:
     paths: ['harness/ar-extra.trigger']
 
 jobs:
-  h616:
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 50
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [both]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 2004d10e16be12c9c3773e1fb7ea8384552a1b4e
+          ref: 8e1617374a83c296adfa4bb83c60f52cb65f68e1
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
-      - name: Run H616
+      - name: Check
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/fix-v6.patch
-          F=lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
-          if [ "${{ matrix.variant }}" = no-projection-check ]; then sed -i 's/    if (!introducesPipeline9DrcContact(errors, cleanup.errors)) {/    if (true) {/' $F; fi
-          if [ "${{ matrix.variant }}" = no-safe-layer-check ]; then python3 ../harness-repo/harness/ar-exp/drop-safe-layer-check.py; fi
-          git diff --stat
+          git apply ../harness-repo/harness/ar-exp/fix-v7.patch
+          git status --short
           bun install > /dev/null 2>&1
-          BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-h616-full-board-ddr-clearance.test.ts --timeout 9999999 > out.log 2>&1 || true
-          grep -E "H616DIAG|\(pass\)|\(fail\)" out.log | head -10
-          git status --short tests
-          echo "=====SNAP====="
-          base64 -w0 tests/repro/__snapshots__/pipeline9-h616-full-board-ddr-clearance.snap.svg
-          echo
-          echo "=====END====="
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$?"; head -20 tsc.log
+          bunx biome format . > fmt.log 2>&1; echo "FMT exit=$?"; grep -B2 -A20 "Formatter would" fmt.log | head -60
+          bun test tests/features/pipeline9-drc-candidate-new-contact.test.ts tests/repro/pipeline9-a13-refine-pad-contacts.test.ts tests/features/pipeline9-srj33-sample3-contact-regional-repair.test.ts tests/repro/pipeline9-h616-full-board-ddr-clearance.test.ts --timeout 9999999 > out.log 2>&1 || true
+          grep -E "error:|Expected|Received|\(pass\)|\(fail\)|^\s+[-+] " out.log | head -30
