@@ -1,4 +1,4 @@
-name: iCEPi vias under each contact check
+name: iCEPi vias, engine pin vs contact code
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [all, no-projection, no-safe-layer, no-refine]
+        variant: [main, pin-only, code-only]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -28,8 +28,9 @@ jobs:
       - name: Check
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/fix-v10.patch
-          python3 ../harness-repo/harness/ar-exp/icepi-variant.py ${{ matrix.variant }}
+          if [ "${{ matrix.variant }}" = pin-only ]; then sed -i 's#high-density-repair03/tar.gz/6d7bfa862fb2fe1636bf164e7935cd61964a06b5#high-density-repair03/tar.gz/c0325f34982b62d901b9bd3a45696121a903de30#' package.json; fi
+          if [ "${{ matrix.variant }}" = code-only ]; then git apply --include='lib/*' ../harness-repo/harness/ar-exp/fix-v10.patch; fi
+          git diff --stat
           bun install > /dev/null 2>&1
           BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-icepi-ddr-gap-ports.test.ts --timeout 9999999 > out.log 2>&1 || true
           grep -E "error:|\(pass\)|\(fail\)" out.log | head
