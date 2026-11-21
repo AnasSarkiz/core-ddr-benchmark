@@ -1,4 +1,4 @@
-name: srj33 sample 3 under each contact check on new main
+name: Check short-free result selection before pushing
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [all, no-final-selection, refine-only]
+        variant: [fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -28,9 +28,15 @@ jobs:
       - name: Check
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/fix-v8.patch
-          python3 ../harness-repo/harness/ar-exp/srj33-variant.py ${{ matrix.variant }}
-          git diff --stat -- lib
+          git apply ../harness-repo/harness/ar-exp/fix-v9.patch
           bun install > /dev/null 2>&1
-          bun test tests/features/pipeline9-srj33-sample3-contact-regional-repair.test.ts --timeout 9999999 > out.log 2>&1 || true
-          grep -E "error:|Expected|Received|\(pass\)|\(fail\)|^\s+[-+] " out.log | head -30
+          bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$?"; head -20 tsc.log
+          bunx biome format . > fmt.log 2>&1; echo "FMT exit=$?"; grep -B2 -A20 "Formatter would" fmt.log | head -60
+          bun test tests/features/pipeline9-drc-candidate-new-contact.test.ts tests/repro/pipeline9-a13-refine-pad-contacts.test.ts tests/features/pipeline9-srj33-sample3-contact-regional-repair.test.ts --timeout 9999999 > out.log 2>&1 || true
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-h616-full-board-ddr-clearance.test.ts --timeout 9999999 >> out.log 2>&1 || true
+          grep -E "error:|Expected|Received|\(pass\)|\(fail\)" out.log | head -30
+          git status --short tests
+          echo "=====SNAP====="
+          base64 -w0 tests/repro/__snapshots__/pipeline9-h616-full-board-ddr-clearance.snap.svg
+          echo
+          echo "=====END====="
