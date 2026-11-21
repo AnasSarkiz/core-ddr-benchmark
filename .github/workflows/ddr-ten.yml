@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
-          ref: 9c99c6bff7acce2aa7193de7aac64132471df724
+          ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
           path: solver
           persist-credentials: false
       - name: Build bus-lanes main and place it in Core
