@@ -1,5 +1,5 @@
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
-index f73e8cc..41eea36 100644
+index f73e8cc..72a23ab 100644
 --- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
 @@ -31,6 +31,7 @@ import {
@@ -10,19 +10,59 @@ index f73e8cc..41eea36 100644
    isPipeline9DrcCandidateBetter,
    isPipeline9DrcErrorOwnedByPreloadRepair,
    type Pipeline9DrcError,
-@@ -502,7 +503,10 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+@@ -260,7 +261,10 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+     this.attemptedCandidateCount++
+     const errors = getPipeline9DrcErrors(this.params.drcEvaluator, routes)
+     if (
+-      isPipeline9DrcCandidateBetter(errors, this.bestErrors) &&
++      isPipeline9DrcCandidateBetter({
++        candidateErrors: errors,
++        currentErrors: this.bestErrors,
++      }) &&
+       !this.introducesViaInPad(routes)
+     ) {
+       this.bestRoutes = routes
+@@ -348,7 +352,10 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+         candidate.routes,
+       )
+       if (
+-        isPipeline9DrcCandidateBetter(candidateErrors, this.bestErrors) &&
++        isPipeline9DrcCandidateBetter({
++          candidateErrors,
++          currentErrors: this.bestErrors,
++        }) &&
+         !this.introducesViaInPad(candidate.routes)
+       ) {
+         this.bestRoutes = candidate.routes
+@@ -414,7 +421,12 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+       this.attemptedCandidateCount++
+       this.fallbackCandidateCount++
+       const errors = getPipeline9DrcErrors(this.params.drcEvaluator, routes)
+-      if (isPipeline9DrcCandidateBetter(errors, this.bestErrors)) {
++      if (
++        isPipeline9DrcCandidateBetter({
++          candidateErrors: errors,
++          currentErrors: this.bestErrors,
++        })
++      ) {
+         if (this.introducesViaInPad(routes)) {
+           // Clean the proposal without replacing the accepted routes yet.
+           this.beginCleanup({ kind: "regular-candidate", routes, errors })
+@@ -502,7 +514,12 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
          )
          if (
            getViaIssueCount(errors) <= getViaIssueCount(cleanup.errors) &&
 -          isPipeline9DrcCandidateBetter(errors, cleanup.errors) &&
 +          // Cleanup is final, so nothing after it removes a new short.
-+          isPipeline9DrcCandidateBetter(errors, cleanup.errors, {
++          isPipeline9DrcCandidateBetter({
++            candidateErrors: errors,
++            currentErrors: cleanup.errors,
 +            rejectNewContacts: true,
 +          }) &&
            !this.introducesViaInPad(refinedRoutes)
          ) {
            cleanup.routes = refinedRoutes
-@@ -564,11 +568,13 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+@@ -564,11 +581,13 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
        throw new Error(`Regional via-pad projection failed: ${solver.error}`)
      }
      if (!solver.solved) return
@@ -41,25 +81,58 @@ index f73e8cc..41eea36 100644
      this.activeSubSolver = null
      this.phase = "prepare-safe-layer"
    }
-@@ -630,7 +636,9 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+@@ -630,7 +649,11 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
      const routes = solver.getOutput()
      const errors = getPipeline9DrcErrors(this.params.drcEvaluator, routes)
      if (
 -      isPipeline9DrcCandidateBetter(errors, cleanup.errors) &&
-+      isPipeline9DrcCandidateBetter(errors, cleanup.errors, {
++      isPipeline9DrcCandidateBetter({
++        candidateErrors: errors,
++        currentErrors: cleanup.errors,
 +        rejectNewContacts: true,
 +      }) &&
        !this.introducesViaInPad(routes)
      ) {
        cleanup.routes = routes
+@@ -647,7 +670,10 @@ export class Pipeline9RegionalB01RepairSolver extends BaseSolver {
+     if (cleanup.kind === "regular-candidate") {
+       if (
+         !hasForbiddenVia &&
+-        isPipeline9DrcCandidateBetter(cleanup.errors, this.bestErrors)
++        isPipeline9DrcCandidateBetter({
++          candidateErrors: cleanup.errors,
++          currentErrors: this.bestErrors,
++        })
+       ) {
+         this.bestRoutes = cleanup.routes
+         this.bestErrors = cleanup.errors
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/applyPipeline9TerminalEscapeRelocations.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/applyPipeline9TerminalEscapeRelocations.ts
+index 84cf1e3..512b89d 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/applyPipeline9TerminalEscapeRelocations.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/applyPipeline9TerminalEscapeRelocations.ts
+@@ -436,7 +436,12 @@ export const applyPipeline9TerminalEscapeRelocations = ({
+               drcEvaluator,
+               candidateRoutes,
+             )
+-            if (isPipeline9DrcCandidateBetter(candidateErrors, bestErrors)) {
++            if (
++              isPipeline9DrcCandidateBetter({
++                candidateErrors,
++                currentErrors: bestErrors,
++              })
++            ) {
+               bestRoutes = candidateRoutes
+               bestErrors = candidateErrors
+               if (bestErrors.length === 0) {
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
-index 8e44ee6..e4f462c 100644
+index 8e44ee6..213cef0 100644
 --- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
-@@ -129,14 +129,99 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
+@@ -129,14 +129,105 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
      return score + 1
    }, 0)
  
+-export const isPipeline9DrcCandidateBetter = (
 +/** A short, keyed by what touches; unidentified when its ids are missing. */
 +export type Pipeline9DrcContact =
 +  | { kind: "identified"; key: string }
@@ -68,6 +141,8 @@ index 8e44ee6..e4f462c 100644
 +/**
 + * The short a trace error reports, keyed by the objects touching whichever
 + * side reported it. Undefined when the error is not copper in contact.
++ * The DRC engine reports one error per pair of objects however many points
++ * they touch at, so a second contact point between them is the same short.
 + */
 +export const getPipeline9DrcContact = (
 +  error: Pipeline9DrcError,
@@ -112,8 +187,13 @@ index 8e44ee6..e4f462c 100644
 + * without the ids that name it counts as new: it cannot be matched.
 + */
 +export const introducesPipeline9DrcContact = (
-+  candidateErrors: Pipeline9DrcError[],
-+  currentErrors: Pipeline9DrcError[],
+   candidateErrors: Pipeline9DrcError[],
+   currentErrors: Pipeline9DrcError[],
+-) =>
+-  candidateErrors.length < currentErrors.length ||
+-  (candidateErrors.length === currentErrors.length &&
+-    getDrcIssueScore(candidateErrors) <
+-      getDrcIssueScore(currentErrors) - SCORE_EPSILON)
 +): boolean => {
 +  const currentContactKeys = new Set<string>()
 +  for (const error of currentErrors) {
@@ -135,16 +215,15 @@ index 8e44ee6..e4f462c 100644
 + * that were not already touching is never better: use it where no later step
 + * can remove the short.
 + */
- export const isPipeline9DrcCandidateBetter = (
-   candidateErrors: Pipeline9DrcError[],
-   currentErrors: Pipeline9DrcError[],
--) =>
--  candidateErrors.length < currentErrors.length ||
--  (candidateErrors.length === currentErrors.length &&
--    getDrcIssueScore(candidateErrors) <
--      getDrcIssueScore(currentErrors) - SCORE_EPSILON)
-+  { rejectNewContacts = false }: { rejectNewContacts?: boolean } = {},
-+): boolean => {
++export const isPipeline9DrcCandidateBetter = ({
++  candidateErrors,
++  currentErrors,
++  rejectNewContacts = false,
++}: {
++  candidateErrors: Pipeline9DrcError[]
++  currentErrors: Pipeline9DrcError[]
++  rejectNewContacts?: boolean
++}): boolean => {
 +  if (
 +    rejectNewContacts &&
 +    introducesPipeline9DrcContact(candidateErrors, currentErrors)
@@ -162,7 +241,7 @@ index 8e44ee6..e4f462c 100644
  export const getPipeline9RouteIndexByTraceId = ({
    routes,
 diff --git a/package.json b/package.json
-index 6fee36b..4c3d434 100644
+index 03cf115..06f21b5 100644
 --- a/package.json
 +++ b/package.json
 @@ -115,7 +115,7 @@
@@ -171,6 +250,6 @@ index 6fee36b..4c3d434 100644
      "high-density-repair02": "https://codeload.github.com/tscircuit/high-density-repair02/tar.gz/cac656f51535aca0d9c7f09e5860b4e82a78f3cf",
 -    "high-density-repair03": "https://codeload.github.com/tscircuit/high-density-repair03/tar.gz/6d7bfa862fb2fe1636bf164e7935cd61964a06b5",
 +    "high-density-repair03": "https://codeload.github.com/tscircuit/high-density-repair03/tar.gz/c0325f34982b62d901b9bd3a45696121a903de30",
-     "@tscircuit/high-density-a01": "git+https://github.com/tscircuit/high-density-a01.git#4ae21d7a15c9fbfb30378c10f948aa168d7c9cb7",
+     "@tscircuit/high-density-a01": "git+https://github.com/tscircuit/high-density-a01.git#e9a3642aae9d45aadb197cd1386dec2142529217",
      "@tscircuit/high-density-a13": "git+https://github.com/tscircuit/high-density-a01.git#4ae21d7a15c9fbfb30378c10f948aa168d7c9cb7",
-     "@tscircuit/high-density-b01": "git+https://github.com/tscircuit/high-density-b01.git#0acce21dc32a279788f88d884618630c82405590"
+     "@tscircuit/high-density-b01": "git+https://github.com/tscircuit/high-density-b01.git#a224564f52635bb5dc8d120d43ef71f9437c7393"
