@@ -1,4 +1,4 @@
-name: Ten DDR boards through Core, main ed52af8 vs #3971
+name: DDR boards through Core, via-site modes
 
 on:
   push:
@@ -12,8 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
-        variant: [ar-base, ar-guard]
+        circuit: [a13, orangecrab, h616]
+        variant: [off, full, overlap]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -56,8 +56,8 @@ jobs:
       - name: Build the autorouter under test and place it in Core
         run: |
           cd autorouter
-          if [ "${{ matrix.variant }}" != ar-base ]; then git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/via-fix-v2.patch; fi
-          if [ "${{ matrix.variant }}" = ar-both ]; then git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/fix-code.patch; fi
+          git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/via-fix-v2.patch
+          git apply ../harness-repo/harness/ar-exp/via-exp.patch
           git status --short
           bun install > /dev/null 2>&1
           bun run build > build.log 2>&1; tail -3 build.log
@@ -67,8 +67,9 @@ jobs:
       - name: Route
         run: |
           cd core
-          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
+          P9_VIA_MODE=${{ matrix.variant }} bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
           tail -12 route.log
+          grep -h "P9DIAG" route.log ddr-benchmark-results/${{ matrix.circuit }}/*.log 2>/dev/null | sort | uniq -c | head -40
       - name: Print the report
         if: always()
         run: |

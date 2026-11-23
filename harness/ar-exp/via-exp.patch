@@ -1,0 +1,49 @@
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
+index c9ee3b2..efbbd5d 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
+@@ -324,6 +324,7 @@ export class AutoroutingPipelineSolver9_PreloadedTraceGraph extends BaseSolver {
+       connMap: this.connMap,
+       viaDiameter: this.viaDiameter,
+     })
++    console.log(`P9DIAG split layerChangeNodes=${layerChangeNodeIds.size} before=${nodes.length} after=${refined.length} plannedMarked=${nodes.filter((n) => n._lacksViaSite && layerChangeNodeIds.has(n.capacityMeshNodeId)).length}`)
+     if (nodes === refined) return false
+ 
+     // The provisional plan uses a physically impossible via. Rebuild the edges,
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts
+index 48ef7aa..1dd9948 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts
+@@ -137,13 +137,15 @@ export const markNodesWithoutViaSite = ({
+   viaDiameter,
+   viaToPadClearance,
+ }: MarkNodesWithoutViaSiteParams): CapacityMeshNode[] => {
++  const mode = process.env.P9_VIA_MODE ?? "full"
++  if (mode === "off") return nodes
+   const routedNetIds = new Set(
+     srj.connections.map(
+       (connection) =>
+         connMap.getNetConnectedToId(connection.name) ?? connection.name,
+     ),
+   )
+-  const keepOut = viaDiameter / 2 + viaToPadClearance
++  const keepOut = viaDiameter / 2 + (mode === "overlap" ? 0 : viaToPadClearance)
+   const hardObstacles = srj.obstacles
+     .filter((obstacle) => !isRoutedNetObstacle(obstacle, connMap, routedNetIds))
+     .map((obstacle) => ({
+@@ -151,7 +153,7 @@ export const markNodesWithoutViaSite = ({
+       bounds: getObstacleBounds(obstacle),
+       zLayers: getObstacleZLayers(obstacle, srj.layerCount),
+     }))
+-  return nodes.map((node): CapacityMeshNode => {
++  const result = nodes.map((node): CapacityMeshNode => {
+     if (
+       node._isComponentTopologyNode ||
+       node._containsTarget ||
+@@ -178,4 +180,6 @@ export const markNodesWithoutViaSite = ({
+     const hasViaSite = hasViaSiteInCell(centers, nearby, keepOut)
+     return hasViaSite ? node : { ...node, _lacksViaSite: true }
+   })
++  console.log(`P9DIAG mark mode=${mode} nodes=${nodes.length} multiLayer=${nodes.filter((n) => n.availableZ.length > 1).length} marked=${result.filter((n) => n._lacksViaSite).length}`)
++  return result
+ }
