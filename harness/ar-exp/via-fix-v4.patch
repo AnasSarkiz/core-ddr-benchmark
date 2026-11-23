@@ -1659,7 +1659,7 @@ literal 0
 HcmV?d00001
 
 diff --git a/tests/fixtures/getClosestRegionalViaPadWitness.ts b/tests/fixtures/getClosestRegionalViaPadWitness.ts
-index adcbc07..3379b63 100644
+index adcbc07..c9455d5 100644
 --- a/tests/fixtures/getClosestRegionalViaPadWitness.ts
 +++ b/tests/fixtures/getClosestRegionalViaPadWitness.ts
 @@ -1,8 +1,6 @@
@@ -1673,6 +1673,15 @@ index adcbc07..3379b63 100644
  import { getPipeline9RouteCopperGeometry } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9FixedRouteCopper"
  import type { HighDensityRoute } from "lib/types/high-density-types"
  import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+@@ -10,7 +8,7 @@ import type { getRoundPadClearanceSnapshot } from "./roundPadClearanceSnapshot"
+ 
+ type RegionalInput = ConstructorParameters<
+   typeof Pipeline9RegionalFallbackSolver
+->[0]
++>[0] & { movablePreloadedConnectionNames?: ReadonlySet<string> }
+ type ClearanceWitness = Parameters<
+   typeof getRoundPadClearanceSnapshot
+ >[0]["witness"]
 diff --git a/tests/fixtures/roundPadClearanceSnapshot.ts b/tests/fixtures/roundPadClearanceSnapshot.ts
 index a0a923d..dc35353 100644
 --- a/tests/fixtures/roundPadClearanceSnapshot.ts
