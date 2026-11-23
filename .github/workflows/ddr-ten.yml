@@ -69,7 +69,7 @@ jobs:
           cd core
           P9_VIA_MODE=${{ matrix.variant }} bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
           tail -12 route.log
-          grep -h "P9DIAG" route.log | cut -c1-220 | head -300
+          grep -h "P9DIAG" ddr-benchmark-results/${{ matrix.circuit }}/render.log | cut -c1-220 | head -300
       - name: Print the report
         if: always()
         run: |
