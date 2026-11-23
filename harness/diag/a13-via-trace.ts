@@ -62,10 +62,12 @@ const report = (stage: string, output: unknown): void => {
   }
 }
 
+const diagValidated = { count: 0 }
 const proto: any = HighDensitySolver.prototype
 const original = proto.recordNodeSolveMetadata
 proto.recordNodeSolveMetadata = function (this: any, nodeSolver: any, status: string) {
   original.call(this, nodeSolver, status)
+  if (nodeSolver.stats?.candidateRejections || this.growShrinkSolutionValidator) diagValidated.count++
   const node = nodeSolver.nodeWithPortPoints
   const meta = this.nodeSolveMetadataById.get(node.capacityMeshNodeId)
   for (const route of nodeSolver.solvedRoutes ?? []) {
@@ -94,7 +96,9 @@ while (!solver.solved && !solver.failed && guard++ < 50_000_000) {
     let output: unknown
     try { output = sub?.getOutput?.() } catch (e) { output = undefined; console.log(`TRACE stage=${name} getOutput threw ${(e as Error).message.slice(0, 80)}`) }
     report(name, output ?? sub)
+    if (name === "highDensityRouteSolver") console.log(`TRACE hd viaToPadClearance=${sub?.viaToPadClearance} srjClearance=${solver.srj?.minViaEdgeToPadEdgeClearance} original=${solver.originalSrj?.minViaEdgeToPadEdgeClearance} stats=${JSON.stringify(sub?.stats ?? {}).slice(0, 400)}`)
   }
 }
+console.log(`TRACE nodesWithValidator=${diagValidated.count}`)
 console.log(`TRACE done solved=${solver.solved} failed=${solver.failed}`)
 report("final", solver.getOutputSimplifiedPcbTraces())

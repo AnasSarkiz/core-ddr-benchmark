@@ -29,5 +29,5 @@ jobs:
           bunx tsc --noEmit > tsc.log 2>&1 && echo "TSC exit=0" || { echo "TSC failed"; head -30 tsc.log; }
           bunx biome format . > fmt.log 2>&1 && echo "FMT exit=0" || { echo "FMT failed"; grep -B2 -A25 "Formatter would" fmt.log | head -80; }
           cp ../harness-repo/harness/diag/a13-via-count.ts ../harness-repo/harness/diag/a13-via-trace.ts .
-          bun a13-via-count.ts fix > c.log 2>&1 || true; grep -E "^A13" c.log | cut -c1-250; tail -2 c.log | cut -c1-250
-          bun a13-via-trace.ts > t.log 2>&1 || true; grep -E "^(TRACE|NODE)" t.log | grep -v "nearTargets=0" | cut -c1-300 | head -60
+          true
+          bun a13-via-trace.ts > t.log 2>&1 || true; grep -E "^TRACE (hd|nodesWith|done)" t.log | cut -c1-500
