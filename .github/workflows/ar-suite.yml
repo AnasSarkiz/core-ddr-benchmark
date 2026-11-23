@@ -1,4 +1,4 @@
-name: Autorouter suite on the via-site fix (update snapshots)
+name: Autorouter suite on the via-site fix
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
       - name: Apply the fix
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/via-fix-v1.patch
+          git apply ../harness-repo/harness/ar-exp/via-fix-v2.patch
           git status --short
           bun install > /dev/null 2>&1
       - name: Typecheck
@@ -41,7 +41,7 @@ jobs:
         run: cd autorouter && bun scripts/generate-balanced-test-plan.ts
         env:
           NODE_COUNT: 9
-      - name: Run shard ${{ matrix.node }} updating snapshots
+      - name: Run shard ${{ matrix.node }} without updating snapshots
         run: |
           cd autorouter
           mapfile -t test_files < ".bun-test-plan/testplans/testplan${{ matrix.node }}.txt"
@@ -60,9 +60,9 @@ jobs:
             esac
           done
           : > suite.log
-          if [ "${#regular_tests[@]}" -gt 0 ]; then BUN_UPDATE_SNAPSHOTS=1 bun test "${regular_tests[@]}" --timeout 300000 >> suite.log 2>&1 || true; fi
-          if [ "${#slow_tests[@]}" -gt 0 ]; then BUN_UPDATE_SNAPSHOTS=1 bun test "${slow_tests[@]}" --timeout 600000 >> suite.log 2>&1 || true; fi
-          if [ "${#full_board_tests[@]}" -gt 0 ]; then BUN_UPDATE_SNAPSHOTS=1 bun test "${full_board_tests[@]}" --timeout 1800000 >> suite.log 2>&1 || true; fi
+          if [ "${#regular_tests[@]}" -gt 0 ]; then bun test "${regular_tests[@]}" --timeout 300000 >> suite.log 2>&1 || true; fi
+          if [ "${#slow_tests[@]}" -gt 0 ]; then bun test "${slow_tests[@]}" --timeout 600000 >> suite.log 2>&1 || true; fi
+          if [ "${#full_board_tests[@]}" -gt 0 ]; then bun test "${full_board_tests[@]}" --timeout 1800000 >> suite.log 2>&1 || true; fi
       - name: Summary
         if: always()
         run: |
@@ -71,6 +71,9 @@ jobs:
           grep -E "^ *[0-9]+ (pass|fail|skip)$|^Ran [0-9]+ tests" suite.log
           echo "=====FAILED====="
           grep -E "^\(fail\)" suite.log | cut -c1-200
+          echo "=====FAILFILES====="
+          awk '/^tests\/.*\.test\.tsx?:$/{f=$0} /^\(fail\)/{print "FAILFILE " f}' suite.log | sort -u
+          grep -E "snapshot differs by" suite.log | cut -c1-220
           echo "=====UNNAMED====="
           grep -nE "unnamed|^error|Unhandled|^# Unhandled|rror between tests" suite.log | head -20 | cut -c1-250
           L=$(grep -n "(fail) (unnamed)" suite.log | head -1 | cut -d: -f1); if [ -n "$L" ]; then sed -n "$((L-60)),$((L+2))p" suite.log | grep -vE "^\s+at " | cut -c1-250; fi
