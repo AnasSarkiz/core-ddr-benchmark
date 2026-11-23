@@ -11,6 +11,7 @@ const input: SimpleRouteJson = JSON.parse(
 const started = Date.now()
 const solver = new AutoroutingPipelineSolver9_PreloadedTraceGraph(input, { cacheProvider: null })
 solver.solve()
+if (!solver.solved) { console.log(`A13VIA ${label} FAILED error=${String((solver as any).error).slice(0, 900)}`); const hd: any = (solver as any).highDensityRouteSolver; console.log(`A13VIA ${label} hdStats=${JSON.stringify(hd?.stats ?? {}).slice(0, 900)}`); process.exit(0) }
 const routedTraces = solver.getOutputSimplifiedPcbTraces()
 const solveSeconds = ((Date.now() - started) / 1000).toFixed(1)
 const { errors, errorsWithCenters } = evaluateRelaxedDrc({
