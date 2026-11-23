@@ -29,7 +29,7 @@ jobs:
       - name: Apply the fix
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/via-fix-v2.patch
+          git apply ../harness-repo/harness/ar-exp/via-fix-v4.patch
           git status --short
           bun install > /dev/null 2>&1
       - name: Typecheck

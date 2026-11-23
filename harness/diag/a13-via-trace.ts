@@ -72,21 +72,6 @@ proto.recordNodeSolveMetadata = function (this: any, nodeSolver: any, status: st
   original.call(this, nodeSolver, status)
   if (nodeSolver.stats?.candidateRejections || this.growShrinkSolutionValidator) diagValidated.count++
   const node = nodeSolver.nodeWithPortPoints
-  if (node.capacityMeshNodeId === "topology_merge_24641" || node.capacityMeshNodeId === "topology_merge_20656") {
-    const routes = materializePipeline9HdRouteVias(nodeSolver.solvedRoutes)
-    const pads = (this.obstacles as any[]).filter((o) => Math.abs(o.center.x - node.center.x) < 1 && Math.abs(o.center.y - node.center.y) < 1)
-    const conflict = hasPipeline9ViaToBoardObstacleConflict({ routes, boardObstacles: pads, connMap: this.connMap, layerCount: this.layerCount, viaToPadClearance: 0.1249 })
-    console.log(`DEBUG validatorSrc=${String(this.growShrinkSolutionValidator).replace(/\s+/g, ' ').slice(0, 160)} hdObstacles=${(this.obstacles ?? []).length} solverName=${this.getSolverName?.()} status=${status} winner=${nodeSolver.winningSolver?.constructor?.name}`)
-    console.log(`DEBUG node=${node.capacityMeshNodeId} validatorSet=${Boolean(this.growShrinkSolutionValidator)} validatorSays=${this.growShrinkSolutionValidator?.(nodeSolver.solvedRoutes)} manualConflict=${conflict} pads=${pads.length} rejections=${JSON.stringify(nodeSolver.winningSolver?.stats?.candidateRejections ?? nodeSolver.stats?.candidateRejections)}`)
-    for (const route of routes) {
-      const geo = getPipeline9RouteCopperGeometry(route, { layerCount: this.layerCount })
-      console.log(`DEBUG   route ${route.connectionName} vias=${JSON.stringify(route.vias)} viaSpans=${JSON.stringify(geo.viaSpans)} points=${JSON.stringify(route.route.map((p: any) => [p.x.toFixed(2), p.y.toFixed(2), p.z]))}`)
-      for (const o of pads) {
-        const d = getSegmentToObstacleDistance({ start: geo.viaSpans[0]?.center ?? { x: 0, y: 0 }, end: geo.viaSpans[0]?.center ?? { x: 0, y: 0 }, obstacle: o })
-        if (d < 0.5) console.log(`DEBUG     pad ${o.obstacleId} c=(${o.center.x.toFixed(3)},${o.center.y.toFixed(3)}) d=${d.toFixed(3)} connected=${isPipeline9ObstacleConnectedToRoute({ obstacle: o, route, connMap: this.connMap })} zLayers=${JSON.stringify(o.__zLayers ?? o.zLayers ?? o.layers)} connectedTo=${JSON.stringify(o.connectedTo).slice(0, 120)}`)
-      }
-    }
-  }
   const meta = this.nodeSolveMetadataById.get(node.capacityMeshNodeId)
   for (const route of nodeSolver.solvedRoutes ?? []) {
     for (const via of route.vias ?? []) {

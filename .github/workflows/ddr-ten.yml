@@ -1,4 +1,4 @@
-name: DDR boards through Core, via-site modes
+name: Ten DDR boards through Core, main vs via-site fix v4
 
 on:
   push:
@@ -12,8 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a13, orangecrab, h616]
-        variant: [off, full]
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
+        variant: [ar-base, ar-fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -56,8 +56,7 @@ jobs:
       - name: Build the autorouter under test and place it in Core
         run: |
           cd autorouter
-          git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/via-fix-v2.patch
-          git apply ../harness-repo/harness/ar-exp/via-exp2.patch
+          if [ "${{ matrix.variant }}" = ar-fix ]; then git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/via-fix-v4.patch; fi
           git status --short
           bun install > /dev/null 2>&1
           bun run build > build.log 2>&1; tail -3 build.log
@@ -67,7 +66,7 @@ jobs:
       - name: Route
         run: |
           cd core
-          P9_VIA_MODE=${{ matrix.variant }} bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
           tail -12 route.log
           grep -h "P9DIAG" ddr-benchmark-results/${{ matrix.circuit }}/render.log | cut -c1-220 | head -300
       - name: Print the report
