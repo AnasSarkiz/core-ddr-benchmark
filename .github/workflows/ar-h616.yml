@@ -32,6 +32,8 @@ jobs:
           git apply ../harness-repo/harness/ar-exp/via-${{ matrix.variant }}-v1.patch
           bun install > /dev/null 2>&1
           start=$(date +%s)
-          timeout 2400 bun test ${{ matrix.test }} --timeout 9999999 > t.log 2>&1 && code=0 || code=$?
+          BUN_UPDATE_SNAPSHOTS=1 timeout 2400 bun test ${{ matrix.test }} --timeout 9999999 > t.log 2>&1 && code=0 || code=$?
           echo "DONE ${{ matrix.variant }} exit=$code seconds=$(($(date +%s)-start))"
           grep -vE "^\s+at " t.log | grep -E "error|Expected|Received|expect\(|toEqual|toBe|\(pass\)|\(fail\)|differs|matches|^\s+[-+] |^\s+\"" | cut -c1-250 | head -60
+          for f in pipeline9-a13-via-without-legal-site pipeline9-a13-via-without-legal-site-via-pad-findings pipeline9-a13-via-without-legal-site-via-pad-detail; do echo "CAPTION $f: $(grep -oE '(Relaxed DRC errors|Vias under [0-9.]+ mm from a pad|via-to-pad findings under [0-9.]+ mm): [0-9]+' tests/repro/__snapshots__/$f.snap.svg | head -2 | tr '\n' ' ')"; done
+          for f in pipeline9-a13-via-without-legal-site pipeline9-a13-via-without-legal-site-via-pad-findings pipeline9-a13-via-without-legal-site-via-pad-detail; do echo "=====SNAP ${{ matrix.variant }} $f====="; base64 -w0 tests/repro/__snapshots__/$f.snap.svg; echo; echo "=====END====="; done
