@@ -3,6 +3,7 @@ import { gunzipSync } from "node:zlib"
 import { AutoroutingPipelineSolver9_PreloadedTraceGraph } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph"
 import { getSegmentToObstacleDistance } from "lib/utils/getSegmentToObstacleDistance"
 import type { SimpleRouteJson } from "lib/types"
+import { HighDensitySolver } from "lib/solvers/HighDensitySolver/HighDensitySolver"
 
 const input: SimpleRouteJson = JSON.parse(
   gunzipSync(new Uint8Array(readFileSync("tests/fixtures/assets/a13-via-without-site/remaining64.srj.json.gz"))).toString("utf8"),
@@ -58,6 +59,28 @@ const report = (stage: string, output: unknown): void => {
       if (d < best) { best = d; bestId = o.obstacleId ?? "" }
     }
     console.log(`TRACE   via (${v.x.toFixed(3)},${v.y.toFixed(3)}) clr=${best.toFixed(3)} pad=${bestId} at ${v.path.slice(0, 140)}`)
+  }
+}
+
+const proto: any = HighDensitySolver.prototype
+const original = proto.recordNodeSolveMetadata
+proto.recordNodeSolveMetadata = function (this: any, nodeSolver: any, status: string) {
+  original.call(this, nodeSolver, status)
+  const node = nodeSolver.nodeWithPortPoints
+  const meta = this.nodeSolveMetadataById.get(node.capacityMeshNodeId)
+  for (const route of nodeSolver.solvedRoutes ?? []) {
+    for (const via of route.vias ?? []) {
+      if (!targets.some((t) => Math.hypot(via.x - t.x, via.y - t.y) < 0.35)) continue
+      const foreign = getForeign()
+      let best = Infinity
+      let bestPad: any
+      for (const o of foreign) {
+        const d = getSegmentToObstacleDistance({ start: via, end: via, obstacle: o }) - viaDiameter / 2
+        if (d < best) { best = d; bestPad = o }
+      }
+      const inSolverObstacles = (this.obstacles ?? []).includes(bestPad)
+      console.log(`NODE ${node.capacityMeshNodeId} solver=${meta?.solverType} status=${status} c=(${node.center.x.toFixed(3)},${node.center.y.toFixed(3)}) ${node.width.toFixed(3)}x${node.height.toFixed(3)} via=(${via.x.toFixed(3)},${via.y.toFixed(3)}) net=${route.connectionName} clr=${best.toFixed(3)} pad=(${bestPad?.center.x.toFixed(3)},${bestPad?.center.y.toFixed(3)} ${bestPad?.width}x${bestPad?.height} ${bestPad?.shape ?? "rect"}) obstaclesGiven=${(this.obstacles ?? []).length} padInObstacles=${inSolverObstacles} obstacleMargin=${this.obstacleMargin}`)
+    }
   }
 }
 

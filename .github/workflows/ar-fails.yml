@@ -28,4 +28,4 @@ jobs:
           bun install > /dev/null 2>&1
           cp ../harness-repo/harness/diag/a13-via-trace.ts .
           bun a13-via-trace.ts > t.log 2>&1 || true
-          grep -E "^TRACE" t.log | cut -c1-260; tail -3 t.log | cut -c1-250
+          grep -E "^(TRACE|NODE)" t.log | cut -c1-260; tail -3 t.log | cut -c1-250
