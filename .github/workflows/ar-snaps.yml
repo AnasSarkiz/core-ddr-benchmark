@@ -5,6 +5,9 @@ on:
     branches: [ci/a13-validation]
     paths: ['harness/ar-snaps.trigger']
 
+permissions:
+  contents: write
+
 jobs:
   snaps:
     runs-on: ubuntu-24.04
@@ -41,7 +44,12 @@ jobs:
           echo "SECOND RUN"; grep -E "^ *[0-9]+ (pass|fail)$|^\(fail\)|differs by" s2.log | cut -c1-200
           git status --short -- tests | grep __snapshots__
           mkdir -p ../out; git status --short -- tests | grep __snapshots__ | awk '{print $2}' | xargs -r tar -czf ../out/snaps-${{ matrix.variant }}.tgz
-      - uses: actions/upload-artifact@v4
-        with:
-          name: snaps-${{ matrix.variant }}
-          path: out/snaps-${{ matrix.variant }}.tgz
+      - name: Push the snapshots to a branch
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          B=snaps/via-stack-${{ matrix.variant }}
+          git checkout -q --orphan $B; git rm -rq --cached . ; git clean -fdq -e harness-repo
+          cp ../out/snaps-${{ matrix.variant }}.tgz .
+          git add snaps-${{ matrix.variant }}.tgz; git commit -qm "snapshots ${{ matrix.variant }}"
+          git push -f origin $B
