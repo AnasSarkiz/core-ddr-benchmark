@@ -1,4 +1,4 @@
-name: A13 via-to-pad counts, repro vs fix
+name: Trace A13 vias through Pipeline 9 stages
 
 on:
   push:
@@ -9,10 +9,6 @@ jobs:
   run:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [repro, fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -25,11 +21,11 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
-      - name: Count
+      - name: Trace
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/via-${{ matrix.variant }}-v1.patch
+          git apply ../harness-repo/harness/ar-exp/via-repro-v1.patch
           bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/a13-via-count.ts .
-          bun a13-via-count.ts ${{ matrix.variant }} > c.log 2>&1 || true
-          grep -E "^A13" c.log | cut -c1-250; tail -3 c.log | cut -c1-250
+          cp ../harness-repo/harness/diag/a13-via-trace.ts .
+          bun a13-via-trace.ts > t.log 2>&1 || true
+          grep -E "^TRACE" t.log | cut -c1-260; tail -3 t.log | cut -c1-250
