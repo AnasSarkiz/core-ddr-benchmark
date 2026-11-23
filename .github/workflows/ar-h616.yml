@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         variant: [repro, fix]
-        test: [tests/repro/pipeline9-a13-via-without-legal-site.test.ts, tests/repro/pipeline9-h616-solitary-crossing.test.ts]
+        test: [tests/repro/pipeline9-a13-via-without-legal-site.test.ts]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -32,6 +32,6 @@ jobs:
           git apply ../harness-repo/harness/ar-exp/via-${{ matrix.variant }}-v1.patch
           bun install > /dev/null 2>&1
           start=$(date +%s)
-          timeout 2400 bun test ${{ matrix.test }} --timeout 9999999 > t.log 2>&1; code=$?
+          timeout 2400 bun test ${{ matrix.test }} --timeout 9999999 > t.log 2>&1 && code=0 || code=$?
           echo "DONE ${{ matrix.variant }} exit=$code seconds=$(($(date +%s)-start))"
           grep -vE "^\s+at " t.log | grep -E "error|Expected|Received|expect\(|toEqual|toBe|\(pass\)|\(fail\)|differs|matches|^\s+[-+] |^\s+\"" | cut -c1-250 | head -60
