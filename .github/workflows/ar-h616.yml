@@ -1,4 +1,4 @@
-name: Autorouter H616 full board and motherboard, base vs split
+name: H616 full-board determinism, main vs fix
 
 on:
   push:
@@ -8,18 +8,19 @@ on:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        variant: [base, fix]
+        variant: [main, fix]
+        attempt: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 7d8e63c573589261bd56f567c022adfb97c70233
+          ref: ed52af82d5a58845bd199f14777475e7c0e054ed
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -28,12 +29,13 @@ jobs:
       - name: Run
         run: |
           cd autorouter
+          if [ "${{ matrix.variant }}" = fix ]; then git apply ../harness-repo/harness/ar-exp/fix-v11.patch; fi
           bun install > /dev/null 2>&1
-          if [ "${{ matrix.variant }}" = fix ]; then git apply ../harness-repo/harness/ar-exp/via-site-fraction.patch; fi
-          cp ../harness-repo/harness/diag/h616-full.ts ../harness-repo/harness/diag/a13-count.ts .
-          bun a13-count.ts ${{ matrix.variant }} > a.log 2>&1 || true
-          grep -E "^A13" a.log | cut -c1-500; tail -3 a.log | cut -c1-300
-          bun h616-full.ts ${{ matrix.variant }} > h.log 2>&1 || true
-          grep -E "^H616" h.log | cut -c1-500; tail -3 h.log | cut -c1-300
-          start=$(date +%s); bun test tests/bugs/bugreport110/motherboard-power-full-route.test.ts --timeout 900000 > m.log 2>&1 || true; end=$(date +%s)
-          echo "MOTHERBOARD ${{ matrix.variant }} seconds=$((end-start)) $(grep -E '^\((pass|fail)\)' m.log | cut -c1-120)"
+          T=tests/repro/pipeline9-h616-full-board-ddr-clearance.test.ts
+          S=tests/repro/__snapshots__/pipeline9-h616-full-board-ddr-clearance.snap.svg
+          echo "COMMITTED ${{ matrix.variant }} $(sha256sum $S | cut -c1-16)"
+          bun test $T --timeout 9999999 > t.log 2>&1 || true
+          echo "RESULT ${{ matrix.variant }}-${{ matrix.attempt }} $(grep -E 'snapshot (matches|differs)|^\((pass|fail)\)' t.log | cut -c1-140 | tr '\n' ' ')"
+          BUN_UPDATE_SNAPSHOTS=1 bun test $T --timeout 9999999 > u.log 2>&1 || true
+          echo "OUTPUT ${{ matrix.variant }}-${{ matrix.attempt }} $(sha256sum $S | cut -c1-16)"
+          echo "=====SNAP ${{ matrix.variant }}-${{ matrix.attempt }}====="; base64 -w0 $S; echo; echo "=====END====="
