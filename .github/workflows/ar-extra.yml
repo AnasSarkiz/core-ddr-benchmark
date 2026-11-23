@@ -30,4 +30,4 @@ jobs:
           bunx biome format . > fmt.log 2>&1 && echo "FMT exit=0" || { echo "FMT failed"; grep -B2 -A25 "Formatter would" fmt.log | head -80; }
           cp ../harness-repo/harness/diag/a13-via-count.ts ../harness-repo/harness/diag/a13-via-trace.ts .
           true
-          bun a13-via-trace.ts > t.log 2>&1 || true; grep -E "^TRACE (hd|nodesWith|done)" t.log | cut -c1-500
+          bun a13-via-trace.ts > t.log 2>&1 || true; grep -E "^DEBUG" t.log | cut -c1-600 | head -40
