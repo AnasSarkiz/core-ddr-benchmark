@@ -56,7 +56,7 @@ jobs:
       - name: Build the autorouter under test and place it in Core
         run: |
           cd autorouter
-          if [ "${{ matrix.variant }}" != ar-base ]; then git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/guard-v2.patch; fi
+          if [ "${{ matrix.variant }}" != ar-base ]; then git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/fix-v12.patch; fi
           if [ "${{ matrix.variant }}" = ar-both ]; then git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/fix-code.patch; fi
           git status --short
           bun install > /dev/null 2>&1
