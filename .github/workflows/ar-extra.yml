@@ -1,4 +1,4 @@
-name: Check both PRs on main ed52af8 before pushing
+name: Check the via-site repro on current main
 
 on:
   push:
@@ -12,14 +12,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pr: [fix]
+        pr: [repro]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: ed52af82d5a58845bd199f14777475e7c0e054ed
+          ref: 2436c416110fb917a90219ea312086bfa14807a6
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
@@ -28,16 +28,16 @@ jobs:
       - name: Check
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/${{ matrix.pr }}-v12.patch
+          git apply ../harness-repo/harness/ar-exp/via-${{ matrix.pr }}-v1.patch
           bun install > /dev/null 2>&1
           bunx tsc --noEmit > tsc.log 2>&1; echo "TSC exit=$?"; head -20 tsc.log
           bunx biome format . > fmt.log 2>&1; echo "FMT exit=$?"; grep -B2 -A20 "Formatter would" fmt.log | head -60
           if [ "${{ matrix.pr }}" = repro ]; then
-            bun test tests/repro/pipeline9-a13-refine-pad-contacts.test.ts --timeout 9999999 > out.log 2>&1 || true
+            bun test tests/repro/pipeline9-a13-via-without-legal-site.test.ts --timeout 9999999 > out.log 2>&1 || true; BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-a13-via-without-legal-site.test.ts --timeout 9999999 >> out.log 2>&1 || true
           else
             bun test tests/features/pipeline9-drc-candidate-new-contact.test.ts tests/repro/pipeline9-a13-refine-pad-contacts.test.ts tests/features/pipeline9-srj33-sample3-contact-regional-repair.test.ts --timeout 9999999 > out.log 2>&1 || true
             BUN_UPDATE_SNAPSHOTS=1 bun test tests/repro/pipeline9-h616-full-board-ddr-clearance.test.ts tests/repro/pipeline9-icepi-ddr-gap-ports.test.ts --timeout 9999999 >> out.log 2>&1 || true
           fi
           grep -E "error:|Expected:|Received:|\(pass\)|\(fail\)" out.log | head -30
           git status --short tests
-          for f in pipeline9-h616-full-board-ddr-clearance pipeline9-icepi-ddr-gap-ports; do echo "=====SNAP $f====="; base64 -w0 tests/repro/__snapshots__/$f.snap.svg; echo; echo "=====END====="; done
+          for f in pipeline9-a13-via-without-legal-site pipeline9-a13-via-without-legal-site-via-pad-findings pipeline9-a13-via-without-legal-site-via-pad-detail; do echo "=====SNAP $f====="; base64 -w0 tests/repro/__snapshots__/$f.snap.svg; echo; echo "=====END====="; done

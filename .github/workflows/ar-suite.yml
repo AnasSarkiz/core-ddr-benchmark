@@ -1,4 +1,4 @@
-name: Autorouter suite on the refine contact rule
+name: Autorouter suite on the via-site fix (update snapshots)
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: ed52af82d5a58845bd199f14777475e7c0e054ed
+          ref: 2436c416110fb917a90219ea312086bfa14807a6
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -29,7 +29,7 @@ jobs:
       - name: Apply the fix
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/fix-v12.patch
+          git apply ../harness-repo/harness/ar-exp/via-fix-v1.patch
           git status --short
           bun install > /dev/null 2>&1
       - name: Typecheck
@@ -41,7 +41,7 @@ jobs:
         run: cd autorouter && bun scripts/generate-balanced-test-plan.ts
         env:
           NODE_COUNT: 9
-      - name: Run shard ${{ matrix.node }} without updating snapshots
+      - name: Run shard ${{ matrix.node }} updating snapshots
         run: |
           cd autorouter
           mapfile -t test_files < ".bun-test-plan/testplans/testplan${{ matrix.node }}.txt"
@@ -60,9 +60,9 @@ jobs:
             esac
           done
           : > suite.log
-          if [ "${#regular_tests[@]}" -gt 0 ]; then bun test "${regular_tests[@]}" --timeout 300000 >> suite.log 2>&1 || true; fi
-          if [ "${#slow_tests[@]}" -gt 0 ]; then bun test "${slow_tests[@]}" --timeout 600000 >> suite.log 2>&1 || true; fi
-          if [ "${#full_board_tests[@]}" -gt 0 ]; then bun test "${full_board_tests[@]}" --timeout 1800000 >> suite.log 2>&1 || true; fi
+          if [ "${#regular_tests[@]}" -gt 0 ]; then BUN_UPDATE_SNAPSHOTS=1 bun test "${regular_tests[@]}" --timeout 300000 >> suite.log 2>&1 || true; fi
+          if [ "${#slow_tests[@]}" -gt 0 ]; then BUN_UPDATE_SNAPSHOTS=1 bun test "${slow_tests[@]}" --timeout 600000 >> suite.log 2>&1 || true; fi
+          if [ "${#full_board_tests[@]}" -gt 0 ]; then BUN_UPDATE_SNAPSHOTS=1 bun test "${full_board_tests[@]}" --timeout 1800000 >> suite.log 2>&1 || true; fi
       - name: Summary
         if: always()
         run: |
@@ -75,4 +75,12 @@ jobs:
           grep -nE "unnamed|^error|Unhandled|^# Unhandled|rror between tests" suite.log | head -20 | cut -c1-250
           L=$(grep -n "(fail) (unnamed)" suite.log | head -1 | cut -d: -f1); if [ -n "$L" ]; then sed -n "$((L-60)),$((L+2))p" suite.log | grep -vE "^\s+at " | cut -c1-250; fi
           echo "=====CHANGED====="
-          git status --short | grep -v "pipeline9-a13-via-without-legal-site\|^ M lib/\|^?? lib/" | head -40
+          CH=$(git status --short -- tests | grep "__snapshots__" | grep "^ M" | awk '{print $2}')
+          for f in $CH; do
+            before=$(git show HEAD:$f 2>/dev/null | grep -oE "[A-Za-z ]*DRC errors: [0-9]+" | head -1)
+            after=$(grep -oE "[A-Za-z ]*DRC errors: [0-9]+" $f | head -1)
+            echo "SNAPCHANGE $f | $before -> $after"
+          done
+          echo "=====TARBALL-BEGIN====="
+          if [ -n "$CH" ]; then tar -czf - $CH | base64 -w 160; fi
+          echo "=====TARBALL-END====="
