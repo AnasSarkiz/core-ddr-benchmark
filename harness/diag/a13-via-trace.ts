@@ -76,6 +76,7 @@ proto.recordNodeSolveMetadata = function (this: any, nodeSolver: any, status: st
     const routes = materializePipeline9HdRouteVias(nodeSolver.solvedRoutes)
     const pads = (this.obstacles as any[]).filter((o) => Math.abs(o.center.x - node.center.x) < 1 && Math.abs(o.center.y - node.center.y) < 1)
     const conflict = hasPipeline9ViaToBoardObstacleConflict({ routes, boardObstacles: pads, connMap: this.connMap, layerCount: this.layerCount, viaToPadClearance: 0.1249 })
+    console.log(`DEBUG validatorSrc=${String(this.growShrinkSolutionValidator).replace(/\s+/g, ' ').slice(0, 160)} hdObstacles=${(this.obstacles ?? []).length} solverName=${this.getSolverName?.()} status=${status} winner=${nodeSolver.winningSolver?.constructor?.name}`)
     console.log(`DEBUG node=${node.capacityMeshNodeId} validatorSet=${Boolean(this.growShrinkSolutionValidator)} validatorSays=${this.growShrinkSolutionValidator?.(nodeSolver.solvedRoutes)} manualConflict=${conflict} pads=${pads.length} rejections=${JSON.stringify(nodeSolver.winningSolver?.stats?.candidateRejections ?? nodeSolver.stats?.candidateRejections)}`)
     for (const route of routes) {
       const geo = getPipeline9RouteCopperGeometry(route, { layerCount: this.layerCount })
