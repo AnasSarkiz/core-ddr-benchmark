@@ -1,4 +1,4 @@
-name: H616 full-board errors by cleanup gate
+name: Via-site stack failing tests, repro vs fix
 
 on:
   push:
@@ -8,18 +8,19 @@ on:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        variant: [main, fix, fix-norefine, fix-noproj, fix-nosafe]
+        variant: [repro, fix]
+        test: [tests/repro/pipeline9-a13-via-without-legal-site.test.ts, tests/repro/pipeline9-h616-solitary-crossing.test.ts]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: ed52af82d5a58845bd199f14777475e7c0e054ed
+          ref: 2436c416110fb917a90219ea312086bfa14807a6
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -28,14 +29,9 @@ jobs:
       - name: Run
         run: |
           cd autorouter
-          V=${{ matrix.variant }}
-          if [ "$V" != main ]; then git apply ../harness-repo/harness/ar-exp/fix-v11.patch; fi
-          F=lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver.ts
-          if [ "$V" = fix-norefine ]; then perl -0pi -e 's/rejectNewContacts: true/rejectNewContacts: false/' $F; fi
-          if [ "$V" = fix-nosafe ]; then perl -0pi -e 's/(rejectNewContacts: true.*?)rejectNewContacts: true/$1rejectNewContacts: false/s' $F; fi
-          if [ "$V" = fix-noproj ]; then perl -0pi -e 's/if \(!introducesPipeline9DrcContact\(errors, cleanup\.errors\)\)/if (true)/' $F; fi
-          git diff --stat -- $F
+          git apply ../harness-repo/harness/ar-exp/via-${{ matrix.variant }}-v1.patch
           bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/h616-drc.ts .
-          bun h616-drc.ts $V > d.log 2>&1 || true
-          grep -E "^H616" d.log | cut -c1-260; tail -3 d.log | cut -c1-300
+          start=$(date +%s)
+          timeout 2400 bun test ${{ matrix.test }} --timeout 9999999 > t.log 2>&1; code=$?
+          echo "DONE ${{ matrix.variant }} exit=$code seconds=$(($(date +%s)-start))"
+          grep -vE "^\s+at " t.log | grep -E "error|Expected|Received|expect\(|toEqual|toBe|\(pass\)|\(fail\)|differs|matches|^\s+[-+] |^\s+\"" | cut -c1-250 | head -60
