@@ -1,4 +1,4 @@
-name: Ten DDR boards through Core, main 4c80cfe vs #3971
+name: Ten DDR boards through Core, main ed52af8 vs #3971
 
 on:
   push:
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 4c80cfe803046da0e8d989a673b8f2193b1b6851
+          ref: ed52af82d5a58845bd199f14777475e7c0e054ed
           path: autorouter
           persist-credentials: false
       - name: Build the autorouter under test and place it in Core

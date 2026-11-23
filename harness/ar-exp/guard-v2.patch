@@ -125,10 +125,10 @@ index 84cf1e3..512b89d 100644
                bestErrors = candidateErrors
                if (bestErrors.length === 0) {
 diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
-index 8e44ee6..213cef0 100644
+index 8e44ee6..c87d893 100644
 --- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
 +++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/pipeline9JointDrcRepairUtils.ts
-@@ -129,14 +129,105 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
+@@ -129,14 +129,103 @@ const getDrcIssueScore = (errors: Pipeline9DrcError[]) =>
      return score + 1
    }, 0)
  
@@ -147,38 +147,37 @@ index 8e44ee6..213cef0 100644
 +export const getPipeline9DrcContact = (
 +  error: Pipeline9DrcError,
 +): Pipeline9DrcContact | undefined => {
-+  const isContact =
-+    error.type === "pcb_trace_error" &&
-+    typeof error.actual_clearance === "number" &&
-+    error.actual_clearance < 0
-+  if (!isContact) return undefined
++  if (error.type !== "pcb_trace_error") return undefined
++  if (typeof error.actual_clearance !== "number") return undefined
++  if (error.actual_clearance >= 0) return undefined
++
 +  const unidentified: Pipeline9DrcContact = { kind: "unidentified" }
 +  const traceId = error.pcb_trace_id
 +  const obstacleIds = [error.pcb_smtpad_id, error.pcb_plated_hole_id].filter(
 +    (id) => id !== undefined,
 +  )
-+  if (obstacleIds.length > 0) {
-+    // A trace on a pad or plated hole names one trace and one obstacle.
++
++  // A trace on a pad or plated hole names one trace and one obstacle.
++  if (obstacleIds.length > 1) return unidentified
++  if (obstacleIds.length === 1) {
 +    const obstacleId = obstacleIds[0]
-+    const isNamed =
-+      obstacleIds.length === 1 &&
-+      typeof obstacleId === "string" &&
-+      obstacleId !== "" &&
-+      typeof traceId === "string" &&
-+      traceId !== ""
-+    if (!isNamed) return unidentified
++    if (typeof traceId !== "string") return unidentified
++    if (traceId === "") return unidentified
++    if (typeof obstacleId !== "string") return unidentified
++    if (obstacleId === "") return unidentified
 +    return { kind: "identified", key: `${traceId} touches ${obstacleId}` }
 +  }
++
 +  // A trace touching another trace or its via names two different traces.
-+  const traceIds: unknown[] = Array.isArray(error.pcb_trace_ids)
-+    ? error.pcb_trace_ids
-+    : []
-+  const isTracePair =
-+    traceIds.length === 2 &&
-+    traceIds.every((id) => typeof id === "string" && id !== "") &&
-+    traceIds[0] !== traceIds[1]
-+  if (!isTracePair) return unidentified
-+  const key = traceIds.map(String).sort().join(" touches ")
++  if (!Array.isArray(error.pcb_trace_ids)) return unidentified
++  if (error.pcb_trace_ids.length !== 2) return unidentified
++  const [firstTraceId, secondTraceId]: unknown[] = error.pcb_trace_ids
++  if (typeof firstTraceId !== "string") return unidentified
++  if (typeof secondTraceId !== "string") return unidentified
++  if (firstTraceId === "") return unidentified
++  if (secondTraceId === "") return unidentified
++  if (firstTraceId === secondTraceId) return unidentified
++  const key = [firstTraceId, secondTraceId].sort().join(" touches ")
 +  return { kind: "identified", key }
 +}
 +
@@ -224,11 +223,10 @@ index 8e44ee6..213cef0 100644
 +  currentErrors: Pipeline9DrcError[]
 +  rejectNewContacts?: boolean
 +}): boolean => {
-+  if (
-+    rejectNewContacts &&
-+    introducesPipeline9DrcContact(candidateErrors, currentErrors)
-+  ) {
-+    return false
++  if (rejectNewContacts) {
++    if (introducesPipeline9DrcContact(candidateErrors, currentErrors)) {
++      return false
++    }
 +  }
 +  return (
 +    candidateErrors.length < currentErrors.length ||
@@ -241,7 +239,7 @@ index 8e44ee6..213cef0 100644
  export const getPipeline9RouteIndexByTraceId = ({
    routes,
 diff --git a/package.json b/package.json
-index 03cf115..06f21b5 100644
+index 24bcc52..6feb33d 100644
 --- a/package.json
 +++ b/package.json
 @@ -115,7 +115,7 @@
@@ -250,6 +248,6 @@ index 03cf115..06f21b5 100644
      "high-density-repair02": "https://codeload.github.com/tscircuit/high-density-repair02/tar.gz/cac656f51535aca0d9c7f09e5860b4e82a78f3cf",
 -    "high-density-repair03": "https://codeload.github.com/tscircuit/high-density-repair03/tar.gz/6d7bfa862fb2fe1636bf164e7935cd61964a06b5",
 +    "high-density-repair03": "https://codeload.github.com/tscircuit/high-density-repair03/tar.gz/c0325f34982b62d901b9bd3a45696121a903de30",
+     "@tscircuit/high-density-phase-solver": "https://codeload.github.com/tscircuit/high-density-phase-solver/tar.gz/f70041d56fef2f9136dff060ef654094f7fc67e0",
      "@tscircuit/high-density-a01": "git+https://github.com/tscircuit/high-density-a01.git#e9a3642aae9d45aadb197cd1386dec2142529217",
      "@tscircuit/high-density-a13": "git+https://github.com/tscircuit/high-density-a01.git#4ae21d7a15c9fbfb30378c10f948aa168d7c9cb7",
-     "@tscircuit/high-density-b01": "git+https://github.com/tscircuit/high-density-b01.git#a224564f52635bb5dc8d120d43ef71f9437c7393"
