@@ -1,0 +1,113 @@
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
+index c9ee3b2..89fa682 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph.ts
+@@ -17,6 +17,8 @@ import type { TopologyMergingSolver } from "lib/solvers/TopologyMergingSolver/To
+ import { ClearanceGapIndex } from "./ClearanceGapIndex"
+ import { findConflictingGaps } from "./findConflictingGaps"
+ import { splitNodesWithoutThroughViaSite } from "./splitNodesWithoutThroughViaSite"
++import { diagMarkedNodes, diagForeignObstacles } from "./markNodesWithoutViaSite"
++import { getPointToObstacleDistance } from "./Pipeline9RegionalFallbackSolver"
+ import type { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
+ import { getColorMap } from "lib/solvers/colors"
+ import type {
+@@ -324,6 +326,7 @@ export class AutoroutingPipelineSolver9_PreloadedTraceGraph extends BaseSolver {
+       connMap: this.connMap,
+       viaDiameter: this.viaDiameter,
+     })
++    console.log(`P9DIAG split layerChangeNodes=${layerChangeNodeIds.size} before=${nodes.length} after=${refined.length} plannedMarked=${nodes.filter((n) => n._lacksViaSite && layerChangeNodeIds.has(n.capacityMeshNodeId)).length}`)
+     if (nodes === refined) return false
+ 
+     // The provisional plan uses a physically impossible via. Rebuild the edges,
+@@ -375,6 +378,13 @@ export class AutoroutingPipelineSolver9_PreloadedTraceGraph extends BaseSolver {
+           this.startTimeOfPhase[pipelineStepDef.solverName]
+         pipelineStepDef.onSolved?.(this)
+         this.activeSubSolver = null
++        if (pipelineStepDef.solverName === "portPointPathingSolver") {
++          const marked = new Set(diagMarkedNodes.map((n) => n.capacityMeshNodeId))
++          const planned = this.portPointPathingSolver!.getOutput().nodesWithPortPoints.filter((node) =>
++            node.portPointsInPairs?.some(([entry, exit]) => entry.z !== exit.z),
++          )
++          console.log(`P9DIAG plan layerChangeNodes=${planned.length} inMarked=${planned.filter((n) => marked.has(n.capacityMeshNodeId)).length} ids=${planned.filter((n) => marked.has(n.capacityMeshNodeId)).map((n) => n.capacityMeshNodeId).join(",")}`)
++        }
+         if (
+           pipelineStepDef.solverName === "portPointPathingSolver" &&
+           this.refinePortPointPlan()
+@@ -584,6 +594,23 @@ export class AutoroutingPipelineSolver9_PreloadedTraceGraph extends BaseSolver {
+         "Pipeline9 invariant violated: solved pipeline is missing the unconditional power-trace expansion solver",
+       )
+     }
++    const diagOut = [
++      ...this.getPowerTraceExpansionFixedTraces().filter(
++        (trace) => trace.__replaces_pcb_trace_id !== undefined,
++      ),
++      ...this.powerTraceExpansionSolver.getOutput(),
++    ]
++    let diagVias = 0
++    let diagTight = 0
++    for (const trace of diagOut) for (const p of trace.route as any[]) {
++      if (p.route_type !== "via") continue
++      diagVias++
++      const clearance = Math.min(Infinity, ...diagForeignObstacles.map((o) => getPointToObstacleDistance({ x: p.x, y: p.y }, o))) - this.viaDiameter / 2
++      const inNode = diagMarkedNodes.find((n) => Math.abs(p.x - n.center.x) <= n.width / 2 && Math.abs(p.y - n.center.y) <= n.height / 2)
++      if (clearance < 0.124) diagTight++
++      if (inNode || clearance < 0.124) console.log(`P9DIAG via (${p.x.toFixed(2)},${p.y.toFixed(2)}) clr=${clearance.toFixed(3)} inMarked=${inNode?.capacityMeshNodeId ?? "-"}`)
++    }
++    console.log(`P9DIAG output vias=${diagVias} tight=${diagTight}`)
+     return [
+       ...this.getPowerTraceExpansionFixedTraces().filter(
+         (trace) => trace.__replaces_pcb_trace_id !== undefined,
+diff --git a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts
+index 48ef7aa..26b77e2 100644
+--- a/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts
++++ b/lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/markNodesWithoutViaSite.ts
+@@ -6,6 +6,8 @@ import {
+   getPointToObstacleDistance,
+ } from "./Pipeline9RegionalFallbackSolver"
+ 
++export const diagMarkedNodes: CapacityMeshNode[] = []
++export const diagForeignObstacles: Obstacle[] = []
+ type Bounds = { minX: number; maxX: number; minY: number; maxY: number }
+ type MarkNodesWithoutViaSiteParams = {
+   nodes: CapacityMeshNode[]
+@@ -137,13 +139,14 @@ export const markNodesWithoutViaSite = ({
+   viaDiameter,
+   viaToPadClearance,
+ }: MarkNodesWithoutViaSiteParams): CapacityMeshNode[] => {
++  const mode = process.env.P9_VIA_MODE ?? "full"
+   const routedNetIds = new Set(
+     srj.connections.map(
+       (connection) =>
+         connMap.getNetConnectedToId(connection.name) ?? connection.name,
+     ),
+   )
+-  const keepOut = viaDiameter / 2 + viaToPadClearance
++  const keepOut = viaDiameter / 2 + (mode === "overlap" ? 0 : viaToPadClearance)
+   const hardObstacles = srj.obstacles
+     .filter((obstacle) => !isRoutedNetObstacle(obstacle, connMap, routedNetIds))
+     .map((obstacle) => ({
+@@ -151,7 +154,10 @@ export const markNodesWithoutViaSite = ({
+       bounds: getObstacleBounds(obstacle),
+       zLayers: getObstacleZLayers(obstacle, srj.layerCount),
+     }))
+-  return nodes.map((node): CapacityMeshNode => {
++  diagMarkedNodes.length = 0
++  diagForeignObstacles.length = 0
++  diagForeignObstacles.push(...hardObstacles.map((h) => h.obstacle))
++  const result = nodes.map((node): CapacityMeshNode => {
+     if (
+       node._isComponentTopologyNode ||
+       node._containsTarget ||
+@@ -176,6 +182,11 @@ export const markNodesWithoutViaSite = ({
+     )
+     if (nearby.length === 0) return node
+     const hasViaSite = hasViaSiteInCell(centers, nearby, keepOut)
+-    return hasViaSite ? node : { ...node, _lacksViaSite: true }
++    if (hasViaSite) return node
++    diagMarkedNodes.push(node)
++    return mode === "off" ? node : { ...node, _lacksViaSite: true }
+   })
++  console.log(`P9DIAG mark mode=${mode} nodes=${nodes.length} multiLayer=${nodes.filter((n) => n.availableZ.length > 1).length} marked=${diagMarkedNodes.length}`)
++  for (const n of diagMarkedNodes) console.log(`P9DIAG marked ${n.capacityMeshNodeId} c=(${n.center.x.toFixed(2)},${n.center.y.toFixed(2)}) ${n.width.toFixed(2)}x${n.height.toFixed(2)} z=${n.availableZ.join('')}`)
++  return result
+ }

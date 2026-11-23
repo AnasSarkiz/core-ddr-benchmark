@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         circuit: [a13, orangecrab, h616]
-        variant: [off, full, overlap]
+        variant: [off, full]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -57,7 +57,7 @@ jobs:
         run: |
           cd autorouter
           git apply --include='lib/*' --include='package.json' ../harness-repo/harness/ar-exp/via-fix-v2.patch
-          git apply ../harness-repo/harness/ar-exp/via-exp.patch
+          git apply ../harness-repo/harness/ar-exp/via-exp2.patch
           git status --short
           bun install > /dev/null 2>&1
           bun run build > build.log 2>&1; tail -3 build.log
@@ -69,7 +69,7 @@ jobs:
           cd core
           P9_VIA_MODE=${{ matrix.variant }} bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
           tail -12 route.log
-          grep -h "P9DIAG" route.log ddr-benchmark-results/${{ matrix.circuit }}/*.log 2>/dev/null | sort | uniq -c | head -40
+          grep -h "P9DIAG" route.log | cut -c1-220 | head -300
       - name: Print the report
         if: always()
         run: |
