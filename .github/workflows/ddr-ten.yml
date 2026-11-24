@@ -51,6 +51,7 @@ jobs:
         with:
           repository: tscircuit/tscircuit-autorouter
           ref: b90d04b0f476d865aacaf99b19123e12ddef4a3f
+          fetch-depth: 0
           path: autorouter
           persist-credentials: false
       - name: Build the autorouter under test and place it in Core
