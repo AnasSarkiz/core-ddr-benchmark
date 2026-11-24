@@ -1,4 +1,4 @@
-name: Check the via-site fix v4
+name: A13 repro counts, main vs Seve #4168
 
 on:
   push:
@@ -9,13 +9,17 @@ jobs:
   check:
     runs-on: ubuntu-24.04
     timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [base, seve]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 2436c416110fb917a90219ea312086bfa14807a6
+          ref: b90d04b0f476d865aacaf99b19123e12ddef4a3f
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -24,10 +28,9 @@ jobs:
       - name: Check
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/via-fix-v5-metal.patch
+          if [ "${{ matrix.variant }}" = seve ]; then git -c user.name=h -c user.email=h@x fetch -q https://github.com/tscircuit/tscircuit-autorouter fix/price-vias-beside-fixed-copper && git -c user.name=h -c user.email=h@x merge -q --no-edit FETCH_HEAD && echo "MERGED seve $(git rev-parse --short HEAD)"; fi
+          git apply --include='tests/fixtures/assets/a13-via-without-site/*' ../harness-repo/harness/ar-exp/via-repro-v1.patch
           bun install > /dev/null 2>&1
-          bunx tsc --noEmit > tsc.log 2>&1 && echo "TSC exit=0" || { echo "TSC failed"; head -30 tsc.log; }
-          bunx biome format . > fmt.log 2>&1 && echo "FMT exit=0" || { echo "FMT failed"; grep -B2 -A25 "Formatter would" fmt.log | head -80; }
           cp ../harness-repo/harness/diag/a13-via-count.ts ../harness-repo/harness/diag/a13-via-trace.ts .
-          bun a13-via-count.ts fix > c.log 2>&1 || true; grep -E "^A13" c.log | cut -c1-250; tail -25 c.log | cut -c1-300
+          bun a13-via-count.ts ${{ matrix.variant }} > c.log 2>&1 || true; grep -E "^A13" c.log | cut -c1-250; tail -25 c.log | cut -c1-300
           true
