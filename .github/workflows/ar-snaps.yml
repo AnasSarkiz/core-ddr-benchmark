@@ -1,4 +1,4 @@
-name: Via-site stack snapshots on main 2436c41
+name: Capture the A13 joint repair input
 
 on:
   push:
@@ -9,47 +9,34 @@ permissions:
   contents: write
 
 jobs:
-  snaps:
+  capture:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [repro, fix]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 2436c416110fb917a90219ea312086bfa14807a6
+          ref: b90d04b0f476d865aacaf99b19123e12ddef4a3f
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
-      - name: Update the failing snapshots, then run against them
+      - name: Capture
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/via-${{ matrix.variant }}-$( [ ${{ matrix.variant }} = fix ] && echo v2 || echo v1 ).patch
+          git apply --include='tests/fixtures/assets/a13-via-without-site/*' ../harness-repo/harness/ar-exp/via-repro-v1.patch
           bun install > /dev/null 2>&1
-          if [ "${{ matrix.variant }}" = repro ]; then
-            F=(tests/repro/pipeline9-a13-via-without-legal-site.test.ts)
-          else
-            F=(tests/repro/pipeline9-ddr-force-clearance.test.ts tests/repro/pipeline9-a13-via-without-legal-site.test.ts tests/repro/pipeline9-h616-preloaded-board-clearance.test.ts tests/repro/pipeline9-orangecrab-through-via-layer-span.test.ts tests/repro/pipeline9-h616-native-ddr-clearance.test.ts tests/repro/pipeline9-a13-regional-repair-shorts.test.ts tests/repro/pipeline9-a13-declared-trace-clearance.test.ts tests/repro/pipeline9-a13-fixed-copper-checks.test.ts)
-          fi
-          BUN_UPDATE_SNAPSHOTS=1 bun test "${F[@]}" --timeout 1800000 > s1.log 2>&1 || true
-          grep -E "^ *[0-9]+ (pass|fail)$|^\(fail\)" s1.log
-          bun test "${F[@]}" --timeout 1800000 > s2.log 2>&1 || true
-          echo "SECOND RUN"; grep -E "^ *[0-9]+ (pass|fail)$|^\(fail\)|differs by" s2.log | cut -c1-200
-          git status --short -- tests | grep __snapshots__
-          mkdir -p ../out; git status --short -- tests | grep __snapshots__ | awk '{print $2}' | xargs -r tar -czf ../out/snaps-${{ matrix.variant }}.tgz
-      - name: Push the snapshots to a branch
+          cp ../harness-repo/harness/diag/a13-capture-joint.ts .
+          mkdir -p ../out
+          bun a13-capture-joint.ts tests/fixtures/assets/a13-via-without-site/remaining64.srj.json.gz ../out/a13-contact-repair-via-clearance.json.gz
+      - name: Push the fixture to a branch
         run: |
           cd harness-repo
           git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          B=snaps/via-stack-${{ matrix.variant }}
-          git checkout -q --orphan $B; git rm -rq --cached . ; git clean -fdq -e harness-repo
-          cp ../out/snaps-${{ matrix.variant }}.tgz .
-          git add snaps-${{ matrix.variant }}.tgz; git commit -qm "snapshots ${{ matrix.variant }}"
-          git push -f origin $B
+          git checkout -q --orphan fixtures/a13-contact-repair; git rm -rq --cached .; git clean -fdq
+          cp ../out/a13-contact-repair-via-clearance.json.gz .
+          git add a13-contact-repair-via-clearance.json.gz; git commit -qm "A13 joint repair input"
+          git push -f origin fixtures/a13-contact-repair
