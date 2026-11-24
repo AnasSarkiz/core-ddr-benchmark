@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { gunzipSync } from "node:zlib"
 import { AutoroutingPipelineSolver9_PreloadedTraceGraph } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph"
 import { Pipeline9RegionalB01RepairSolver } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver"
+import { Pipeline9JointDrcRepairSolver } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9JointDrcRepairSolver"
 import { getSegmentToObstacleDistance } from "lib/utils/getSegmentToObstacleDistance"
 import type { SimpleRouteJson } from "lib/types"
 
@@ -58,6 +59,27 @@ proto._step = function (this: any) {
     }
     this.__diagKeys = new Set(tight.map((v) => v.key))
   }
+}
+
+const jointProto: any = Pipeline9JointDrcRepairSolver.prototype
+const jointStep = jointProto._step
+const childFields = ["clearanceProjectionSolver", "initialBoundedRegionalRepairSolver", "exactRepairSolver", "regionalB01RepairSolver", "boundedRegionalRepairSolver", "traceContactRepairSolver"]
+jointProto._step = function (this: any) {
+  const active = (): string => childFields.filter((f) => this[f] && !this[f].solved && !this[f].failed).join("+") || "-"
+  const before = active()
+  jointStep.call(this)
+  const after = active()
+  if (before === after && !this.solved) return
+  let routes: any[] | undefined
+  try { routes = this.getCombinedOutput() } catch { routes = undefined }
+  const tight = getTightVias(routes)
+  const keys = new Set(tight.map((v) => v.key))
+  const prev: Set<string> = this.__diagKeys ?? new Set()
+  const added = tight.filter((v) => !prev.has(v.key))
+  const removed = [...prev].filter((k) => !keys.has(k))
+  const fields = childFields.filter((f) => this[f]).map((f) => `${f}${this[f].solved ? ":solved" : this[f].failed ? ":failed" : ""}`).join(",")
+  console.log(`JOINT step ${before} -> ${after} solved=${this.solved} routes=${routes?.length} added=${added.map((v) => `${v.key}(clr=${v.clr.toFixed(3)})`).join(" ")} removed=${removed.join(" ")} children=${fields}`)
+  this.__diagKeys = keys
 }
 
 let guard = 0
