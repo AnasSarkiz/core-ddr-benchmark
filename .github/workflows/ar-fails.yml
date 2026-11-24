@@ -1,4 +1,4 @@
-name: Trace where joint repair adds A13 via-to-pad violations
+name: Contact repair fix, failing tests on main vs fix
 
 on:
   push:
@@ -8,11 +8,11 @@ on:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        fixture: [via-repro]
+        variant: [main, fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -25,13 +25,13 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
-      - name: Trace
+      - name: Run
         run: |
           cd autorouter
-          git apply --include='tests/fixtures/assets/a13-via-without-site/*' ../harness-repo/harness/ar-exp/via-repro-v1.patch
+          if [ "${{ matrix.variant }}" = fix ]; then git apply --include=package.json ../harness-repo/harness/ar-exp/contact-fix-v1.patch; fi
           bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/a13-joint-via.ts .
-          F=tests/fixtures/assets/a13-fixed-copper/remaining64.srj.json.gz
-          if [ "${{ matrix.fixture }}" = via-repro ]; then F=tests/fixtures/assets/a13-via-without-site/remaining64.srj.json.gz; fi
-          bun a13-joint-via.ts $F ${{ matrix.fixture }} > j.log 2>&1 || true
-          grep -E "^(JOINT tcr counts|TCR)" j.log | cut -c1-400 | head -80; tail -3 j.log | cut -c1-300
+          for t in tests/features/pipeline9-srj33-contact-repair-budget.test.ts tests/repro/pipeline9-a13-via-cleanup-reference.test.ts tests/repro/pipeline9-a13-regional-repair-shorts.test.ts; do
+            bun test $t --timeout 9999999 > t.log 2>&1 && r=pass || r=fail
+            echo "RESULT ${{ matrix.variant }} $t $r"
+            grep -vE "^\s+at " t.log | grep -E "Expected|Received|toBe|toHave|toEqual|differs|^\s+[0-9]+ \|.*expect" | cut -c1-200 | head -12
+          done
