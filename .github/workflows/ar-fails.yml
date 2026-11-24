@@ -28,7 +28,7 @@ jobs:
       - name: Run
         run: |
           cd autorouter
-          if [ "${{ matrix.variant }}" = fix ]; then git apply --include=package.json ../harness-repo/harness/ar-exp/contact-fix-v2.patch; fi
+          if [ "${{ matrix.variant }}" = fix ]; then git apply --include=package.json ../harness-repo/harness/ar-exp/contact-fix-v3.patch; fi
           bun install > /dev/null 2>&1
           for t in tests/features/pipeline9-srj33-contact-repair-budget.test.ts tests/repro/pipeline9-a13-via-cleanup-reference.test.ts tests/repro/pipeline9-a13-regional-repair-shorts.test.ts; do
             bun test $t --timeout 9999999 > t.log 2>&1 && r=pass || r=fail
