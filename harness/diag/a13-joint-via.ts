@@ -93,6 +93,46 @@ jointProto._step = function (this: any) {
     const outputKeys = output.errors.map(key)
     for (const e of output.errors) if (!enteringKeys.includes(key(e))) console.log(`JOINT tcr added ${describe(e)}`)
     for (const e of entering.errors) if (!outputKeys.includes(key(e))) console.log(`JOINT tcr removed ${describe(e)}`)
+    // Try moving net_77's via to every nearby spot that keeps the pad clearance.
+    const target = { x: -6.688, y: -1.736 }
+    const outRoutes: any[] = tcr.getOutput()
+    const routeIndex = outRoutes.findIndex((r) => r.connectionName.startsWith("source_net_77") && (r.vias ?? []).some((v: any) => Math.hypot(v.x - target.x, v.y - target.y) < 0.01))
+    console.log(`JOINT spot routeIndex=${routeIndex} conn=${outRoutes[routeIndex]?.connectionName} vias=${JSON.stringify(outRoutes[routeIndex]?.vias)}`)
+    if (routeIndex >= 0) {
+      const route = outRoutes[routeIndex]
+      const via = route.vias.find((v: any) => Math.hypot(v.x - target.x, v.y - target.y) < 0.01)
+      const padClearanceAt = (x: number, y: number): number => getTightVias([{ ...route, vias: [{ x, y }] }])[0]?.clr ?? Infinity
+      const baseline = output.count
+      const spots: Array<{ x: number; y: number; d: number; padClr: number }> = []
+      for (let dx = -0.6; dx <= 0.6001; dx += 0.025) for (let dy = -0.6; dy <= 0.6001; dy += 0.025) {
+        const x = via.x + dx
+        const y = via.y + dy
+        const padClr = padClearanceAt(x, y)
+        if (padClr >= clearance) spots.push({ x, y, d: Math.hypot(dx, dy), padClr })
+      }
+      spots.sort((a, b) => a.d - b.d)
+      console.log(`JOINT spot padClearSpots=${spots.length} nearestPadClear=${spots[0] ? `${spots[0].d.toFixed(3)}mm` : "none"} baselineCount=${baseline}`)
+      let evaluated = 0
+      let found = 0
+      for (const spot of spots) {
+        if (evaluated >= 160) break
+        const moved = {
+          ...route,
+          vias: route.vias.map((v: any) => (v === via ? { ...v, x: spot.x, y: spot.y } : v)),
+          route: route.route.map((p: any) => (Math.hypot(p.x - via.x, p.y - via.y) < 1e-6 ? { ...p, x: spot.x, y: spot.y } : p)),
+        }
+        const routes = outRoutes.map((r, i) => (i === routeIndex ? moved : r))
+        evaluated++
+        if (tcr.inputContactGuard.getNewContactPairs(routes).length > 0) continue
+        const snap = tcr.snapshot(routes)
+        const viaPad = snap.errors.filter((e: any) => String(e.message).includes("via_") && String(e.message).includes("smtpad")).length
+        if (snap.count <= baseline) {
+          found++
+          if (found <= 8) console.log(`JOINT spot candidate d=${spot.d.toFixed(3)} at (${spot.x.toFixed(3)},${spot.y.toFixed(3)}) padClr=${spot.padClr.toFixed(3)} count=${snap.count} (baseline ${baseline}) viaPadErrors=${viaPad}`)
+        }
+      }
+      console.log(`JOINT spot evaluated=${evaluated} contactFreeNotWorse=${found}`)
+    }
   }
 }
 
