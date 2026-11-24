@@ -34,4 +34,4 @@ jobs:
           F=tests/fixtures/assets/a13-fixed-copper/remaining64.srj.json.gz
           if [ "${{ matrix.fixture }}" = via-repro ]; then F=tests/fixtures/assets/a13-via-without-site/remaining64.srj.json.gz; fi
           bun a13-joint-via.ts $F ${{ matrix.fixture }} > j.log 2>&1 || true
-          grep -E "^JOINT" j.log | cut -c1-400 | head -80; tail -3 j.log | cut -c1-300
+          grep -E "^(JOINT tcr counts|TCR)" j.log | cut -c1-400 | head -80; tail -3 j.log | cut -c1-300

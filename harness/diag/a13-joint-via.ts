@@ -4,6 +4,7 @@ import { AutoroutingPipelineSolver9_PreloadedTraceGraph } from "lib/autorouter-p
 import { Pipeline9RegionalB01RepairSolver } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9RegionalB01RepairSolver"
 import { Pipeline9JointDrcRepairSolver } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/Pipeline9JointDrcRepairSolver"
 import { getSegmentToObstacleDistance } from "lib/utils/getSegmentToObstacleDistance"
+import { TraceContactRepairSolver } from "high-density-repair03/lib"
 import type { SimpleRouteJson } from "lib/types"
 
 const [fixturePath, label] = process.argv.slice(2)
@@ -140,6 +141,19 @@ jointProto._step = function (this: any) {
       }
       console.log(`JOINT spot evaluated=${evaluated} contactFreeNotWorse=${found}`)
     }
+  }
+}
+
+const tcrProto: any = TraceContactRepairSolver.prototype
+const tcrStep = tcrProto._step
+const vias77 = (routes: any[] | undefined): string =>
+  JSON.stringify((routes ?? []).filter((r) => r.connectionName.startsWith("source_net_77")).flatMap((r) => (r.vias ?? []).map((v: any) => [Number(v.x.toFixed(3)), Number(v.y.toFixed(3))])))
+tcrProto._step = function (this: any) {
+  const phaseBefore = this.phase
+  const currentBefore = this.current
+  tcrStep.call(this)
+  if (this.phase !== phaseBefore || this.current !== currentBefore) {
+    console.log(`TCR ${phaseBefore}->${this.phase} count=${this.current?.snapshot?.count} target=${this.targetDrcCount} viaRounds=${this.viaRounds} fine=${this.fineViaAdjustment} net77=${vias77(this.current?.routes)}${this.current !== currentBefore ? " (current changed)" : ""}`)
   }
 }
 
