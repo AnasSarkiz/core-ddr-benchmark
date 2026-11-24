@@ -93,6 +93,13 @@ jointProto._step = function (this: any) {
     const outputKeys = output.errors.map(key)
     for (const e of output.errors) if (!enteringKeys.includes(key(e))) console.log(`JOINT tcr added ${describe(e)}`)
     for (const e of entering.errors) if (!outputKeys.includes(key(e))) console.log(`JOINT tcr removed ${describe(e)}`)
+    console.log(`JOINT why stats=${JSON.stringify(tcr.stats)} fine=${tcr.fineViaAdjustment} refinementRounds=${tcr.refinementRounds} checkpoint=${Boolean(tcr.refinementCheckpoint)}`)
+    for (const [name, routes] of [["input", tcr.params.inputHdRoutes], ["entering", tcr.params.hdRoutes], ["output", tcr.getOutput()]] as const) {
+      const r77 = (routes as any[]).filter((r) => r.connectionName.startsWith("source_net_77"))
+      console.log(`JOINT why ${name} net77 vias=${JSON.stringify(r77.map((r) => (r.vias ?? []).map((v: any) => [Number(v.x.toFixed(3)), Number(v.y.toFixed(3))])))}`)
+    }
+    const affected = tcr.affectedConnections ? [...tcr.affectedConnections] : []
+    console.log(`JOINT why affected=${affected.join(",")}`)
     // Try moving net_77's via to every nearby spot that keeps the pad clearance.
     const target = { x: -6.688, y: -1.736 }
     const outRoutes: any[] = tcr.getOutput()
