@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ref: [c0325f34982b62d901b9bd3a45696121a903de30, 43290c3451d8f08e012fdde1fd0f5c596fac1901]
+        ref: [c0325f34982b62d901b9bd3a45696121a903de30, 4a2e6589e2ea387303407e7ea8d72643fb386a08]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,5 +26,6 @@ jobs:
         run: |
           bun install > /dev/null 2>&1
           bunx tsc --noEmit > tsc.log 2>&1 && echo "TSC exit=0" || { echo "TSC failed"; head -20 tsc.log; }
+          bunx biome format . > fmt.log 2>&1 && echo "FMT exit=0" || { echo "FMT failed"; grep -A30 "Formatter would" fmt.log | head -40; }
           bun test --timeout 9999999 > t.log 2>&1 || true
           echo "REF ${{ matrix.ref }}"; grep -E "^ *[0-9]+ (pass|fail)$|^\(fail\)" t.log | cut -c1-200

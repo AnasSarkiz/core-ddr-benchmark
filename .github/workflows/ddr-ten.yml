@@ -57,7 +57,7 @@ jobs:
       - name: Build the autorouter under test and place it in Core
         run: |
           cd autorouter
-          if [ "${{ matrix.variant }}" = ar-fix ]; then git apply --include=package.json ../harness-repo/harness/ar-exp/contact-fix-v1.patch; grep -n repair03 package.json; fi
+          if [ "${{ matrix.variant }}" = ar-fix ]; then git apply --include=package.json ../harness-repo/harness/ar-exp/contact-fix-v2.patch; grep -n repair03 package.json; fi
           git status --short
           bun install > /dev/null 2>&1
           bun run build > build.log 2>&1; tail -3 build.log

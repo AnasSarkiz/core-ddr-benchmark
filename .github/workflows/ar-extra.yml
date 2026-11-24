@@ -27,7 +27,7 @@ jobs:
       - name: Check
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/contact-fix-v1.patch
+          git apply ../harness-repo/harness/ar-exp/contact-fix-v2.patch
           bun install > /dev/null 2>&1
           bunx tsc --noEmit > tsc.log 2>&1 && echo "TSC exit=0" || { echo "TSC failed"; head -30 tsc.log; }
           bunx biome format . > fmt.log 2>&1 && echo "FMT exit=0" || { echo "FMT failed"; grep -B2 -A30 "Formatter would" fmt.log | head -80; }
