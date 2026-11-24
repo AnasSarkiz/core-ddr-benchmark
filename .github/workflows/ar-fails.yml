@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fixture: [main, via-repro]
+        fixture: [via-repro]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }

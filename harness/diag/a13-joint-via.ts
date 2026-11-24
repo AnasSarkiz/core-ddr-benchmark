@@ -80,6 +80,20 @@ jointProto._step = function (this: any) {
   const fields = childFields.filter((f) => this[f]).map((f) => `${f}${this[f].solved ? ":solved" : this[f].failed ? ":failed" : ""}`).join(",")
   console.log(`JOINT step ${before} -> ${after} solved=${this.solved} routes=${routes?.length} added=${added.map((v) => `${v.key}(clr=${v.clr.toFixed(3)})`).join(" ")} removed=${removed.join(" ")} children=${fields}`)
   this.__diagKeys = keys
+  const tcr = this.traceContactRepairSolver
+  if (tcr?.solved && !tcr.__diagDone) {
+    tcr.__diagDone = true
+    const describe = (e: any): string => `${e.type}:${String(e.message ?? "").replace(/\s+/g, " ").slice(0, 110)}`
+    const input = tcr.snapshot(tcr.params.inputHdRoutes)
+    const entering = tcr.snapshot(tcr.params.hdRoutes)
+    const output = tcr.snapshot(tcr.getOutput())
+    console.log(`JOINT tcr counts input=${input.count} entering=${entering.count} output=${output.count} accepted=${tcr.stats?.traceContactRepairAccepted} contactsEntering=${JSON.stringify(tcr.guard.getNewContactPairs(tcr.params.hdRoutes))}`)
+    const key = (e: any): string => describe(e).replace(/[0-9.]+mm/g, "")
+    const enteringKeys = entering.errors.map(key)
+    const outputKeys = output.errors.map(key)
+    for (const e of output.errors) if (!enteringKeys.includes(key(e))) console.log(`JOINT tcr added ${describe(e)}`)
+    for (const e of entering.errors) if (!outputKeys.includes(key(e))) console.log(`JOINT tcr removed ${describe(e)}`)
+  }
 }
 
 let guard = 0
