@@ -1,4 +1,4 @@
-name: Trace A13 vias through Pipeline 9 stages
+name: Trace where joint repair adds A13 via-to-pad violations
 
 on:
   push:
@@ -9,13 +9,17 @@ jobs:
   run:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [main, via-repro]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 2436c416110fb917a90219ea312086bfa14807a6
+          ref: b90d04b0f476d865aacaf99b19123e12ddef4a3f
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -24,8 +28,10 @@ jobs:
       - name: Trace
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/via-repro-v1.patch
+          git apply --include='tests/fixtures/assets/a13-via-without-site/*' ../harness-repo/harness/ar-exp/via-repro-v1.patch
           bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/a13-via-trace.ts .
-          bun a13-via-trace.ts > t.log 2>&1 || true
-          grep -E "^(TRACE|NODE)" t.log | cut -c1-260; tail -3 t.log | cut -c1-250
+          cp ../harness-repo/harness/diag/a13-joint-via.ts .
+          F=tests/fixtures/assets/a13-fixed-copper/remaining64.srj.json.gz
+          if [ "${{ matrix.fixture }}" = via-repro ]; then F=tests/fixtures/assets/a13-via-without-site/remaining64.srj.json.gz; fi
+          bun a13-joint-via.ts $F ${{ matrix.fixture }} > j.log 2>&1 || true
+          grep -E "^JOINT" j.log | cut -c1-400 | head -80; tail -3 j.log | cut -c1-300
