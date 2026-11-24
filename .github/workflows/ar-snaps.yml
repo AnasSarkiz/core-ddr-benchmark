@@ -1,4 +1,4 @@
-name: Capture the A13 joint repair input
+name: Contact repair fix snapshots and ZQ1 timing
 
 on:
   push:
@@ -9,9 +9,13 @@ permissions:
   contents: write
 
 jobs:
-  capture:
+  snaps:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [main, fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -24,19 +28,23 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
-      - name: Capture
+      - name: Run
         run: |
           cd autorouter
-          git apply --include='tests/fixtures/assets/a13-via-without-site/*' ../harness-repo/harness/ar-exp/via-repro-v1.patch
+          if [ "${{ matrix.variant }}" = fix ]; then git apply ../harness-repo/harness/ar-exp/contact-fix-v4.patch; fi
           bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/a13-capture-joint.ts .
-          mkdir -p ../out
-          bun a13-capture-joint.ts tests/fixtures/assets/a13-via-without-site/remaining64.srj.json.gz ../out/a13-contact-repair-via-clearance.json.gz
-      - name: Push the fixture to a branch
+          start=$(date +%s); bun test tests/repro/pipeline9-h616-solitary-crossing.test.ts --timeout 9999999 > z.log 2>&1 && r=pass || r=fail; echo "ZQ1 ${{ matrix.variant }} $r $(($(date +%s)-start))s"
+          F=(tests/repro/pipeline9-a13-via-cleanup-reference.test.ts tests/repro/pipeline9-a13-regional-repair-shorts.test.ts)
+          if [ "${{ matrix.variant }}" = fix ]; then F+=(tests/repro/pipeline9-a13-contact-repair-via-clearance.test.ts); fi
+          for f in "${F[@]}"; do for s in tests/repro/__snapshots__/$(basename $f .test.ts)*.snap.svg; do echo "LABEL before $s $(grep -oE '[A-Za-z ]*(DRC )?errors?: [0-9]+' $s | head -2 | tr '\n' ' ')"; done; done
+          BUN_UPDATE_SNAPSHOTS=1 bun test "${F[@]}" --timeout 9999999 > u.log 2>&1 && echo "UPDATE pass" || { echo "UPDATE fail"; grep -E "\(fail\)|Expected|Received" u.log | head; }
+          bun test "${F[@]}" --timeout 9999999 > s.log 2>&1 && echo "SECOND pass" || { echo "SECOND fail"; grep -E "\(fail\)|differs" s.log | head; }
+          for f in "${F[@]}"; do for s in tests/repro/__snapshots__/$(basename $f .test.ts)*.snap.svg; do echo "LABEL after $s $(grep -oE '[A-Za-z ]*(DRC )?errors?: [0-9]+' $s | head -2 | tr '\n' ' ')"; done; done
+          mkdir -p ../out; git status --short -- tests | grep __snapshots__ | awk '{print $2}' | xargs -r tar -czf ../out/snaps.tgz; ls -la ../out
+      - name: Push the snapshots to a branch
+        if: matrix.variant == 'fix'
         run: |
           cd harness-repo
           git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          git checkout -q --orphan fixtures/a13-contact-repair; git rm -rq --cached .; git clean -fdq
-          cp ../out/a13-contact-repair-via-clearance.json.gz .
-          git add a13-contact-repair-via-clearance.json.gz; git commit -qm "A13 joint repair input"
-          git push -f origin fixtures/a13-contact-repair
+          git checkout -q --orphan snaps/contact-fix-v4; git rm -rq --cached .; git clean -fdq
+          cp ../out/snaps.tgz .; git add snaps.tgz; git commit -qm "contact fix v4 snapshots"; git push -f origin snaps/contact-fix-v4
