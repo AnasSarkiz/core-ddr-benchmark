@@ -5090,10 +5090,10 @@ HcmV?d00001
 
 diff --git a/tests/repro/pipeline9-a13-contact-repair-via-clearance.test.ts b/tests/repro/pipeline9-a13-contact-repair-via-clearance.test.ts
 new file mode 100644
-index 0000000..55c28d9
+index 0000000..3f9af23
 --- /dev/null
 +++ b/tests/repro/pipeline9-a13-contact-repair-via-clearance.test.ts
-@@ -0,0 +1,187 @@
+@@ -0,0 +1,189 @@
 +import { expect, test } from "bun:test"
 +import { readFileSync } from "node:fs"
 +import { gunzipSync } from "node:zlib"
@@ -5270,12 +5270,14 @@ index 0000000..55c28d9
 +    after.errors as Pipeline9DrcError[],
 +  ).filter((key) => !inputViaPadKeys.has(key))
 +
-+  await expect(
-+    renderFrame({ ...before, srj: fixture.srj }),
-+  ).toMatchSvgSnapshot(import.meta.path, { svgName: "joint-input" })
-+  await expect(
-+    renderFrame({ ...after, srj: fixture.srj }),
-+  ).toMatchSvgSnapshot(import.meta.path, { svgName: "joint-output" })
++  await expect(renderFrame({ ...before, srj: fixture.srj })).toMatchSvgSnapshot(
++    import.meta.path,
++    { svgName: "joint-input" },
++  )
++  await expect(renderFrame({ ...after, srj: fixture.srj })).toMatchSvgSnapshot(
++    import.meta.path,
++    { svgName: "joint-output" },
++  )
 +  expect(newViaPadKeys).toEqual([
 +    "source_net_77_0 via beside pcb_smtpad_105",
 +    "source_net_77_0 via beside pcb_smtpad_111",
