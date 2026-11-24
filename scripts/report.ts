@@ -1,4 +1,5 @@
 import type { BenchmarkResult, CaseResult } from "./types"
+import { skewReport, skewCheckCounts } from "./report-skew"
 
 type Summary = {
   completed: number
@@ -109,8 +110,8 @@ function stageTimings(report: BenchmarkResult, label: string): string[] {
   if (!timed.length) lines.push("Stage timings unavailable for this report.", "")
   else {
     lines.push(
-      `Recorded timings: ${timed.length}/${report.cases.length} circuits (${partial} partial, including failed or timed-out circuits).`,
-      "Times are summed across circuits; percentages use total recorded phase time. Unfinished phases have no recorded end time and are excluded.", "",
+      `Recorded phases from ${timed.length}/${report.cases.length} circuits (${partial} partial).`,
+      "Times are summed; unfinished phases are excluded.", "",
       "| Stage | Total time | % of stage time |", "| --- | ---: | ---: |",
     )
     for (const [name,ms] of [...totals].sort(([a],[b]) => a.localeCompare(b,undefined,{numeric:true}))) {
@@ -152,6 +153,11 @@ export function formatReport(head: BenchmarkResult, base?: BenchmarkResult): str
   appendRow("Connected nets",summaries.map((s) => s.connectedNets === null ? "n/a" : `${s.connectedNets}/${s.requestedNets}`),countDelta(first.connectedNets,last.connectedNets))
   appendRow("DRC issues",summaries.map((s) => String(s.drcIssues ?? "n/a")),countDelta(first.drcIssues,last.drcIssues))
   for (const [metric,key] of [["Failed","failures"],["Timeouts","timeouts"],["Crashes","crashes"]] as const) appendRow(metric,summaries.map((s) => String(s[key])),countDelta(first[key],last[key]))
+  const skew = columns.map(({ report }) => skewCheckCounts(report))
+  for (const [label, key] of [["Skew checks passed", "passed"], ["Skew checks failed", "failed"], ["Skew checks incomplete", "incomplete"], ["Skew checks uncertain", "uncertain"]] as const) {
+    const values = skew.map((counts) => counts?.[key] ?? null)
+    appendRow(label, values.map((value) => String(value ?? "n/a")), countDelta(values[0], values.at(-1)!))
+  }
   for (const p of [50,60,70,80,90,95]) {
     const values = columns.map(({report}) => percentile(report.cases.map((row) => report.geometryOnly || isCompleted(row) ? row.wallMs : report.timeoutSeconds*1000),p/100))
     appendRow(`P${p} time`,values.map(formatTime),relativeDelta(values[0],values[values.length-1]))
@@ -169,14 +175,15 @@ export function formatReport(head: BenchmarkResult, base?: BenchmarkResult): str
     appendRow(label,values.map((value) => value === null ? "n/a" : value.toFixed(2)),relativeDelta(values[0],values[values.length-1]))
   }
   lines.push("",...(base ? [`Outcome changes: **${improved} improved**, **${changed.length-improved} regressed**.`] : []),
-    "Completion requires settled rendering, every routing phase completed and every requested net connected. DRC pass additionally requires clean physical checks and a native pad geometry audit. DRC issues are totaled across completed circuits.",
-    `Timing percentiles include all circuits, with failed and timed-out circuits counted at their configured ${head.timeoutSeconds}s timeout; negative timing deltas are faster. Per-circuit details retain actual wall time. Average vias and wire length use ${matched.size} ${base ? "matched " : ""}completed circuits. Memory percentiles use measured render-process peak RSS.`,
+    "Completion = all requested nets routed. DRC pass = completed routing and clean required checks. Skew counts exclude comparison-only checks.",
+    `Failed and timed-out circuits count as ${head.timeoutSeconds}s in timing percentiles. Lower time is better. Vias and wire length use ${matched.size} ${base ? "matched " : ""}completed circuits.`,
   )
+  lines.push(...skewReport(head, base))
   for (const column of columns) lines.push(...stageTimings(column.report,column.label))
   if (changed.length) {
     lines.push("", "<details>", `<summary>Changed outcomes (${changed.length})</summary>`, "",
       "| Solver | Circuit | Base | PR | Base time | PR time | Delta |", "| --- | --- | --- | --- | ---: | ---: | --- |")
-    for (const {row,before} of changed) lines.push(`| Core DDR | ${escapeCell(row.title)} | ${outcome(before!)} | ${outcome(row)} | ${formatTime(before!.wallMs)} | ${formatTime(row.wallMs)} | ${outcomeScore(row) > outcomeScore(before!) ? "Improved" : "Regressed"} |`)
+    for (const {row,before} of changed) lines.push(`| Core DDR | ${escapeCell(row.circuit)} | ${outcome(before!)} | ${outcome(row)} | ${formatTime(before!.wallMs)} | ${formatTime(row.wallMs)} | ${outcomeScore(row) > outcomeScore(before!) ? "Improved" : "Regressed"} |`)
     lines.push("", "</details>")
   }
   lines.push("", "<details>", `<summary>Per-circuit results (${head.cases.length})</summary>`, "",
@@ -185,10 +192,15 @@ export function formatReport(head: BenchmarkResult, base?: BenchmarkResult): str
   for (const {row,before} of pairs) {
     const rows = before ? [before,row] : [row]
     const append = (metric: string, values: string[], delta: string): void => {
-      lines.push(`| ${escapeCell(row.title)} | ${metric} | ${values.join(" | ")}${base ? ` | ${delta}` : ""} |`)
+      lines.push(`| ${escapeCell(row.circuit)} | ${metric} | ${values.join(" | ")}${base ? ` | ${delta}` : ""} |`)
     }
     append("Outcome",rows.map(outcome),before && outcomeScore(before) !== outcomeScore(row) ? outcomeScore(row)>outcomeScore(before) ? "Improved" : "Regressed" : "—")
     append("Connected nets",rows.map((c) => c.assessment ? `${c.assessment.connectedNets}/${c.assessment.requestedNets}` : "n/a"),countDelta(before?.assessment?.connectedNets ?? null,row.assessment?.connectedNets ?? null))
+    const checks = rows.map((c) => skewCheckCounts({ ...head, cases: [c] }))
+    for (const [label, key] of [["Skew checks passed", "passed"], ["Skew checks failed", "failed"], ["Skew checks incomplete", "incomplete"], ["Skew checks uncertain", "uncertain"]] as const) {
+      const values = checks.map((counts) => counts?.[key] ?? null)
+      append(label, values.map((value) => String(value ?? "n/a")), countDelta(values[0], values.at(-1)!))
+    }
     append("Wall time",rows.map((c) => formatTime(c.wallMs)),relativeDelta(before?.wallMs ?? null,row.wallMs))
     append("Peak RSS",rows.map((c) => c.peakRssMb > 0 ? `${c.peakRssMb.toFixed(1)} MiB` : "n/a"),relativeDelta(before?.peakRssMb ?? null,row.peakRssMb))
     append("Vias",rows.map((c) => String(c.assessment?.vias ?? "n/a")),countDelta(before?.assessment?.vias ?? null,row.assessment?.vias ?? null))
@@ -206,8 +218,8 @@ export function formatReport(head: BenchmarkResult, base?: BenchmarkResult): str
     `Bun ${escapeCell(head.bunVersion)} · ${escapeCell(head.platform)} · ${escapeCell(head.cpu)} · ${head.timeoutSeconds}s render budget per circuit.`,
     `Benchmark render fingerprint: \`${head.benchmarkRevision}\`.`, `Assessment fingerprint: \`${head.assessmentRevision}\`.`,
     ...(head.assessmentRevision !== head.benchmarkRevision ? ["Saved copper was revalidated with a different assessment revision; render timings are unchanged."] : []), "",
-    "Each circuit runs in a fresh process. Validation runs separately from render timing. Completed stages retain copper in SRJ artifacts; if a later stage fails, Core may emit no final PCB traces. Connected-net counts refer to saved Circuit JSON.", "",
-    "The extracted DDR subsystem retains native component placement, all pads of selected components, source signal layers and routing rules. Existing copper is removed; irregular board edges use a bounding box and unsupported pad shapes use recorded approximations. Results do not establish DDR timing, skew, impedance or hardware qualification.", "", "</details>")
+    "Fresh process per circuit. Validation is timed separately. Connectivity uses final saved copper.", "",
+    "Fixtures keep original placements and routing rules. Detailed sources, audit decisions and model assumptions are retained in results.json.", "", "</details>")
   return lines.join("\n")+"\n"
 }
 

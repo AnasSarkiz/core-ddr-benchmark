@@ -1,0 +1,2426 @@
+{
+  "h3": {
+    "files": {
+      "project/allwinner-h3.kicad_pcb": "4a1f99d157a4ed5dc15b2dff2fed9f3765226296c1da3930cdd00413254509bb",
+      "project/allwinner-h3.kicad_pro": "c1f9ac700475417b74f0c929ba20b9c1ccbd6db4928036a25bedc49263405f08"
+    },
+    "constraints": [
+      {
+        "name": "DU1 byte0 DQ to DQS (Allwinner)",
+        "memoryRef": "DU1",
+        "nets": [
+          "/DDR3 16x1/SDQ4",
+          "/DDR3 16x1/SDQ2",
+          "/DDR3 16x1/SDQ1",
+          "/DDR3 16x1/SDQ0",
+          "/DDR3 16x1/SDQ7",
+          "/DDR3 16x1/SDQ6",
+          "/DDR3 16x1/SDQ3",
+          "/DDR3 16x1/SDQ5",
+          "/DDR3 16x1/SDQS0P",
+          "/DDR3 16x1/SDQS0N"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 1.27,
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3 16x1/SDQS0P",
+          "/DDR3 16x1/SDQS0N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "DU1 DQS0 pair (Allwinner)",
+        "memoryRef": "DU1",
+        "nets": [
+          "/DDR3 16x1/SDQS0P",
+          "/DDR3 16x1/SDQS0N"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "DU1 byte1 DQ to DQS (Allwinner)",
+        "memoryRef": "DU1",
+        "nets": [
+          "/DDR3 16x1/SDQ13",
+          "/DDR3 16x1/SDQ14",
+          "/DDR3 16x1/SDQ10",
+          "/DDR3 16x1/SDQ11",
+          "/DDR3 16x1/SDQ8",
+          "/DDR3 16x1/SDQ12",
+          "/DDR3 16x1/SDQ15",
+          "/DDR3 16x1/SDQ9",
+          "/DDR3 16x1/SDQS1P",
+          "/DDR3 16x1/SDQS1N"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 1.27,
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3 16x1/SDQS1P",
+          "/DDR3 16x1/SDQS1N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "DU1 DQS1 pair (Allwinner)",
+        "memoryRef": "DU1",
+        "nets": [
+          "/DDR3 16x1/SDQS1P",
+          "/DDR3 16x1/SDQS1N"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "DU1 clock pair (Allwinner)",
+        "memoryRef": "DU1",
+        "nets": [
+          "/DDR3 16x1/SCKP",
+          "/DDR3 16x1/SCKN"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "DU1 DQS to CK (Allwinner)",
+        "memoryRef": "DU1",
+        "nets": [
+          "/DDR3 16x1/SDQS0P",
+          "/DDR3 16x1/SDQS0N",
+          "/DDR3 16x1/SDQS1P",
+          "/DDR3 16x1/SDQS1N",
+          "/DDR3 16x1/SCKP",
+          "/DDR3 16x1/SCKN"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 20.32,
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3 16x1/SCKP",
+          "/DDR3 16x1/SCKN"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "DU1 address/command to CK (Allwinner)",
+        "memoryRef": "DU1",
+        "nets": [
+          "/DDR3 16x1/SA0",
+          "/DDR3 16x1/SA1",
+          "/DDR3 16x1/SA10",
+          "/DDR3 16x1/SA11",
+          "/DDR3 16x1/SA12",
+          "/DDR3 16x1/SA13",
+          "/DDR3 16x1/SA14",
+          "/DDR3 16x1/SA15",
+          "/DDR3 16x1/SA2",
+          "/DDR3 16x1/SA3",
+          "/DDR3 16x1/SA4",
+          "/DDR3 16x1/SA5",
+          "/DDR3 16x1/SA6",
+          "/DDR3 16x1/SA7",
+          "/DDR3 16x1/SA8",
+          "/DDR3 16x1/SA9",
+          "/DDR3 16x1/SBA0",
+          "/DDR3 16x1/SBA1",
+          "/DDR3 16x1/SBA2",
+          "/DDR3 16x1/SCAS",
+          "/DDR3 16x1/SCKE0",
+          "/DDR3 16x1/SCKE1",
+          "/DDR3 16x1/SCS0",
+          "/DDR3 16x1/SCS1",
+          "/DDR3 16x1/SODT0",
+          "/DDR3 16x1/SODT1",
+          "/DDR3 16x1/SRAS",
+          "/DDR3 16x1/SWE",
+          "/DDR3 16x1/SCKP",
+          "/DDR3 16x1/SCKN"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 15.24,
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3 16x1/SCKP",
+          "/DDR3 16x1/SCKN"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "DU1 byte0 DM to DQS (original matching)",
+        "nets": [
+          "/DDR3 16x1/SDQM0",
+          "/DDR3 16x1/SDQS0P",
+          "/DDR3 16x1/SDQS0N"
+        ],
+        "memoryRef": "DU1",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "project/allwinner-h3.kicad_pcb",
+        "sourceSha256": "4a1f99d157a4ed5dc15b2dff2fed9f3765226296c1da3930cdd00413254509bb",
+        "severity": "error",
+        "maxLengthSkew": 1.327098,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3 16x1/SDQS0P",
+          "/DDR3 16x1/SDQS0N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "DU1 byte1 DM to DQS (original matching)",
+        "nets": [
+          "/DDR3 16x1/SDQM1",
+          "/DDR3 16x1/SDQS1P",
+          "/DDR3 16x1/SDQS1N"
+        ],
+        "memoryRef": "DU1",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "project/allwinner-h3.kicad_pcb",
+        "sourceSha256": "4a1f99d157a4ed5dc15b2dff2fed9f3765226296c1da3930cdd00413254509bb",
+        "severity": "error",
+        "maxLengthSkew": 0.16774,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3 16x1/SDQS1P",
+          "/DDR3 16x1/SDQS1N"
+        ],
+        "assessmentOnly": true
+      }
+    ],
+    "notes": [
+      "The pinned reference files declare no numeric DDR length/skew target. No hardware maximum is inferred from an absent optional field; original-copper preservation is benchmarked separately.",
+      "Allwinner H3 DDR3 layout note p2 supplies 50 mil DQ-to-DQS, 800 mil DQS-to-CK, 600 mil address/control-to-CK, and 10 mil differential-pair limits. Its DQ table does not name DQM; a separate engineering requirement covers mask matching. These planar projections do not certify the guide's equal-via-count/vertical-length requirements.",
+      "Necessary DQ/DM-to-DQS, P/N and address/control-to-CK relationships without published numeric budgets use this board's original measured mismatch as benchmark preservation targets. No half-H3 budgets, cross-byte equalization or unverified DQS-to-CK rule is added. All original vendor/project requirements remain separate. Full paths sum both sides of series resistors."
+    ]
+  },
+  "a64": {
+    "files": {
+      "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+      "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.pro": "7d7caf850de195383a5f604c9c23bcfff6aa884ae33ee9640b52ce54ef81e764"
+    },
+    "constraints": [
+      {
+        "name": "U2/U3 clock branch matching (Allwinner)",
+        "nets": [
+          "/S0SCK_N",
+          "/S0SCK_P"
+        ],
+        "memoryRefs": [
+          "U2",
+          "U3"
+        ],
+        "skewReference": "memory_endpoints",
+        "maxLengthSkew": 1.27,
+        "skewComparison": "lt",
+        "assessmentOnly": true,
+        "severity": "error",
+        "sourcePath": "A64 PCB Layout Guide V1.0 page 20",
+        "sourceUrl": "https://www.scribd.com/document/473702324/A64-PCB-Layout-Guide-V1-0-pdf"
+      },
+      {
+        "name": "U2/U3 address/command branch matching (Allwinner)",
+        "nets": [
+          "/S0SA0",
+          "/S0SA1",
+          "/S0SA10",
+          "/S0SA11",
+          "/S0SA12",
+          "/S0SA13",
+          "/S0SA14",
+          "/S0SA15",
+          "/S0SA2",
+          "/S0SA3",
+          "/S0SA4",
+          "/S0SA5",
+          "/S0SA6",
+          "/S0SA7",
+          "/S0SA8",
+          "/S0SA9",
+          "/S0SBA0",
+          "/S0SBA1",
+          "/S0SBA2",
+          "/S0SCAS",
+          "/S0SCKE0",
+          "/S0SCKE1",
+          "/S0SCS0",
+          "/S0SCS1",
+          "/S0SODT0",
+          "/S0SODT1",
+          "/S0SRAS",
+          "/S0SWE"
+        ],
+        "memoryRefs": [
+          "U2",
+          "U3"
+        ],
+        "skewReference": "memory_endpoints",
+        "maxLengthSkew": 1.27,
+        "skewComparison": "lt",
+        "assessmentOnly": true,
+        "severity": "error",
+        "sourcePath": "A64 PCB Layout Guide V1.0 page 21",
+        "sourceUrl": "https://www.scribd.com/document/473702324/A64-PCB-Layout-Guide-V1-0-pdf"
+      },
+      {
+        "name": "U2 byte0 DQ/DM to DQS (original matching)",
+        "nets": [
+          "/S0SDQ4",
+          "/S0SDQ0",
+          "/S0SDQ2",
+          "/S0SDQ7",
+          "/S0SDQ5",
+          "/S0SDQ6",
+          "/S0SDQ1",
+          "/S0SDQ3",
+          "/S0SDQM0",
+          "/S0SDQS0_P",
+          "/S0SDQS0_N"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 1.895291,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/S0SDQS0_P",
+          "/S0SDQS0_N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U2 DQS0 pair (original matching)",
+        "nets": [
+          "/S0SDQS0_P",
+          "/S0SDQS0_N"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 1.974587,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance."
+      },
+      {
+        "name": "U2 byte1 DQ/DM to DQS (original matching)",
+        "nets": [
+          "/S0SDQ11",
+          "/S0SDQ14",
+          "/S0SDQ9",
+          "/S0SDQ13",
+          "/S0SDQ8",
+          "/S0SDQ15",
+          "/S0SDQ10",
+          "/S0SDQ12",
+          "/S0SDQM1",
+          "/S0SDQS1_P",
+          "/S0SDQS1_N"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 0.553798,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/S0SDQS1_P",
+          "/S0SDQS1_N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U2 DQS1 pair (original matching)",
+        "nets": [
+          "/S0SDQS1_P",
+          "/S0SDQS1_N"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 0.054759,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance."
+      },
+      {
+        "name": "U2 clock pair (original matching)",
+        "nets": [
+          "/S0SCK_P",
+          "/S0SCK_N"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 0.045185,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "assessmentOnly": true
+      },
+      {
+        "name": "U2 address/command to CK (original matching)",
+        "nets": [
+          "/S0SA0",
+          "/S0SA1",
+          "/S0SA10",
+          "/S0SA11",
+          "/S0SA12",
+          "/S0SA13",
+          "/S0SA14",
+          "/S0SA15",
+          "/S0SA2",
+          "/S0SA3",
+          "/S0SA4",
+          "/S0SA5",
+          "/S0SA6",
+          "/S0SA7",
+          "/S0SA8",
+          "/S0SA9",
+          "/S0SBA0",
+          "/S0SBA1",
+          "/S0SBA2",
+          "/S0SCAS",
+          "/S0SCKE0",
+          "/S0SCKE1",
+          "/S0SCS0",
+          "/S0SCS1",
+          "/S0SODT0",
+          "/S0SODT1",
+          "/S0SRAS",
+          "/S0SWE",
+          "/S0SCK_P",
+          "/S0SCK_N"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 2.185016,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/S0SCK_P",
+          "/S0SCK_N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U3 byte0 DQ/DM to DQS (original matching)",
+        "nets": [
+          "/S0SDQ22",
+          "/S0SDQ16",
+          "/S0SDQ21",
+          "/S0SDQ19",
+          "/S0SDQ20",
+          "/S0SDQ17",
+          "/S0SDQ23",
+          "/S0SDQ18",
+          "/S0SDQM2",
+          "/S0SDQS2_P",
+          "/S0SDQS2_N"
+        ],
+        "memoryRef": "U3",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 1.48567,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/S0SDQS2_P",
+          "/S0SDQS2_N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U3 DQS0 pair (original matching)",
+        "nets": [
+          "/S0SDQS2_P",
+          "/S0SDQS2_N"
+        ],
+        "memoryRef": "U3",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 0.005948,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance."
+      },
+      {
+        "name": "U3 byte1 DQ/DM to DQS (original matching)",
+        "nets": [
+          "/S0SDQ26",
+          "/S0SDQ29",
+          "/S0SDQ25",
+          "/S0SDQ31",
+          "/S0SDQ24",
+          "/S0SDQ30",
+          "/S0SDQ27",
+          "/S0SDQ28",
+          "/S0SDQM3",
+          "/S0SDQS3_P",
+          "/S0SDQS3_N"
+        ],
+        "memoryRef": "U3",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 0.980346,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/S0SDQS3_P",
+          "/S0SDQS3_N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U3 DQS1 pair (original matching)",
+        "nets": [
+          "/S0SDQS3_P",
+          "/S0SDQS3_N"
+        ],
+        "memoryRef": "U3",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 0.001616,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance."
+      },
+      {
+        "name": "U3 clock pair (original matching)",
+        "nets": [
+          "/S0SCK_P",
+          "/S0SCK_N"
+        ],
+        "memoryRef": "U3",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 0.018126,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "assessmentOnly": true
+      },
+      {
+        "name": "U3 address/command to CK (original matching)",
+        "nets": [
+          "/S0SA0",
+          "/S0SA1",
+          "/S0SA10",
+          "/S0SA11",
+          "/S0SA12",
+          "/S0SA13",
+          "/S0SA14",
+          "/S0SA15",
+          "/S0SA2",
+          "/S0SA3",
+          "/S0SA4",
+          "/S0SA5",
+          "/S0SA6",
+          "/S0SA7",
+          "/S0SA8",
+          "/S0SA9",
+          "/S0SBA0",
+          "/S0SBA1",
+          "/S0SBA2",
+          "/S0SCAS",
+          "/S0SCKE0",
+          "/S0SCKE1",
+          "/S0SCS0",
+          "/S0SCS1",
+          "/S0SODT0",
+          "/S0SODT1",
+          "/S0SRAS",
+          "/S0SWE",
+          "/S0SCK_P",
+          "/S0SCK_N"
+        ],
+        "memoryRef": "U3",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb",
+        "sourceSha256": "3acf7af7d39d54ba87343845d78851b0245a6290841cb463c42c7e41696404f4",
+        "severity": "error",
+        "maxLengthSkew": 1.559146,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/S0SCK_P",
+          "/S0SCK_N"
+        ],
+        "assessmentOnly": true
+      }
+    ],
+    "notes": [
+      "The pinned reference files declare no numeric DDR length/skew target. No hardware maximum is inferred from an absent optional field; original-copper preservation is benchmarked separately.",
+      "Allwinner A64 PCB Layout Guide V1.0 pp20\u201321 requires the two shared clock/address branch lengths to differ by less than 50 mil. Assessment compares U2 and U3 paths of each shared net, so their common trunk cancels. This is not a within-byte tolerance.",
+      "Necessary DQ/DM-to-DQS, P/N and address/control-to-CK relationships without published numeric budgets use this board's original measured mismatch as benchmark preservation targets. No half-H3 budgets, cross-byte equalization or unverified DQS-to-CK rule is added. All original vendor/project requirements remain separate. Full paths sum both sides of series resistors."
+    ]
+  },
+  "stmp157": {
+    "files": {
+      "HARDWARE/STMP157-OLinuXino-LIME2/1. Latest hardware revision/STMP157-OLinuXino-LIME2_Rev_B1/STMP157-OLinuXino-LIME2_Rev_B1.kicad_pcb": "260a8c8429a14645014ab20f9ba4e3f04dadf3433453895dd43919bb65b0f79e",
+      "HARDWARE/STMP157-OLinuXino-LIME2/1. Latest hardware revision/STMP157-OLinuXino-LIME2_Rev_B1/STMP157-OLinuXino-LIME2_Rev_B1.pro": "f6285d22b636c4bcf9c05b74399a024f23f0be9c17ebace08e671d24a3ff7751"
+    },
+    "constraints": [],
+    "notes": [
+      "The pinned reference files declare no numeric DDR length/skew target. No hardware maximum is inferred from an absent optional field; original-copper preservation is benchmarked separately.",
+      "ST AN5122 package + via + PCB constraints are assessed separately using the AA/LFBGA448 workbook and complete series-clock paths. The original board supplies total thickness but no inner-layer stackup, so via depth is bounded rather than guessed: https://www.st.com/resource/en/application_note/dm00462392-stm32mp1-series-ddr-memory-routing-guidelines-stmicroelectronics.pdf"
+    ]
+  },
+  "orangecrab": {
+    "files": {
+      "hardware/orangecrab_r0.2.1/OrangeCrab.kicad_pcb": "4597f3ac08e21c09253b27ca1b9e26aaf3c3d3e2147b6c0d79c0dc6aa555e201",
+      "hardware/orangecrab_r0.2.1/OrangeCrab.pro": "aa250ce63bc19207d36b91b85c498ac63f19aea1c2cd289c60cbfd6cc88668f2",
+      "lib/kicad-length-matching-checks/length_match.py": "7afa702a2787360b7e5cb56504d3d6236f4767d13884b3e964a9116571ab889a"
+    },
+    "constraints": [
+      {
+        "name": "DDR3_CTRL_LM1.0",
+        "nets": [
+          "RAM_A0",
+          "RAM_A1",
+          "RAM_A10",
+          "RAM_A11",
+          "RAM_A12",
+          "RAM_A13",
+          "RAM_A14",
+          "RAM_A15",
+          "RAM_A2",
+          "RAM_A3",
+          "RAM_A4",
+          "RAM_A5",
+          "RAM_A6",
+          "RAM_A7",
+          "RAM_A8",
+          "RAM_A9",
+          "RAM_BA0",
+          "RAM_BA1",
+          "RAM_BA2",
+          "RAM_CAS#",
+          "RAM_CKE",
+          "RAM_CS#",
+          "RAM_ODT",
+          "RAM_RAS#",
+          "RAM_WE#"
+        ],
+        "sourcePath": "lib/kicad-length-matching-checks/length_match.py",
+        "severity": "error",
+        "maxLengthSkew": 1.0,
+        "skewComparison": "lt",
+        "memoryRef": "U4"
+      },
+      {
+        "name": "DDR3_DQS0_LM1.0",
+        "nets": [
+          "RAM_D0",
+          "RAM_D1",
+          "RAM_D2",
+          "RAM_D3",
+          "RAM_D4",
+          "RAM_D5",
+          "RAM_D6",
+          "RAM_D7",
+          "RAM_LDM",
+          "RAM_LDQS+",
+          "RAM_LDQS-"
+        ],
+        "sourcePath": "lib/kicad-length-matching-checks/length_match.py",
+        "severity": "error",
+        "maxLengthSkew": 1.0,
+        "skewComparison": "lt",
+        "memoryRef": "U4"
+      },
+      {
+        "name": "DDR3_DQS1_LM1.0",
+        "nets": [
+          "RAM_D10",
+          "RAM_D11",
+          "RAM_D12",
+          "RAM_D13",
+          "RAM_D14",
+          "RAM_D15",
+          "RAM_D8",
+          "RAM_D9",
+          "RAM_UDM",
+          "RAM_UDQS+",
+          "RAM_UDQS-"
+        ],
+        "sourcePath": "lib/kicad-length-matching-checks/length_match.py",
+        "severity": "error",
+        "maxLengthSkew": 1.0,
+        "skewComparison": "lt",
+        "memoryRef": "U4"
+      },
+      {
+        "name": "U4 byte0 DQ/DM to DQS (\u00a79.2)",
+        "memoryRef": "U4",
+        "nets": [
+          "RAM_D0",
+          "RAM_D1",
+          "RAM_D2",
+          "RAM_D3",
+          "RAM_D4",
+          "RAM_D5",
+          "RAM_D6",
+          "RAM_D7",
+          "RAM_LDM",
+          "RAM_UDQS+",
+          "RAM_UDQS-"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 1.27,
+        "skewReference": "references",
+        "referenceNets": [
+          "RAM_UDQS+",
+          "RAM_UDQS-"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U4 DQS0 pair (\u00a79.7)",
+        "memoryRef": "U4",
+        "nets": [
+          "RAM_UDQS+",
+          "RAM_UDQS-"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U4 byte1 DQ/DM to DQS (\u00a79.2)",
+        "memoryRef": "U4",
+        "nets": [
+          "RAM_D8",
+          "RAM_D9",
+          "RAM_D10",
+          "RAM_D11",
+          "RAM_D12",
+          "RAM_D13",
+          "RAM_D14",
+          "RAM_D15",
+          "RAM_UDM",
+          "RAM_LDQS+",
+          "RAM_LDQS-"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 1.27,
+        "skewReference": "references",
+        "referenceNets": [
+          "RAM_LDQS+",
+          "RAM_LDQS-"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U4 DQS1 pair (\u00a79.7)",
+        "memoryRef": "U4",
+        "nets": [
+          "RAM_LDQS+",
+          "RAM_LDQS-"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U4 clock pair (\u00a79.11)",
+        "memoryRef": "U4",
+        "nets": [
+          "RAM_CK+",
+          "RAM_CK-"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U4 inter-byte DQS (\u00a79.9)",
+        "memoryRef": "U4",
+        "nets": [
+          "RAM_UDQS+",
+          "RAM_UDQS-",
+          "RAM_LDQS+",
+          "RAM_LDQS-"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 2.54,
+        "assessmentOnly": true
+      },
+      {
+        "name": "U4 address/command to CK (\u00a79.10)",
+        "memoryRef": "U4",
+        "nets": [
+          "RAM_A0",
+          "RAM_A1",
+          "RAM_A10",
+          "RAM_A11",
+          "RAM_A12",
+          "RAM_A13",
+          "RAM_A14",
+          "RAM_A15",
+          "RAM_A2",
+          "RAM_A3",
+          "RAM_A4",
+          "RAM_A5",
+          "RAM_A6",
+          "RAM_A7",
+          "RAM_A8",
+          "RAM_A9",
+          "RAM_BA0",
+          "RAM_BA1",
+          "RAM_BA2",
+          "RAM_CAS#",
+          "RAM_CKE",
+          "RAM_CS#",
+          "RAM_ODT",
+          "RAM_RAS#",
+          "RAM_WE#",
+          "RAM_CK+",
+          "RAM_CK-"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 2.54,
+        "skewReference": "references",
+        "referenceNets": [
+          "RAM_CK+",
+          "RAM_CK-"
+        ],
+        "assessmentOnly": true
+      }
+    ],
+    "notes": [
+      "Legacy class DDR_CLK_LM1.0 has no assigned retained nets; no target is created for an empty class.",
+      "ECP5 guide \u00a79 checks trace matching against both strobe/clock conductors. Relative and overlapping inter-group requirements are assessed only; Core has no equivalent reference-net tuning option. Via-count/stackup and non-skew hardware requirements are outside these planar checks."
+    ]
+  },
+  "a13": {
+    "files": {
+      "hardware/module.kicad_pcb": "563b646fbd1f021c43a337798882e54ed024c39823280f8b93ddc59c9aa7cb33",
+      "hardware/module.kicad_pro": "ccc83772610aa96e6748c2110b123479b6a03c5a56cd256497487b9d2046cc1a",
+      "hardware/module.kicad_dru": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "constraints": [
+      {
+        "name": "Saved length target 1",
+        "nets": [
+          "/DDR3 Memory/ddr-d2"
+        ],
+        "sourcePath": "hardware/module.kicad_pcb",
+        "severity": "error",
+        "minLength": 24.74,
+        "maxLength": 24.94
+      },
+      {
+        "name": "U200 byte0 DQ/DM to DQS (original matching)",
+        "nets": [
+          "/DDR3 Memory/ddr-d0",
+          "/DDR3 Memory/ddr-d1",
+          "/DDR3 Memory/ddr-d2",
+          "/DDR3 Memory/ddr-d3",
+          "/DDR3 Memory/ddr-d4",
+          "/DDR3 Memory/ddr-d5",
+          "/DDR3 Memory/ddr-d6",
+          "/DDR3 Memory/ddr-d7",
+          "/DDR3 Memory/ddr-dm0",
+          "/DDR3 Memory/ddr-dqs0+",
+          "/DDR3 Memory/ddr-dqs0-"
+        ],
+        "memoryRef": "U200",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "hardware/module.kicad_pcb",
+        "sourceSha256": "563b646fbd1f021c43a337798882e54ed024c39823280f8b93ddc59c9aa7cb33",
+        "severity": "error",
+        "maxLengthSkew": 2.287858,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3 Memory/ddr-dqs0+",
+          "/DDR3 Memory/ddr-dqs0-"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U200 DQS0 pair (original matching)",
+        "nets": [
+          "/DDR3 Memory/ddr-dqs0+",
+          "/DDR3 Memory/ddr-dqs0-"
+        ],
+        "memoryRef": "U200",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "hardware/module.kicad_pcb",
+        "sourceSha256": "563b646fbd1f021c43a337798882e54ed024c39823280f8b93ddc59c9aa7cb33",
+        "severity": "error",
+        "maxLengthSkew": 0.226855,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "assessmentOnly": true
+      },
+      {
+        "name": "U200 byte1 DQ/DM to DQS (original matching)",
+        "nets": [
+          "/DDR3 Memory/ddr-d8",
+          "/DDR3 Memory/ddr-d9",
+          "/DDR3 Memory/ddr-d10",
+          "/DDR3 Memory/ddr-d11",
+          "/DDR3 Memory/ddr-d12",
+          "/DDR3 Memory/ddr-d13",
+          "/DDR3 Memory/ddr-d14",
+          "/DDR3 Memory/ddr-d15",
+          "/DDR3 Memory/ddr-dm1",
+          "/DDR3 Memory/ddr-dqs1+",
+          "/DDR3 Memory/ddr-dqs1-"
+        ],
+        "memoryRef": "U200",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "hardware/module.kicad_pcb",
+        "sourceSha256": "563b646fbd1f021c43a337798882e54ed024c39823280f8b93ddc59c9aa7cb33",
+        "severity": "error",
+        "maxLengthSkew": 2.46337,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3 Memory/ddr-dqs1+",
+          "/DDR3 Memory/ddr-dqs1-"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U200 DQS1 pair (original matching)",
+        "nets": [
+          "/DDR3 Memory/ddr-dqs1+",
+          "/DDR3 Memory/ddr-dqs1-"
+        ],
+        "memoryRef": "U200",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "hardware/module.kicad_pcb",
+        "sourceSha256": "563b646fbd1f021c43a337798882e54ed024c39823280f8b93ddc59c9aa7cb33",
+        "severity": "error",
+        "maxLengthSkew": 0.644203,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "assessmentOnly": true
+      },
+      {
+        "name": "U200 clock pair (original matching)",
+        "nets": [
+          "/DDR3 Memory/ddr-ck+",
+          "/DDR3 Memory/ddr-ck-"
+        ],
+        "memoryRef": "U200",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "hardware/module.kicad_pcb",
+        "sourceSha256": "563b646fbd1f021c43a337798882e54ed024c39823280f8b93ddc59c9aa7cb33",
+        "severity": "error",
+        "maxLengthSkew": 0.605243,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "assessmentOnly": true
+      },
+      {
+        "name": "U200 address/command to CK (original matching)",
+        "nets": [
+          "/DDR3 Memory/ddr-a0",
+          "/DDR3 Memory/ddr-a1",
+          "/DDR3 Memory/ddr-a10",
+          "/DDR3 Memory/ddr-a11",
+          "/DDR3 Memory/ddr-a12",
+          "/DDR3 Memory/ddr-a13",
+          "/DDR3 Memory/ddr-a14",
+          "/DDR3 Memory/ddr-a2",
+          "/DDR3 Memory/ddr-a3",
+          "/DDR3 Memory/ddr-a4",
+          "/DDR3 Memory/ddr-a5",
+          "/DDR3 Memory/ddr-a6",
+          "/DDR3 Memory/ddr-a7",
+          "/DDR3 Memory/ddr-a8",
+          "/DDR3 Memory/ddr-a9",
+          "/DDR3 Memory/ddr-ba0",
+          "/DDR3 Memory/ddr-ba1",
+          "/DDR3 Memory/ddr-ba2",
+          "/DDR3 Memory/ddr-cas",
+          "/DDR3 Memory/ddr-cke",
+          "/DDR3 Memory/ddr-odt",
+          "/DDR3 Memory/ddr-ras",
+          "/DDR3 Memory/ddr-we",
+          "/DDR3 Memory/ddr-ck+",
+          "/DDR3 Memory/ddr-ck-"
+        ],
+        "memoryRef": "U200",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "hardware/module.kicad_pcb",
+        "sourceSha256": "563b646fbd1f021c43a337798882e54ed024c39823280f8b93ddc59c9aa7cb33",
+        "severity": "error",
+        "maxLengthSkew": 18.616186,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3 Memory/ddr-ck+",
+          "/DDR3 Memory/ddr-ck-"
+        ],
+        "assessmentOnly": true
+      }
+    ],
+    "notes": [
+      "Necessary DQ/DM-to-DQS, P/N and address/control-to-CK relationships without published numeric budgets use this board's original measured mismatch as benchmark preservation targets. No half-H3 budgets, cross-byte equalization or unverified DQS-to-CK rule is added. All original vendor/project requirements remain separate. Full paths sum both sides of series resistors."
+    ]
+  },
+  "h616": {
+    "files": {
+      "Hardware/H616_DDR3/H616_devboard.kicad_pcb": "000e11b99a3446da47099c9f1c698cb2266668149edc368152b7d63dcc8a530d",
+      "Hardware/H616_DDR3/H616_devboard.kicad_pro": "5e46c7b53a93393830ae86c7431f32450785d73c98688657c94ec77db352ceb1",
+      "Hardware/H616_DDR3/H616_devboard.kicad_dru": "a11b8d21b7defba2841467f3c7712ebd2ba3aa5a4c478de14cd0e2123660468a"
+    },
+    "constraints": [
+      {
+        "name": "ADDR_LEN",
+        "nets": [
+          "/DRAM/SA0",
+          "/DRAM/SA1",
+          "/DRAM/SA10",
+          "/DRAM/SA11",
+          "/DRAM/SA12",
+          "/DRAM/SA13",
+          "/DRAM/SA14",
+          "/DRAM/SA15",
+          "/DRAM/SA2",
+          "/DRAM/SA3",
+          "/DRAM/SA4",
+          "/DRAM/SA5",
+          "/DRAM/SA6",
+          "/DRAM/SA7",
+          "/DRAM/SA8",
+          "/DRAM/SA9"
+        ],
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_dru",
+        "severity": "error",
+        "maxLengthSkew": 6.35,
+        "skewReference": "mean"
+      },
+      {
+        "name": "L_BYTE_LANE_LEN",
+        "nets": [
+          "/DRAM/DQ0",
+          "/DRAM/DQ2",
+          "/DRAM/DQ3",
+          "/DRAM/DQ4",
+          "/DRAM/DQ5",
+          "/DRAM/DQ6",
+          "/DRAM/DQ7"
+        ],
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_dru",
+        "severity": "error",
+        "maxLengthSkew": 2.54,
+        "skewReference": "mean"
+      },
+      {
+        "name": "H_BYTE_LANE_LEN",
+        "nets": [
+          "/DRAM/DQ1",
+          "/DRAM/DQ10",
+          "/DRAM/DQ11",
+          "/DRAM/DQ12",
+          "/DRAM/DQ13",
+          "/DRAM/DQ14",
+          "/DRAM/DQ15",
+          "/DRAM/DQ8",
+          "/DRAM/DQ9"
+        ],
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_dru",
+        "severity": "error",
+        "maxLengthSkew": 2.54,
+        "skewReference": "mean"
+      },
+      {
+        "name": "INTER_CLASS_1",
+        "nets": [
+          "/DRAM/DQ0",
+          "/DRAM/DQ2",
+          "/DRAM/DQ3",
+          "/DRAM/DQ4",
+          "/DRAM/DQ5",
+          "/DRAM/DQ6",
+          "/DRAM/DQ7",
+          "/DRAM/SA0",
+          "/DRAM/SA1",
+          "/DRAM/SA10",
+          "/DRAM/SA11",
+          "/DRAM/SA12",
+          "/DRAM/SA13",
+          "/DRAM/SA14",
+          "/DRAM/SA15",
+          "/DRAM/SA2",
+          "/DRAM/SA3",
+          "/DRAM/SA4",
+          "/DRAM/SA5",
+          "/DRAM/SA6",
+          "/DRAM/SA7",
+          "/DRAM/SA8",
+          "/DRAM/SA9"
+        ],
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_dru",
+        "severity": "warning",
+        "maxLengthSkew": 4.445,
+        "skewReference": "mean",
+        "sourceCondition": "A.NetClass == 'DDR3_ADDR' || B.NetClass == 'DDR3_DATA_LB",
+        "appliedCondition": "A.NetClass == 'DDR3_ADDR' || A.NetClass == 'DDR3_DATA_LB'",
+        "assessmentOnly": true,
+        "sourceSeverity": "error",
+        "derivation": "Comparison-only interpretation of a malformed source selector. Preserve its numeric target and named class union, but do not turn a rule the original project could not apply into a new hard requirement."
+      },
+      {
+        "name": "INTER_CLASS_2",
+        "nets": [
+          "/DRAM/DQ1",
+          "/DRAM/DQ10",
+          "/DRAM/DQ11",
+          "/DRAM/DQ12",
+          "/DRAM/DQ13",
+          "/DRAM/DQ14",
+          "/DRAM/DQ15",
+          "/DRAM/DQ8",
+          "/DRAM/DQ9",
+          "/DRAM/SA0",
+          "/DRAM/SA1",
+          "/DRAM/SA10",
+          "/DRAM/SA11",
+          "/DRAM/SA12",
+          "/DRAM/SA13",
+          "/DRAM/SA14",
+          "/DRAM/SA15",
+          "/DRAM/SA2",
+          "/DRAM/SA3",
+          "/DRAM/SA4",
+          "/DRAM/SA5",
+          "/DRAM/SA6",
+          "/DRAM/SA7",
+          "/DRAM/SA8",
+          "/DRAM/SA9"
+        ],
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_dru",
+        "severity": "warning",
+        "maxLengthSkew": 4.445,
+        "skewReference": "mean",
+        "sourceCondition": "A.NetClass == 'DDR3_ADDR' || B.NetClass == 'DDR3_DATA_HB",
+        "appliedCondition": "A.NetClass == 'DDR3_ADDR' || A.NetClass == 'DDR3_DATA_HB'",
+        "assessmentOnly": true,
+        "sourceSeverity": "error",
+        "derivation": "Comparison-only interpretation of a malformed source selector. Preserve its numeric target and named class union, but do not turn a rule the original project could not apply into a new hard requirement."
+      },
+      {
+        "name": "INTER_CLASS_3",
+        "nets": [
+          "/DRAM/DQ0",
+          "/DRAM/DQ1",
+          "/DRAM/DQ10",
+          "/DRAM/DQ11",
+          "/DRAM/DQ12",
+          "/DRAM/DQ13",
+          "/DRAM/DQ14",
+          "/DRAM/DQ15",
+          "/DRAM/DQ2",
+          "/DRAM/DQ3",
+          "/DRAM/DQ4",
+          "/DRAM/DQ5",
+          "/DRAM/DQ6",
+          "/DRAM/DQ7",
+          "/DRAM/DQ8",
+          "/DRAM/DQ9"
+        ],
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_dru",
+        "severity": "warning",
+        "maxLengthSkew": 3.175,
+        "skewReference": "mean",
+        "sourceCondition": "A.NetClass == 'DDR3_DATA_LB' || B.NetClass == 'DDR3_DATA_HB",
+        "appliedCondition": "A.NetClass == 'DDR3_DATA_LB' || A.NetClass == 'DDR3_DATA_HB'",
+        "assessmentOnly": true,
+        "sourceSeverity": "error",
+        "derivation": "Comparison-only interpretation of a malformed source selector. Preserve its numeric target and named class union, but do not turn a rule the original project could not apply into a new hard requirement."
+      },
+      {
+        "name": "U2 byte0 DQ/DM to DQS (original matching)",
+        "nets": [
+          "/DRAM/DQ0",
+          "/DRAM/DQ1",
+          "/DRAM/DQ2",
+          "/DRAM/DQ3",
+          "/DRAM/DQ4",
+          "/DRAM/DQ5",
+          "/DRAM/DQ6",
+          "/DRAM/DQ7",
+          "/DRAM/SDQM1",
+          "/DRAM/SDQS1P",
+          "/DRAM/SDQS1N"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_pcb",
+        "sourceSha256": "000e11b99a3446da47099c9f1c698cb2266668149edc368152b7d63dcc8a530d",
+        "severity": "error",
+        "maxLengthSkew": 7.546898,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/DRAM/SDQS1P",
+          "/DRAM/SDQS1N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U2 DQS0 pair (original matching)",
+        "nets": [
+          "/DRAM/SDQS1P",
+          "/DRAM/SDQS1N"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_pcb",
+        "sourceSha256": "000e11b99a3446da47099c9f1c698cb2266668149edc368152b7d63dcc8a530d",
+        "severity": "error",
+        "maxLengthSkew": 0.359685,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance."
+      },
+      {
+        "name": "U2 byte1 DQ/DM to DQS (original matching)",
+        "nets": [
+          "/DRAM/DQ8",
+          "/DRAM/DQ9",
+          "/DRAM/DQ10",
+          "/DRAM/DQ11",
+          "/DRAM/DQ12",
+          "/DRAM/DQ13",
+          "/DRAM/DQ14",
+          "/DRAM/DQ15",
+          "/DRAM/SDQM0",
+          "/DRAM/SDQS0P",
+          "/DRAM/SDQS0N"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_pcb",
+        "sourceSha256": "000e11b99a3446da47099c9f1c698cb2266668149edc368152b7d63dcc8a530d",
+        "severity": "error",
+        "maxLengthSkew": 5.381748,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/DRAM/SDQS0P",
+          "/DRAM/SDQS0N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U2 DQS1 pair (original matching)",
+        "nets": [
+          "/DRAM/SDQS0P",
+          "/DRAM/SDQS0N"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_pcb",
+        "sourceSha256": "000e11b99a3446da47099c9f1c698cb2266668149edc368152b7d63dcc8a530d",
+        "severity": "error",
+        "maxLengthSkew": 2.615682,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance."
+      },
+      {
+        "name": "U2 clock pair (original matching)",
+        "nets": [
+          "/DRAM/SCKP",
+          "/DRAM/SCKN"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_pcb",
+        "sourceSha256": "000e11b99a3446da47099c9f1c698cb2266668149edc368152b7d63dcc8a530d",
+        "severity": "error",
+        "maxLengthSkew": 0.096629,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance."
+      },
+      {
+        "name": "U2 address/command to CK (original matching)",
+        "nets": [
+          "/DRAM/SA0",
+          "/DRAM/SA1",
+          "/DRAM/SA10",
+          "/DRAM/SA11",
+          "/DRAM/SA12",
+          "/DRAM/SA13",
+          "/DRAM/SA14",
+          "/DRAM/SA15",
+          "/DRAM/SA2",
+          "/DRAM/SA3",
+          "/DRAM/SA4",
+          "/DRAM/SA5",
+          "/DRAM/SA6",
+          "/DRAM/SA7",
+          "/DRAM/SA8",
+          "/DRAM/SA9",
+          "/DRAM/SBA0",
+          "/DRAM/SBA1",
+          "/DRAM/SBA2",
+          "/DRAM/SCAS",
+          "/DRAM/SCKE0",
+          "/DRAM/SCKE1",
+          "/DRAM/SCS0",
+          "/DRAM/SCS1",
+          "/DRAM/SODT0",
+          "/DRAM/SODT1",
+          "/DRAM/SRAS",
+          "/DRAM/SWE",
+          "/DRAM/SCKP",
+          "/DRAM/SCKN"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "Hardware/H616_DDR3/H616_devboard.kicad_pcb",
+        "sourceSha256": "000e11b99a3446da47099c9f1c698cb2266668149edc368152b7d63dcc8a530d",
+        "severity": "error",
+        "maxLengthSkew": 15.907342,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/DRAM/SCKP",
+          "/DRAM/SCKN"
+        ],
+        "assessmentOnly": true
+      }
+    ],
+    "notes": [
+      "Necessary DQ/DM-to-DQS, P/N and address/control-to-CK relationships without published numeric budgets use this board's original measured mismatch as benchmark preservation targets. No half-H3 budgets, cross-byte equalization or unverified DQS-to-CK rule is added. All original vendor/project requirements remain separate. Full paths sum both sides of series resistors."
+    ]
+  },
+  "butterstick": {
+    "files": {
+      "hardware/ButterStick_r1.0/ButterStick.kicad_pcb": "2b25f3efcf32b8687f18ddfea6ccf379134ebd4b4e4285b92e126215a59aeeef",
+      "hardware/ButterStick_r1.0/ButterStick.kicad_pro": "53bc8b31707cd9671638d20e0cb32a85dabc50280da24c2f02ef7967cf34a197",
+      "hardware/ButterStick_r1.0/drc-rules": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "constraints": [
+      {
+        "name": "U11 byte0 DQ/DM to DQS (\u00a79.2)",
+        "memoryRef": "U11",
+        "nets": [
+          "/FPGA-DDR3L/DQ0",
+          "/FPGA-DDR3L/DQ1",
+          "/FPGA-DDR3L/DQ2",
+          "/FPGA-DDR3L/DQ3",
+          "/FPGA-DDR3L/DQ4",
+          "/FPGA-DDR3L/DQ5",
+          "/FPGA-DDR3L/DQ6",
+          "/FPGA-DDR3L/DQ7",
+          "/FPGA-DDR3L/LDM",
+          "/FPGA-DDR3L/LDQS_P",
+          "/FPGA-DDR3L/LDQS_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 1.27,
+        "skewReference": "references",
+        "referenceNets": [
+          "/FPGA-DDR3L/LDQS_P",
+          "/FPGA-DDR3L/LDQS_N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U11 DQS0 pair (\u00a79.7)",
+        "memoryRef": "U11",
+        "nets": [
+          "/FPGA-DDR3L/LDQS_P",
+          "/FPGA-DDR3L/LDQS_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U11 byte1 DQ/DM to DQS (\u00a79.2)",
+        "memoryRef": "U11",
+        "nets": [
+          "/FPGA-DDR3L/DQ8",
+          "/FPGA-DDR3L/DQ9",
+          "/FPGA-DDR3L/DQ10",
+          "/FPGA-DDR3L/DQ11",
+          "/FPGA-DDR3L/DQ12",
+          "/FPGA-DDR3L/DQ13",
+          "/FPGA-DDR3L/DQ14",
+          "/FPGA-DDR3L/DQ15",
+          "/FPGA-DDR3L/UDM",
+          "/FPGA-DDR3L/UDQS_P",
+          "/FPGA-DDR3L/UDQS_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 1.27,
+        "skewReference": "references",
+        "referenceNets": [
+          "/FPGA-DDR3L/UDQS_P",
+          "/FPGA-DDR3L/UDQS_N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U11 DQS1 pair (\u00a79.7)",
+        "memoryRef": "U11",
+        "nets": [
+          "/FPGA-DDR3L/UDQS_P",
+          "/FPGA-DDR3L/UDQS_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U11 clock pair (\u00a79.11)",
+        "memoryRef": "U11",
+        "nets": [
+          "/FPGA-DDR3L/CK0_P",
+          "/FPGA-DDR3L/CK0_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U11 inter-byte DQS (\u00a79.9)",
+        "memoryRef": "U11",
+        "nets": [
+          "/FPGA-DDR3L/LDQS_P",
+          "/FPGA-DDR3L/LDQS_N",
+          "/FPGA-DDR3L/UDQS_P",
+          "/FPGA-DDR3L/UDQS_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 2.54,
+        "assessmentOnly": true
+      },
+      {
+        "name": "U11 address/command to CK (\u00a79.10)",
+        "memoryRef": "U11",
+        "nets": [
+          "/FPGA-DDR3L/A0",
+          "/FPGA-DDR3L/A1",
+          "/FPGA-DDR3L/A10",
+          "/FPGA-DDR3L/A11",
+          "/FPGA-DDR3L/A12",
+          "/FPGA-DDR3L/A13",
+          "/FPGA-DDR3L/A14",
+          "/FPGA-DDR3L/A15",
+          "/FPGA-DDR3L/A2",
+          "/FPGA-DDR3L/A3",
+          "/FPGA-DDR3L/A4",
+          "/FPGA-DDR3L/A5",
+          "/FPGA-DDR3L/A6",
+          "/FPGA-DDR3L/A7",
+          "/FPGA-DDR3L/A8",
+          "/FPGA-DDR3L/A9",
+          "/FPGA-DDR3L/BA0",
+          "/FPGA-DDR3L/BA1",
+          "/FPGA-DDR3L/BA2",
+          "/FPGA-DDR3L/CAS",
+          "/FPGA-DDR3L/CKE0",
+          "/FPGA-DDR3L/CS0",
+          "/FPGA-DDR3L/ODT0",
+          "/FPGA-DDR3L/RAS",
+          "/FPGA-DDR3L/WE",
+          "/FPGA-DDR3L/CK0_P",
+          "/FPGA-DDR3L/CK0_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 2.54,
+        "skewReference": "references",
+        "referenceNets": [
+          "/FPGA-DDR3L/CK0_P",
+          "/FPGA-DDR3L/CK0_N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U12 byte0 DQ/DM to DQS (\u00a79.2)",
+        "memoryRef": "U12",
+        "nets": [
+          "/FPGA-DDR3L/DQ0",
+          "/FPGA-DDR3L/DQ1",
+          "/FPGA-DDR3L/DQ2",
+          "/FPGA-DDR3L/DQ3",
+          "/FPGA-DDR3L/DQ4",
+          "/FPGA-DDR3L/DQ5",
+          "/FPGA-DDR3L/DQ6",
+          "/FPGA-DDR3L/DQ7",
+          "/FPGA-DDR3L/LDM",
+          "/FPGA-DDR3L/LDQS_P",
+          "/FPGA-DDR3L/LDQS_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 1.27,
+        "skewReference": "references",
+        "referenceNets": [
+          "/FPGA-DDR3L/LDQS_P",
+          "/FPGA-DDR3L/LDQS_N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U12 DQS0 pair (\u00a79.7)",
+        "memoryRef": "U12",
+        "nets": [
+          "/FPGA-DDR3L/LDQS_P",
+          "/FPGA-DDR3L/LDQS_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U12 byte1 DQ/DM to DQS (\u00a79.2)",
+        "memoryRef": "U12",
+        "nets": [
+          "/FPGA-DDR3L/DQ8",
+          "/FPGA-DDR3L/DQ9",
+          "/FPGA-DDR3L/DQ10",
+          "/FPGA-DDR3L/DQ11",
+          "/FPGA-DDR3L/DQ12",
+          "/FPGA-DDR3L/DQ13",
+          "/FPGA-DDR3L/DQ14",
+          "/FPGA-DDR3L/DQ15",
+          "/FPGA-DDR3L/UDM",
+          "/FPGA-DDR3L/UDQS_P",
+          "/FPGA-DDR3L/UDQS_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 1.27,
+        "skewReference": "references",
+        "referenceNets": [
+          "/FPGA-DDR3L/UDQS_P",
+          "/FPGA-DDR3L/UDQS_N"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U12 DQS1 pair (\u00a79.7)",
+        "memoryRef": "U12",
+        "nets": [
+          "/FPGA-DDR3L/UDQS_P",
+          "/FPGA-DDR3L/UDQS_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U12 clock pair (\u00a79.11)",
+        "memoryRef": "U12",
+        "nets": [
+          "/FPGA-DDR3L/CK1_P",
+          "/FPGA-DDR3L/CK1_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U12 inter-byte DQS (\u00a79.9)",
+        "memoryRef": "U12",
+        "nets": [
+          "/FPGA-DDR3L/LDQS_P",
+          "/FPGA-DDR3L/LDQS_N",
+          "/FPGA-DDR3L/UDQS_P",
+          "/FPGA-DDR3L/UDQS_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 2.54,
+        "assessmentOnly": true
+      },
+      {
+        "name": "U12 address/command to CK (\u00a79.10)",
+        "memoryRef": "U12",
+        "nets": [
+          "/FPGA-DDR3L/A0",
+          "/FPGA-DDR3L/A1",
+          "/FPGA-DDR3L/A10",
+          "/FPGA-DDR3L/A11",
+          "/FPGA-DDR3L/A12",
+          "/FPGA-DDR3L/A13",
+          "/FPGA-DDR3L/A14",
+          "/FPGA-DDR3L/A15",
+          "/FPGA-DDR3L/A2",
+          "/FPGA-DDR3L/A3",
+          "/FPGA-DDR3L/A4",
+          "/FPGA-DDR3L/A5",
+          "/FPGA-DDR3L/A6",
+          "/FPGA-DDR3L/A7",
+          "/FPGA-DDR3L/A8",
+          "/FPGA-DDR3L/A9",
+          "/FPGA-DDR3L/BA0",
+          "/FPGA-DDR3L/BA1",
+          "/FPGA-DDR3L/BA2",
+          "/FPGA-DDR3L/CAS",
+          "/FPGA-DDR3L/CKE1",
+          "/FPGA-DDR3L/CS1",
+          "/FPGA-DDR3L/ODT1",
+          "/FPGA-DDR3L/RAS",
+          "/FPGA-DDR3L/WE",
+          "/FPGA-DDR3L/CK1_P",
+          "/FPGA-DDR3L/CK1_N"
+        ],
+        "sourcePath": "FPGA-TN-02038-2.1 page 30",
+        "sourceUrl": "https://www.latticesemi.com/api/document/download?id=50482#page=30",
+        "severity": "error",
+        "maxLengthSkew": 2.54,
+        "skewReference": "references",
+        "referenceNets": [
+          "/FPGA-DDR3L/CK1_P",
+          "/FPGA-DDR3L/CK1_N"
+        ],
+        "assessmentOnly": true
+      }
+    ],
+    "notes": [
+      "The pinned reference files declare no numeric DDR length/skew target. No hardware maximum is inferred from an absent optional field; original-copper preservation is benchmarked separately.",
+      "ECP5 guide \u00a79 checks trace matching against both strobe/clock conductors. Relative and overlapping inter-group requirements are assessed only; Core has no equivalent reference-net tuning option. Via-count/stackup and non-skew hardware requirements are outside these planar checks."
+    ]
+  },
+  "glider": {
+    "files": {
+      "pcb/mainboard/pcb.kicad_pcb": "aea9094b681b96d6548beff89ca7a6c10484c7a95a29a6819fa34010b17513d3",
+      "pcb/mainboard/pcb.kicad_pro": "5641d68f22360c457b5ed78b49239c1f1596512d99f90ea18e72176627442c82"
+    },
+    "constraints": [
+      {
+        "name": "U12 DQS0 pair (UG388)",
+        "memoryRef": "U12",
+        "nets": [
+          "/fpga_ddr/DRAM_LDQSP",
+          "/fpga_ddr/DRAM_LDQSN"
+        ],
+        "sourcePath": "UG388 v2.3 page 42",
+        "sourceUrl": "https://www.xilinx.com/support/documentation/user_guides/ug388.pdf#page=42",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U12 DQS1 pair (UG388)",
+        "memoryRef": "U12",
+        "nets": [
+          "/fpga_ddr/DRAM_UDQSP",
+          "/fpga_ddr/DRAM_UDQSN"
+        ],
+        "sourcePath": "UG388 v2.3 page 42",
+        "sourceUrl": "https://www.xilinx.com/support/documentation/user_guides/ug388.pdf#page=42",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U12 clock pair (UG388)",
+        "memoryRef": "U12",
+        "nets": [
+          "/fpga_ddr/DRAM_CKP",
+          "/fpga_ddr/DRAM_CKN"
+        ],
+        "sourcePath": "UG388 v2.3 page 42",
+        "sourceUrl": "https://www.xilinx.com/support/documentation/user_guides/ug388.pdf#page=42",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      }
+    ],
+    "notes": [
+      "Unbounded/saturated saved tuner length targets are not routing limits.",
+      "The pinned reference files declare no numeric DDR length/skew target. No hardware maximum is inferred from an absent optional field; original-copper preservation is benchmarked separately.",
+      "Use WP479's newer DDR3 endpoint-delay requirements for DQ/DM and address/control, replacing the older UG388 planar equivalents. WP479 p3/p11 explicitly removes DQS-to-CK and inter-byte DQS matching; neither is imposed. Retain UG388's 10 mil P/N PCB pair guidance, with WP479's additional 2 ps DQS-pair checks. Delay assessment uses the original stackup and bounded FPGA package skew; it is an estimate, not SI signoff."
+    ],
+    "delayModel": {
+      "boardSourceUrl": "https://github.com/Modos-Labs/Glider/blob/ed94ef7fd95a42cfdcdaf5e5da1dcdd709122763/pcb/mainboard/pcb.kicad_pcb",
+      "boardSha256": "aea9094b681b96d6548beff89ca7a6c10484c7a95a29a6819fa34010b17513d3",
+      "layerDepthMm": {
+        "top": 0.0,
+        "inner1": 0.1521,
+        "inner2": 0.7673,
+        "bottom": 0.9194
+      },
+      "epsilonR": 4.2,
+      "formulaSourceUrl": "https://www.ti.com/lit/an/snla035/snla035.pdf#page=6",
+      "requirementSourceUrl": "https://docs.amd.com/api/khub/documents/iXwsrzNOW6nx7qC93WOpcQ/content#page=10",
+      "packageSourceUrl": "https://docs.amd.com/api/khub/documents/5xGMdRIxMi0ioQ1azGBsvQ/content#page=82",
+      "deviceBasis": "XC6SLX16-FTG256 from the source Caster MIG project (2f714ab7c217e6441c46cfd647764d9a74967aec); the PCB symbol names only XC6SLX-FTG256",
+      "packageSkewPs": 71
+    }
+  },
+  "imx6": {
+    "files": {
+      "kicad/iMX6 Demo Board.kicad_pcb": "8ce03c9bb877842b98984dd2e152f2a45b28f71e920115beb141eb9a2019d927",
+      "kicad/iMX6 Demo Board.kicad_pro": "264f7ce5a1edca938e529d2ab4e003bef623b1f30abb0dafad393cc37f5bf390",
+      "kicad/iMX6 Demo Board.kicad_dru": "6c41ce5f8bcdd89e5d2058ab5e92017307be6bbee804bc38b935a9b11bbbc76f"
+    },
+    "constraints": [
+      {
+        "name": "Length DDR BANK 0",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA0",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA1",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA2",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA3",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA4",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA5",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA6",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA7",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DML",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_N",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_P"
+        ],
+        "sourcePath": "kicad/iMX6 Demo Board.kicad_dru",
+        "severity": "ignore",
+        "minLength": 44.0,
+        "maxLength": 44.5
+      },
+      {
+        "name": "Length DDR BANK 1",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA10",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA11",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA12",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA13",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA14",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA15",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA8",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA9",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DMU",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_N",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_P"
+        ],
+        "sourcePath": "kicad/iMX6 Demo Board.kicad_dru",
+        "severity": "ignore",
+        "minLength": 36.5,
+        "maxLength": 37.0
+      },
+      {
+        "name": "Length DDR ACC",
+        "nets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_A0",
+          "/i.MX6ULL MAIN/CPU/DRAM_A1",
+          "/i.MX6ULL MAIN/CPU/DRAM_A10",
+          "/i.MX6ULL MAIN/CPU/DRAM_A11",
+          "/i.MX6ULL MAIN/CPU/DRAM_A12",
+          "/i.MX6ULL MAIN/CPU/DRAM_A13",
+          "/i.MX6ULL MAIN/CPU/DRAM_A14",
+          "/i.MX6ULL MAIN/CPU/DRAM_A15",
+          "/i.MX6ULL MAIN/CPU/DRAM_A2",
+          "/i.MX6ULL MAIN/CPU/DRAM_A3",
+          "/i.MX6ULL MAIN/CPU/DRAM_A4",
+          "/i.MX6ULL MAIN/CPU/DRAM_A5",
+          "/i.MX6ULL MAIN/CPU/DRAM_A6",
+          "/i.MX6ULL MAIN/CPU/DRAM_A7",
+          "/i.MX6ULL MAIN/CPU/DRAM_A8",
+          "/i.MX6ULL MAIN/CPU/DRAM_A9",
+          "/i.MX6ULL MAIN/CPU/DRAM_BA0",
+          "/i.MX6ULL MAIN/CPU/DRAM_BA1",
+          "/i.MX6ULL MAIN/CPU/DRAM_BA2",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_EN0",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_EN1",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_ODT0",
+          "/i.MX6ULL MAIN/CPU/DRAM_ODT1",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_CAS}",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_CS0}",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_CS1}",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_RAS}",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_WE}"
+        ],
+        "sourcePath": "kicad/iMX6 Demo Board.kicad_dru",
+        "severity": "ignore",
+        "minLength": 45.0,
+        "maxLength": 46.0
+      },
+      {
+        "name": "Diff Pair Skew",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_P",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_N"
+        ],
+        "sourcePath": "kicad/iMX6 Demo Board.kicad_dru",
+        "severity": "warning",
+        "maxLengthSkew": 0.1,
+        "sourceCondition": "A.inDiffPair('DRAM_DQSL')",
+        "appliedCondition": "A.inDiffPair('/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL')"
+      },
+      {
+        "name": "/i.MX6ULL MAIN/CPU/DRAM_CLK_P signed skew target",
+        "nets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N"
+        ],
+        "sourcePath": "kicad/iMX6 Demo Board.kicad_pcb",
+        "severity": "warning",
+        "skewReference": "signed_pair",
+        "minSignedSkew": 43.0,
+        "targetSignedSkew": 43.0,
+        "maxSignedSkew": 44.0
+      },
+      {
+        "name": "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_P signed skew target",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_P",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_N"
+        ],
+        "sourcePath": "kicad/iMX6 Demo Board.kicad_pcb",
+        "severity": "warning",
+        "skewReference": "signed_pair",
+        "minSignedSkew": 33.5,
+        "targetSignedSkew": 33.5,
+        "maxSignedSkew": 34.0
+      },
+      {
+        "name": "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_P signed skew target",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_P",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_N"
+        ],
+        "sourcePath": "kicad/iMX6 Demo Board.kicad_pcb",
+        "severity": "warning",
+        "skewReference": "signed_pair",
+        "minSignedSkew": 39.3,
+        "targetSignedSkew": 39.3,
+        "maxSignedSkew": 39.8
+      },
+      {
+        "name": "U9 clock (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "maxLengthSkew": 0.127,
+        "maxLength": 50.8
+      },
+      {
+        "name": "U9 byte0 spread (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA0",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA4",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA7",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA3",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA1",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA5",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA6",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA2",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DML",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_P",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_N"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "maxLengthSkew": 0.635
+      },
+      {
+        "name": "U9 DQS0 pair (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_P",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_N"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U9 byte0 no longer than CK (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA0",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA4",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA7",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA3",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA1",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA5",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA6",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA2",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DML",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_P",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSL_N",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "lengthReference": "shortest",
+        "referenceNets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N"
+        ],
+        "maxLength": 0,
+        "assessmentOnly": true
+      },
+      {
+        "name": "U9 byte1 spread (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA8",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA9",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA10",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA11",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA12",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA13",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA14",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA15",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DMU",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_P",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_N"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "maxLengthSkew": 0.635
+      },
+      {
+        "name": "U9 DQS1 pair (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_P",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_N"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U9 byte1 no longer than CK (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA8",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA9",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA10",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA11",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA12",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA13",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA14",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DATA15",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DMU",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_P",
+          "/i.MX6ULL MAIN/RAM DDR3/DRAM_DQSU_N",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "lengthReference": "shortest",
+        "referenceNets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N"
+        ],
+        "maxLength": 0,
+        "assessmentOnly": true
+      },
+      {
+        "name": "U9 address/command spread (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_A0",
+          "/i.MX6ULL MAIN/CPU/DRAM_A1",
+          "/i.MX6ULL MAIN/CPU/DRAM_A10",
+          "/i.MX6ULL MAIN/CPU/DRAM_A11",
+          "/i.MX6ULL MAIN/CPU/DRAM_A12",
+          "/i.MX6ULL MAIN/CPU/DRAM_A13",
+          "/i.MX6ULL MAIN/CPU/DRAM_A14",
+          "/i.MX6ULL MAIN/CPU/DRAM_A15",
+          "/i.MX6ULL MAIN/CPU/DRAM_A2",
+          "/i.MX6ULL MAIN/CPU/DRAM_A3",
+          "/i.MX6ULL MAIN/CPU/DRAM_A4",
+          "/i.MX6ULL MAIN/CPU/DRAM_A5",
+          "/i.MX6ULL MAIN/CPU/DRAM_A6",
+          "/i.MX6ULL MAIN/CPU/DRAM_A7",
+          "/i.MX6ULL MAIN/CPU/DRAM_A8",
+          "/i.MX6ULL MAIN/CPU/DRAM_A9",
+          "/i.MX6ULL MAIN/CPU/DRAM_BA0",
+          "/i.MX6ULL MAIN/CPU/DRAM_BA1",
+          "/i.MX6ULL MAIN/CPU/DRAM_BA2",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_CAS}",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_RAS}",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_WE}"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "maxLengthSkew": 0.635
+      },
+      {
+        "name": "U9 address/command to shortest CK (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_A0",
+          "/i.MX6ULL MAIN/CPU/DRAM_A1",
+          "/i.MX6ULL MAIN/CPU/DRAM_A10",
+          "/i.MX6ULL MAIN/CPU/DRAM_A11",
+          "/i.MX6ULL MAIN/CPU/DRAM_A12",
+          "/i.MX6ULL MAIN/CPU/DRAM_A13",
+          "/i.MX6ULL MAIN/CPU/DRAM_A14",
+          "/i.MX6ULL MAIN/CPU/DRAM_A15",
+          "/i.MX6ULL MAIN/CPU/DRAM_A2",
+          "/i.MX6ULL MAIN/CPU/DRAM_A3",
+          "/i.MX6ULL MAIN/CPU/DRAM_A4",
+          "/i.MX6ULL MAIN/CPU/DRAM_A5",
+          "/i.MX6ULL MAIN/CPU/DRAM_A6",
+          "/i.MX6ULL MAIN/CPU/DRAM_A7",
+          "/i.MX6ULL MAIN/CPU/DRAM_A8",
+          "/i.MX6ULL MAIN/CPU/DRAM_A9",
+          "/i.MX6ULL MAIN/CPU/DRAM_BA0",
+          "/i.MX6ULL MAIN/CPU/DRAM_BA1",
+          "/i.MX6ULL MAIN/CPU/DRAM_BA2",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_CAS}",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_RAS}",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_WE}",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "lengthReference": "shortest",
+        "referenceNets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N"
+        ],
+        "minLength": -5.08,
+        "maxLength": 0,
+        "assessmentOnly": true
+      },
+      {
+        "name": "U9 control spread (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_EN0",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_EN1",
+          "/i.MX6ULL MAIN/CPU/DRAM_ODT0",
+          "/i.MX6ULL MAIN/CPU/DRAM_ODT1",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_CS0}",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_CS1}"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "maxLengthSkew": 1.27
+      },
+      {
+        "name": "U9 control to shortest CK (NXP)",
+        "nets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_EN0",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_EN1",
+          "/i.MX6ULL MAIN/CPU/DRAM_ODT0",
+          "/i.MX6ULL MAIN/CPU/DRAM_ODT1",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_CS0}",
+          "/i.MX6ULL MAIN/CPU/~{DRAM_CS1}",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N"
+        ],
+        "memoryRef": "U9",
+        "sourcePath": "IMX6ULLHDG Rev 0 Table 21 page 23",
+        "sourceUrl": "https://manuals.plus/m/363c0e56b9f86b62dfc0829ff6f9baf299076b3c6ccfc6a1dbf065da1b9dcd23.pdf#page=23",
+        "sourceSha256": "05f66fd4940f17fcf36db64f6e46026202cf7a7c4e883f3cf6e2ff27927287c4",
+        "severity": "error",
+        "lengthReference": "shortest",
+        "referenceNets": [
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_P",
+          "/i.MX6ULL MAIN/CPU/DRAM_CLK_N"
+        ],
+        "minLength": -5.08,
+        "maxLength": 0,
+        "assessmentOnly": true
+      }
+    ],
+    "notes": [
+      "NXP IMX6ULLHDG Rev 0 Table 21 byte-group strategy: 2 inch clock maximum; 5 mil CK pair, 10 mil DQS pair, 25 mil byte/address and 50 mil control matching. Use a conservative full-spread interpretation of the \u00b1 matching figures. Address/control must be 0\u2013200 mil shorter than the shortest CK; bytes must not exceed it. The alternative all-signals-to-clock strategy is not combined with this one."
+    ]
+  },
+  "icepi": {
+    "files": {
+      "hardware/cm0.kicad_pcb": "430a3b232c9b6e8219fbd726fc47128079de88286b93ab543ed676d9634188c1",
+      "hardware/cm0.kicad_pro": "9e60a9fbd0f16d2d2ee73039ab8ebc801579cd1280c9705d12305779e76606ad"
+    },
+    "constraints": [
+      {
+        "name": "/DDR3/CLK- pair",
+        "nets": [
+          "/DDR3/CLK+",
+          "/DDR3/CLK-"
+        ],
+        "sourcePath": "hardware/cm0.kicad_pcb",
+        "severity": "error",
+        "maxLengthSkew": 0.1
+      },
+      {
+        "name": "Saved length target 2",
+        "nets": [
+          "/DDR3/A0",
+          "/DDR3/A1",
+          "/DDR3/A10",
+          "/DDR3/A11",
+          "/DDR3/A12",
+          "/DDR3/A13",
+          "/DDR3/A14",
+          "/DDR3/A15",
+          "/DDR3/A2",
+          "/DDR3/A3",
+          "/DDR3/A4",
+          "/DDR3/A5",
+          "/DDR3/A6",
+          "/DDR3/A7",
+          "/DDR3/A8",
+          "/DDR3/A9",
+          "/DDR3/BA0",
+          "/DDR3/BA1",
+          "/DDR3/BA2",
+          "/DDR3/CLK+",
+          "/DDR3/CLK-",
+          "/DDR3/ODT",
+          "/DDR3/~{CS}",
+          "/DDR3/~{RAS}",
+          "/DDR3/~{RESET}"
+        ],
+        "sourcePath": "hardware/cm0.kicad_pcb",
+        "severity": "error",
+        "minLength": 26.9,
+        "maxLength": 27.1
+      },
+      {
+        "name": "Saved length target 3",
+        "nets": [
+          "/DDR3/DQ0",
+          "/DDR3/DQ1",
+          "/DDR3/DQ11",
+          "/DDR3/DQ12",
+          "/DDR3/DQ13",
+          "/DDR3/DQ14",
+          "/DDR3/DQ15",
+          "/DDR3/DQ2",
+          "/DDR3/DQ4",
+          "/DDR3/DQ6",
+          "/DDR3/DQ9",
+          "/DDR3/DQM0",
+          "/DDR3/DQM1",
+          "/DDR3/DQS0+",
+          "/DDR3/DQS0-",
+          "/DDR3/DQS1+",
+          "/DDR3/DQS1-"
+        ],
+        "sourcePath": "hardware/cm0.kicad_pcb",
+        "severity": "error",
+        "minLength": 20.4,
+        "maxLength": 20.6
+      },
+      {
+        "name": "U2 byte0 DQ to DQS (Allwinner)",
+        "memoryRef": "U2",
+        "nets": [
+          "/DDR3/DQ0",
+          "/DDR3/DQ1",
+          "/DDR3/DQ2",
+          "/DDR3/DQ3",
+          "/DDR3/DQ4",
+          "/DDR3/DQ5",
+          "/DDR3/DQ6",
+          "/DDR3/DQ7",
+          "/DDR3/DQS0+",
+          "/DDR3/DQS0-"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 1.27,
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3/DQS0+",
+          "/DDR3/DQS0-"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U2 DQS0 pair (Allwinner)",
+        "memoryRef": "U2",
+        "nets": [
+          "/DDR3/DQS0+",
+          "/DDR3/DQS0-"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U2 byte1 DQ to DQS (Allwinner)",
+        "memoryRef": "U2",
+        "nets": [
+          "/DDR3/DQ8",
+          "/DDR3/DQ9",
+          "/DDR3/DQ10",
+          "/DDR3/DQ11",
+          "/DDR3/DQ12",
+          "/DDR3/DQ13",
+          "/DDR3/DQ14",
+          "/DDR3/DQ15",
+          "/DDR3/DQS1+",
+          "/DDR3/DQS1-"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 1.27,
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3/DQS1+",
+          "/DDR3/DQS1-"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U2 DQS1 pair (Allwinner)",
+        "memoryRef": "U2",
+        "nets": [
+          "/DDR3/DQS1+",
+          "/DDR3/DQS1-"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U2 clock pair (Allwinner)",
+        "memoryRef": "U2",
+        "nets": [
+          "/DDR3/CLK+",
+          "/DDR3/CLK-"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 0.254
+      },
+      {
+        "name": "U2 DQS to CK (Allwinner)",
+        "memoryRef": "U2",
+        "nets": [
+          "/DDR3/DQS0+",
+          "/DDR3/DQS0-",
+          "/DDR3/DQS1+",
+          "/DDR3/DQS1-",
+          "/DDR3/CLK+",
+          "/DDR3/CLK-"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 20.32,
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3/CLK+",
+          "/DDR3/CLK-"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U2 address/command to CK (Allwinner)",
+        "memoryRef": "U2",
+        "nets": [
+          "/DDR3/A0",
+          "/DDR3/A1",
+          "/DDR3/A10",
+          "/DDR3/A11",
+          "/DDR3/A12",
+          "/DDR3/A13",
+          "/DDR3/A14",
+          "/DDR3/A15",
+          "/DDR3/A2",
+          "/DDR3/A3",
+          "/DDR3/A4",
+          "/DDR3/A5",
+          "/DDR3/A6",
+          "/DDR3/A7",
+          "/DDR3/A8",
+          "/DDR3/A9",
+          "/DDR3/BA0",
+          "/DDR3/BA1",
+          "/DDR3/BA2",
+          "/DDR3/CKE",
+          "/DDR3/ODT",
+          "/DDR3/~{CAS}",
+          "/DDR3/~{CS}",
+          "/DDR3/~{RAS}",
+          "/DDR3/~{WE}",
+          "/DDR3/CLK+",
+          "/DDR3/CLK-"
+        ],
+        "sourcePath": "H3_REF_DDR3_16X2_V1_0 Layout Note page 2 section 5",
+        "sourceUrl": "https://files.catbox.moe/xzy0h1.pdf#page=2",
+        "sourceSha256": "4fcf5c17d72cf39ed0a46362f1a5ab66b5d7ea4369c25acda480baad970ac50a",
+        "severity": "error",
+        "maxLengthSkew": 15.24,
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3/CLK+",
+          "/DDR3/CLK-"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U2 byte0 DM to DQS (original matching)",
+        "nets": [
+          "/DDR3/DQM0",
+          "/DDR3/DQS0+",
+          "/DDR3/DQS0-"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "hardware/cm0.kicad_pcb",
+        "sourceSha256": "430a3b232c9b6e8219fbd726fc47128079de88286b93ab543ed676d9634188c1",
+        "severity": "error",
+        "maxLengthSkew": 0.077716,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3/DQS0+",
+          "/DDR3/DQS0-"
+        ],
+        "assessmentOnly": true
+      },
+      {
+        "name": "U2 byte1 DM to DQS (original matching)",
+        "nets": [
+          "/DDR3/DQM1",
+          "/DDR3/DQS1+",
+          "/DDR3/DQS1-"
+        ],
+        "memoryRef": "U2",
+        "basis": "original_matching",
+        "pathBasis": "full_signal",
+        "sourcePath": "hardware/cm0.kicad_pcb",
+        "sourceSha256": "430a3b232c9b6e8219fbd726fc47128079de88286b93ab543ed676d9634188c1",
+        "severity": "error",
+        "maxLengthSkew": 0.218502,
+        "derivation": "Benchmark preservation target measured from this exact original board's complete signal paths; not a manufacturer maximum. Includes 0.000001 mm measurement rounding allowance.",
+        "skewReference": "references",
+        "referenceNets": [
+          "/DDR3/DQS1+",
+          "/DDR3/DQS1-"
+        ],
+        "assessmentOnly": true
+      }
+    ],
+    "notes": [
+      "Unbounded/saturated saved tuner length targets are not routing limits.",
+      "Allwinner H3 DDR3 layout note p2 supplies 50 mil DQ-to-DQS, 800 mil DQS-to-CK, 600 mil address/control-to-CK, and 10 mil differential-pair limits. Its DQ table does not name DQM; a separate engineering requirement covers mask matching. These planar projections do not certify the guide's equal-via-count/vertical-length requirements.",
+      "Necessary DQ/DM-to-DQS, P/N and address/control-to-CK relationships without published numeric budgets use this board's original measured mismatch as benchmark preservation targets. No half-H3 budgets, cross-byte equalization or unverified DQS-to-CK rule is added. All original vendor/project requirements remain separate. Full paths sum both sides of series resistors."
+    ]
+  }
+}

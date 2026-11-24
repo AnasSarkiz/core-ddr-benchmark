@@ -1,4 +1,11 @@
 import { arePortsConnected } from "./connectivity"
+import { createCopperPathMeasurer } from "./path-length"
+import { measureDdrSkew } from "./ddr-skew"
+import { getDdrReference, getDdrRoutingBuses, measureDdrConstraints } from "../circuits/ddr-constraints"
+import { getDdrNetEndpoints } from "../circuits/ddr-signals"
+import { measureStm32Matching, stm32ViaDepthBounds, type LengthBounds } from "./stm32-matching"
+import { measureGliderDelay, gliderViaDelayPs, gliderWireDelayPsPerMm } from "./glider-delay"
+import { auditDdrLanes } from "./lane-audit"
 import type { PCBPort } from "circuit-json"
 import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
@@ -17,6 +24,10 @@ const unconnected: string[] = []
 const geometryErrors: string[] = []
 const netWidthTraces: any[] = []
 const netWidthRoutes: any[] = []
+const vias = json.filter((e: any) => e.type === "pcb_via")
+const pathLengths = new Map<string, (from: string, to: string) => number | null>()
+const packagePathLengths = new Map<string, (from: string, to: string) => LengthBounds | null>()
+const delayPaths = new Map<string, (from: string, to: string) => number | null>()
 
 // Audit emitted pad positions against independently computed native world points.
 // Both frames are mm, +X right, +Y up, +Z above, right-handed points.
@@ -65,8 +76,25 @@ for (const requested of source.traces) {
     }))) geometryErrors.push(`${requested.nativeNet}: routed outside native signal layers`)
   if (expectedPortIds.some((id: string | undefined) => !id || !memberPortIds.has(id))
     || memberPortIds.size !== expectedPortIds.length
-    || !arePortsConnected(expectedPortIds, netRoutes, ports, json.filter((e: any) => e.type === "pcb_via"))) {
+    || !arePortsConnected(expectedPortIds, netRoutes, ports, vias)) {
     unconnected.push(requested.name)
+  } else {
+    const measure = createCopperPathMeasurer(netRoutes, new Map([...ports].filter(([id]) => memberPortIds.has(id))), vias)
+    const ids = new Map<string, string>(requested.path.map((selector: string, index: number) => [selector, expectedPortIds[index]]))
+    pathLengths.set(requested.name, (from, to) => measure(ids.get(from)!, ids.get(to)!))
+    if (source.id === "glider") {
+      const delay = createCopperPathMeasurer(netRoutes, new Map([...ports].filter(([id]) => memberPortIds.has(id))), vias, gliderViaDelayPs, gliderWireDelayPsPerMm)
+      delayPaths.set(requested.name, (from, to) => delay(ids.get(from)!, ids.get(to)!))
+    }
+    if (source.id === "stmp157") {
+      const connectedPorts = new Map([...ports].filter(([id]) => memberPortIds.has(id)))
+      const lower = createCopperPathMeasurer(netRoutes, connectedPorts, vias, (from, to) => stm32ViaDepthBounds(from, to)[0])
+      const upper = createCopperPathMeasurer(netRoutes, connectedPorts, vias, (from, to) => stm32ViaDepthBounds(from, to)[1])
+      packagePathLengths.set(requested.name, (from, to) => {
+        const min = lower(ids.get(from)!, ids.get(to)!), max = upper(ids.get(from)!, ids.get(to)!)
+        return min === null || max === null ? null : [min, max]
+      })
+    }
   }
 }
 const options = { minClearance: source.rules.appliedGlobalClearance }
@@ -94,13 +122,30 @@ for (const trace of routes) for (let i=1;i<trace.route.length;i++) {
   const a=trace.route[i-1], b=trace.route[i]
   if (a.route_type === "wire" && b.route_type === "wire" && a.layer === b.layer) wireLengthMm += Math.hypot(a.x-b.x,a.y-b.y)
 }
+const ddrSkew = measureDdrSkew(source, ([net, from, to]) => pathLengths.get(net)?.(from, to) ?? null)
+const ddrConstraints = measureDdrConstraints(source, (trace, memoryRef) => {
+  const [from, to] = getDdrNetEndpoints(source, trace, memoryRef)
+  return pathLengths.get(trace.name)?.(from, to) ?? null
+}, ([net, from, to]) => pathLengths.get(net)?.(from, to) ?? null)
+const constraintErrors = ddrConstraints.filter((constraint) => constraint.status === "exceeded" && (constraint.severity ?? "error") === "error")
+  .map((constraint) => ({ type: "ddr_constraint_error", message: `${constraint.name}: ${constraint.basis === "original_matching" ? "original matching" : constraint.basis === "engineering_target" ? "engineering" : "reference"} target exceeded by ${(-constraint.marginMm!).toFixed(6)} mm` }))
+const matchingErrors = Object.entries(ddrSkew).filter(([, group]) => group.matchingStatus === "regressed" && !group.preservationComparisonOnly)
+  .map(([name, group]) => ({ type: "ddr_matching_error", message: `${name}: skew increased by ${group.referenceDeltaMm!.toFixed(6)} mm from the original routed board` }))
+const ddrPackageMatching = measureStm32Matching(source, ([net, from, to]) => packagePathLengths.get(net)?.(from, to) ?? null)
+const packageErrors = (ddrPackageMatching?.constraints ?? []).filter((constraint) => constraint.status === "exceeded")
+  .map((constraint) => ({ type: "ddr_package_matching_error", message: `${constraint.name}: reference window exceeded even with the source's via-depth uncertainty` }))
+const ddrDelayMatching = measureGliderDelay(source, ([net, from, to]) => delayPaths.get(net)?.(from, to) ?? null)
+const delayErrors = (ddrDelayMatching?.constraints ?? []).filter((constraint) => constraint.status === "exceeded")
+  .map((constraint) => ({ type: "ddr_delay_matching_error", message: `${constraint.name}: delay target exceeded across the modelled package interval` }))
+const allFindings = { ...findings, ddr_constraints: constraintErrors, ddr_matching: matchingErrors, ddr_package_matching: packageErrors, ddr_delay_matching: delayErrors }
 const result: Assessment = {
   requestedNets: source.traces.length,
   connectedNets: source.traces.length - unconnected.length,
   unconnectedNets: source.traces.filter((t: any) => unconnected.includes(t.name)).map((t: any) => t.nativeNet),
   pcbTraces: routes.length, vias: json.filter((e: any) => e.type === "pcb_via").length,
-  wireLengthMm, findings: Object.fromEntries(Object.entries(findings).map(([name,values]) => [name,values.filter((v: any) => v.type.endsWith("_error")).length])),
+  wireLengthMm, findings: Object.fromEntries(Object.entries(allFindings).map(([name,values]) => [name,values.filter((v: any) => v.type.endsWith("_error")).length])),
   geometryErrors, validationMs: performance.now()-started,
+  ddrSkew, ddrConstraints, ddrConstraintNotes: getDdrReference(source.id).notes, ddrPackageMatching, ddrDelayMatching, ddrRoutingTargets: getDdrRoutingBuses(source), ddrLaneAudit: auditDdrLanes(source),
 }
-writeFileSync(join(output,"findings.json"),JSON.stringify(findings,null,2))
+writeFileSync(join(output,"findings.json"),JSON.stringify(allFindings,null,2))
 writeFileSync(join(output,"assessment.json"),JSON.stringify(result,null,2))

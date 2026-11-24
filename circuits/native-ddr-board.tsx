@@ -1,6 +1,7 @@
 import type { ReactElement } from "react"
 import type { BoardProps, BusProps } from "@tscircuit/props"
 import { NativePart } from "./native-part"
+import { getDdrRoutingBuses, getDdrReference } from "./ddr-constraints"
 
 type DdrSource = {
   id: string
@@ -57,12 +58,33 @@ export function NativeDdrBoard({
   const phaseNameByGroup = new Map<RoutingGroup, string>(
     ["preflight", ...bytes, "remaining"].map((group) => [group, group]),
   )
-  if (source.routeByteGroupsTogether) {
+  const matchesAcrossBytes = (getDdrReference(source.id).constraints ?? []).some((constraint) =>
+    !constraint.assessmentOnly && (constraint.severity ?? "error") === "error" && constraint.maxLengthSkew !== undefined && new Set(source.traces.filter((trace) => constraint.nets.includes(trace.nativeNet) && bytes.includes(trace.group)).map((trace) => trace.group)).size > 1)
+  if (source.routeByteGroupsTogether || matchesAcrossBytes) {
     for (const group of bytes) phaseNameByGroup.set(group, "bytes")
   }
   const groups = dataOnly ? bytes : [...preflight, ...bytes, "remaining"]
-  const phases = [...new Set(groups.map((group) => phaseNameByGroup.get(group)!))]
   const bytePhases = new Set(bytes.map((group) => phaseNameByGroup.get(group)!))
+  const tracePhases = new Map(activeTraces.map((trace) => [trace.name, phaseNameByGroup.get(trace.group)!]))
+  const buses = getDdrRoutingBuses({ ...source, traces: activeTraces }).filter((bus) => groups.includes(bus.group))
+  const busPhases = new Map(buses.map((bus) => [bus.name, phaseNameByGroup.get(bus.group)!]))
+  const matchingPhases: string[] = []
+  if (!dataOnly) for (const bus of buses) {
+    if (bus.maxLengthSkew === undefined && bus.minLength === undefined && bus.maxLength === undefined) continue
+    const members = activeTraces.filter((trace) => trace.path.some((selector) => bus.connections.includes(selector)))
+    const byte = members.find((trace) => bytes.includes(trace.group))
+    const physicalByte = bytes.includes(bus.group) ? bus.group : byte?.group
+    const phase = physicalByte ? phaseNameByGroup.get(physicalByte)! : `match_${bus.name}`
+    for (const trace of members) tracePhases.set(trace.name, phase)
+    busPhases.set(bus.name, phase)
+    bytePhases.add(phase)
+    if (!physicalByte) matchingPhases.push(phase)
+  }
+  const phases = [...new Set([
+    ...groups.filter((group) => group !== "remaining").map((group) => phaseNameByGroup.get(group)!),
+    ...matchingPhases,
+    ...(dataOnly ? [] : ["remaining"]),
+  ])].filter((phase) => activeTraces.some((trace) => tracePhases.get(trace.name) === phase))
   return (
     <board
       title={source.title}
@@ -89,7 +111,7 @@ export function NativeDdrBoard({
           phaseIndex={phaseIndex}
           autorouter={bytePhases.has(group) ? "bus_lanes" : "auto_local"}
           connections={activeTraces
-            .filter((trace) => phaseNameByGroup.get(trace.group) === group)
+            .filter((trace) => tracePhases.get(trace.name) === group)
             .flatMap((trace) => trace.path)}
         />
       ))}
@@ -101,19 +123,16 @@ export function NativeDdrBoard({
           nominalTraceWidth={trace.width}
           routingPhaseIndex={
             activeNames.has(trace.name) && groups.includes(trace.group)
-              ? phases.indexOf(phaseNameByGroup.get(trace.group)!)
+              ? phases.indexOf(tracePhases.get(trace.name)!)
               : undefined
           }
         />
       ))}
-      {bytes.map((group) => (
+      {buses.map(({ group, ...bus }) => (
         <bus
-          key={group}
-          name={`DDR_BUS_${group}`}
-          routingPhaseIndex={phases.indexOf(phaseNameByGroup.get(group)!)}
-          connections={activeTraces
-            .filter((trace) => trace.group === group)
-            .map((trace) => trace.path[0])}
+          key={bus.name}
+          {...bus}
+          routingPhaseIndex={phases.indexOf(busPhases.get(bus.name)!)}
           pcbAllowedLayers={source.signalLayers}
         />
       ))}

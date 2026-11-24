@@ -1,3 +1,9 @@
+import type { DdrSkew } from "./ddr-skew"
+import type { DdrConstraintResult, getDdrRoutingBuses } from "../circuits/ddr-constraints"
+import type { measureStm32Matching } from "./stm32-matching"
+import type { measureGliderDelay } from "./glider-delay"
+import type { auditDdrLanes } from "./lane-audit"
+
 export type PhaseResult = {
   phase: string
   stage: number
@@ -27,6 +33,13 @@ export type Assessment = {
   findings: Record<string, number>
   geometryErrors: string[]
   validationMs: number
+  ddrSkew?: Record<string, DdrSkew>
+  ddrConstraints?: DdrConstraintResult[]
+  ddrConstraintNotes?: string[]
+  ddrRoutingTargets?: ReturnType<typeof getDdrRoutingBuses>
+  ddrPackageMatching?: ReturnType<typeof measureStm32Matching>
+  ddrDelayMatching?: ReturnType<typeof measureGliderDelay>
+  ddrLaneAudit?: ReturnType<typeof auditDdrLanes>
 }
 
 export type CaseResult = {
