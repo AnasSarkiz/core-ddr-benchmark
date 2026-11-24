@@ -1,4 +1,4 @@
-name: Check the A13 contact repair repro
+name: Check the A13 contact repair fix
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
       - name: Check
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/contact-repro-v1.patch
+          git apply ../harness-repo/harness/ar-exp/contact-fix-v1.patch
           bun install > /dev/null 2>&1
           bunx tsc --noEmit > tsc.log 2>&1 && echo "TSC exit=0" || { echo "TSC failed"; head -30 tsc.log; }
           bunx biome format . > fmt.log 2>&1 && echo "FMT exit=0" || { echo "FMT failed"; grep -B2 -A30 "Formatter would" fmt.log | head -80; }
@@ -39,5 +39,5 @@ jobs:
         run: |
           cd harness-repo
           git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          git checkout -q --orphan snaps/contact-repro; git rm -rq --cached .; git clean -fdq
-          cp ../out/snaps.tgz .; git add snaps.tgz; git commit -qm "contact repro snapshots"; git push -f origin snaps/contact-repro
+          git checkout -q --orphan snaps/contact-fix; git rm -rq --cached .; git clean -fdq
+          cp ../out/snaps.tgz .; git add snaps.tgz; git commit -qm "contact fix snapshots"; git push -f origin snaps/contact-fix

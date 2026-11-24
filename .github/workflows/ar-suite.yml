@@ -1,4 +1,4 @@
-name: Autorouter suite on the via-site fix
+name: Autorouter suite on the contact repair fix
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: 2436c416110fb917a90219ea312086bfa14807a6
+          ref: b90d04b0f476d865aacaf99b19123e12ddef4a3f
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
@@ -29,7 +29,7 @@ jobs:
       - name: Apply the fix
         run: |
           cd autorouter
-          git apply ../harness-repo/harness/ar-exp/via-fix-v5-metal.patch
+          git apply ../harness-repo/harness/ar-exp/contact-fix-v1.patch
           git status --short
           bun install > /dev/null 2>&1
       - name: Typecheck

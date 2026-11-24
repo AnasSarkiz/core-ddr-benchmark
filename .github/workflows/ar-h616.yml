@@ -1,4 +1,4 @@
-name: Via-site stack failing tests, repro vs fix
+name: high-density-repair03 tests, main vs contact repair fix
 
 on:
   push:
@@ -12,28 +12,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [repro, fix]
-        test: [tests/repro/pipeline9-a13-via-without-legal-site.test.ts]
+        ref: [c0325f34982b62d901b9bd3a45696121a903de30, 43290c3451d8f08e012fdde1fd0f5c596fac1901]
     steps:
       - uses: actions/checkout@v4
-        with: { path: harness-repo }
-      - uses: actions/checkout@v4
         with:
-          repository: tscircuit/tscircuit-autorouter
-          ref: 2436c416110fb917a90219ea312086bfa14807a6
-          path: autorouter
+          repository: tscircuit/high-density-repair03
+          ref: ${{ matrix.ref }}
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
-      - name: Run
+      - name: Test
         run: |
-          cd autorouter
-          git apply ../harness-repo/harness/ar-exp/via-${{ matrix.variant }}-v1.patch
           bun install > /dev/null 2>&1
-          start=$(date +%s)
-          BUN_UPDATE_SNAPSHOTS=1 timeout 2400 bun test ${{ matrix.test }} --timeout 9999999 > t.log 2>&1 && code=0 || code=$?
-          echo "DONE ${{ matrix.variant }} exit=$code seconds=$(($(date +%s)-start))"
-          grep -vE "^\s+at " t.log | grep -E "error|Expected|Received|expect\(|toEqual|toBe|\(pass\)|\(fail\)|differs|matches|^\s+[-+] |^\s+\"" | cut -c1-250 | head -60
-          for f in pipeline9-a13-via-without-legal-site pipeline9-a13-via-without-legal-site-via-pad-findings pipeline9-a13-via-without-legal-site-via-pad-detail; do echo "CAPTION $f: $(grep -oE '(Relaxed DRC errors|Vias under [0-9.]+ mm from a pad|via-to-pad findings under [0-9.]+ mm): [0-9]+' tests/repro/__snapshots__/$f.snap.svg | head -2 | tr '\n' ' ')"; done
-          for f in pipeline9-a13-via-without-legal-site pipeline9-a13-via-without-legal-site-via-pad-findings pipeline9-a13-via-without-legal-site-via-pad-detail; do echo "=====SNAP ${{ matrix.variant }} $f====="; base64 -w0 tests/repro/__snapshots__/$f.snap.svg; echo; echo "=====END====="; done
+          bunx tsc --noEmit > tsc.log 2>&1 && echo "TSC exit=0" || { echo "TSC failed"; head -20 tsc.log; }
+          bun test --timeout 9999999 > t.log 2>&1 || true
+          echo "REF ${{ matrix.ref }}"; grep -E "^ *[0-9]+ (pass|fail)$|^\(fail\)" t.log | cut -c1-200
