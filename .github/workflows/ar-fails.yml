@@ -1,4 +1,4 @@
-name: Pipeline 9 on Core-main remaining phases
+name: STM32MP157 remaining phase before and after the BGA-first selection
 
 on:
   push:
@@ -12,16 +12,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a64, h3, stmp157, a13]
+        circuit: [stmp157]
         input: [coremain]
+        ref: [03269ad3, dc19141b]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: dc19141bc92b21a52cb42aced8699e7ddb978924
           path: autorouter
+          fetch-depth: 0
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
         with:
@@ -29,8 +30,9 @@ jobs:
       - name: Run
         run: |
           cd autorouter
+          git checkout -q ${{ matrix.ref }} && git log --oneline -1
           bun install > /dev/null 2>&1
           cp ../harness-repo/harness/diag/phase-fail.ts .
           gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.circuit }}-${{ matrix.input }}.srj.json.gz > in.srj.json
-          bun phase-fail.ts in.srj.json ${{ matrix.circuit }}/${{ matrix.input }} > p.log 2>&1 || true
+          bun phase-fail.ts in.srj.json ${{ matrix.circuit }}/${{ matrix.ref }} > p.log 2>&1 || true
           grep -E "^PHASE" p.log | cut -c1-600; tail -3 p.log | cut -c1-300
