@@ -1,0 +1,34 @@
+name: Bus-lanes matching phase diagnosis
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/bl-matching.trigger']
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [h3, glider, stmp157, a13, a64, orangecrab, h616, imx6, icepi]
+        ref: [69e2159483e062013728cd8ff256f9343224a90b, main]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: ${{ matrix.ref }}
+          path: bl
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Route
+        run: |
+          cd bl && git log --oneline -1 && bun install > /dev/null 2>&1
+          cp ../harness-repo/harness/bl-exp/diag-matching.ts .
+          gunzip -c ../harness-repo/harness/bl-exp/matching/${{ matrix.circuit }}.json.gz > in.json
+          timeout 1500 bun diag-matching.ts in.json ${{ matrix.circuit }} 2>&1 | grep -E "^DIAG|rror" | cut -c1-700 | head -40 || true
