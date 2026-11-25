@@ -1,0 +1,93 @@
+name: Slow DDR boards through Core with a long limit
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/ddr-long.trigger']
+
+permissions:
+  contents: write
+
+jobs:
+  board:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [a64, h3, stmp157]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/core
+          ref: main
+          path: core
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - name: Core main with #5586
+        run: |
+          cd core
+          git checkout -q 701339c13c9f1cba5c71bf9801fac787a60de937
+          git fetch -q origin fix/h3-phase-future-intent
+          git -c user.name=ci -c user.email=ci@example.com merge --no-edit -q FETCH_HEAD
+          git log --oneline -2
+          bun install --ignore-scripts > /dev/null
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
+          path: solver
+          persist-credentials: false
+      - name: Build bus-lanes main and place it in Core
+        run: |
+          cd solver
+          bun install > /dev/null 2>&1
+          bun run build 2>&1 | tail -2
+          cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: dc19141bc92b21a52cb42aced8699e7ddb978924
+          fetch-depth: 0
+          path: autorouter
+          persist-credentials: false
+      - name: Build the autorouter under test and place it in Core
+        run: |
+          cd autorouter
+          git status --short
+          bun install > /dev/null 2>&1
+          bun run build > build.log 2>&1; tail -3 build.log
+          grep '"version"' ../core/node_modules/@tscircuit/capacity-autorouter/package.json
+          rm -rf ../core/node_modules/@tscircuit/capacity-autorouter/dist
+          cp -r dist ../core/node_modules/@tscircuit/capacity-autorouter/dist
+      - name: Route
+        run: |
+          cd core
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 1800 > route.log 2>&1 || true
+          tail -12 route.log
+          grep -h "P9DIAG" ddr-benchmark-results/${{ matrix.circuit }}/render.log | cut -c1-220 | head -300
+      - name: Print the report
+        if: always()
+        run: |
+          cd core
+          echo "=====REPORT====="
+          cat ddr-benchmark-results/report.md
+          echo "=====END-REPORT====="
+          grep -iE "No path|ran out|AutorouterError" route.log | cut -c1-300 | head -5
+          cd ddr-benchmark-results/${{ matrix.circuit }}
+          echo "=====PHASES====="
+          bun -e 'const p=JSON.parse(require("fs").readFileSync("progress.json","utf8")); for (const x of p.phases) console.log(`PHASE ${x.phase} | ${x.stage} | ${x.solver} | ${x.status} | start=${(x.startedMs/1000).toFixed(1)}s | dur=${x.durationMs==null?"-":(x.durationMs/1000).toFixed(1)+"s"} | conns=${x.connections} | cache=${x.cacheStatus}`); console.log(`ERRORS ${JSON.stringify(p.errors).slice(0,400)}`); console.log(`EVENTS ${p.solverEvents.length} last=${JSON.stringify(p.solverEvents.slice(-3)).slice(0,600)}`)'
+          mkdir -p ../../../out; tar -czf ../../../out/phases.tgz progress.json $(ls phase-*.srj.json 2>/dev/null) assessment.json 2>/dev/null || true
+      - name: Push the phase files to a branch
+        if: always()
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          B=phases/${{ matrix.circuit }}
+          git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
+          cp ../out/phases.tgz . && git add phases.tgz && git commit -qm "phase files" && git push -f origin $B
