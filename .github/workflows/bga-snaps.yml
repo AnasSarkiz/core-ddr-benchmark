@@ -1,4 +1,4 @@
-name: BGA solver branch checks and snapshots
+name: BGA solver review changes
 
 on:
   push:
@@ -16,6 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         branch: [fix/promote-net-without-path]
+        overlay: [none, review]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -30,16 +31,9 @@ jobs:
         run: |
           cd bga
           bun install > /dev/null 2>&1
-          rm -f tests/__snapshots__/stm32mp157-core-handoff-net-order.snap.svg
-          BUN_UPDATE_SNAPSHOTS=1 bun test tests/stm32mp157-core-handoff-net-order.test.ts --timeout 9999999 2>&1 | grep -vE '^\s*$' | tail -40
+          if [ "${{ matrix.overlay }}" = review ]; then cp -r ../harness-repo/harness/bga-overlay/. . && git status --short; fi
+          /usr/bin/time -v bun test tests/stm32mp157-core-handoff-net-order.test.ts --timeout 9999999 > stm.log 2>&1; grep -E "\((pass|fail)\)|Maximum resident|Elapsed" stm.log
+          bun test tests/promoted-net-still-blocked.test.ts 2>&1 | grep -vE '^\s*$' | tail -20
           echo "=====FULL====="; bun test --timeout 9999999 2>&1 | tail -6
           echo "=====TSC====="; bunx tsc --noEmit 2>&1 | tail -5; echo "tsc=$?"
           echo "=====FMT====="; bun run format:check 2>&1 | head -60
-      - name: Push the snapshot
-        if: always()
-        run: |
-          cd harness-repo
-          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          B=snaps/$(echo ${{ matrix.branch }} | tr / -)
-          git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
-          cp ../bga/tests/__snapshots__/stm32mp157-core-handoff-net-order.snap.svg . && git add -A && git commit -qm snap && git push -f origin $B
