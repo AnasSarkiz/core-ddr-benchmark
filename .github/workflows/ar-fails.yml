@@ -1,4 +1,4 @@
-name: Contact repair fix, failing tests on main vs fix
+name: A13 via counts on current main
 
 on:
   push:
@@ -8,30 +8,24 @@ on:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [main, fix]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: b90d04b0f476d865aacaf99b19123e12ddef4a3f
+          ref: a9da76b73d06403786f19374c2b66ff16c85b066
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
-      - name: Run
+      - name: Count
         run: |
           cd autorouter
-          if [ "${{ matrix.variant }}" = fix ]; then git apply --include=package.json ../harness-repo/harness/ar-exp/contact-fix-v3.patch; fi
+          git apply --include='tests/fixtures/assets/a13-via-without-site/*' ../harness-repo/harness/ar-exp/via-repro-v1.patch
           bun install > /dev/null 2>&1
-          for t in tests/features/pipeline9-srj33-contact-repair-budget.test.ts tests/repro/pipeline9-a13-via-cleanup-reference.test.ts tests/repro/pipeline9-a13-regional-repair-shorts.test.ts; do
-            bun test $t --timeout 9999999 > t.log 2>&1 && r=pass || r=fail
-            echo "RESULT ${{ matrix.variant }} $t $r"
-            grep -vE "^\s+at " t.log | grep -E "Expected|Received|toBe|toHave|toEqual|differs|^\s+[0-9]+ \|.*expect" | cut -c1-200 | head -12
-          done
+          cp ../harness-repo/harness/diag/a13-via-count.ts .
+          bun a13-via-count.ts main > c.log 2>&1 || true
+          grep -E "^A13" c.log | cut -c1-250; tail -2 c.log | cut -c1-200
