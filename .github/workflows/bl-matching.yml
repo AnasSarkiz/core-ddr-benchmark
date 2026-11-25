@@ -12,8 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h3, glider, stmp157, a13, a64, orangecrab, h616, imx6, icepi]
-        ref: [69e2159483e062013728cd8ff256f9343224a90b, main]
+        circuit: [h3]
+        ref: [main, refs/pull/254/head]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -29,6 +29,7 @@ jobs:
       - name: Route
         run: |
           cd bl && git log --oneline -1 && bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/bl-exp/diag-matching.ts .
-          gunzip -c ../harness-repo/harness/bl-exp/matching/${{ matrix.circuit }}.json.gz > in.json
-          timeout 1500 bun diag-matching.ts in.json ${{ matrix.circuit }} 2>&1 | grep -E "^DIAG|rror" | cut -c1-700 | head -40 || true
+          cp ../harness-repo/harness/bl-exp/chain-matching.ts .
+          M=../harness-repo/harness/bl-exp/matching
+          gunzip -c $M/h3-phase-1.json.gz > p1.json; gunzip -c $M/h3-phase-2.json.gz > p2.json; mkdir -p out
+          timeout 1500 bun chain-matching.ts out p1.json p2.json 2>&1 | grep -E "^CHAIN|rror" | cut -c1-900 || true
