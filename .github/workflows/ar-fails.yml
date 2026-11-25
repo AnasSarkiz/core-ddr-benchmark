@@ -1,4 +1,4 @@
-name: Pipeline 9 on the failing remaining phases
+name: Pipeline 9 on remaining phases, tiles vs traces
 
 on:
   push:
@@ -12,7 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a64, h3, stmp157]
+        circuit: [a64, h3, stmp157, a13]
+        input: [remaining, remaining-traces]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -30,6 +31,6 @@ jobs:
           cd autorouter
           bun install > /dev/null 2>&1
           cp ../harness-repo/harness/diag/phase-fail.ts .
-          gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.circuit }}-remaining.srj.json.gz > in.srj.json
-          bun phase-fail.ts in.srj.json ${{ matrix.circuit }} > p.log 2>&1 || true
+          gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.circuit }}-${{ matrix.input }}.srj.json.gz > in.srj.json
+          bun phase-fail.ts in.srj.json ${{ matrix.circuit }}/${{ matrix.input }} > p.log 2>&1 || true
           grep -E "^PHASE" p.log | cut -c1-600; tail -3 p.log | cut -c1-300
