@@ -32,14 +32,14 @@ jobs:
       - name: Route
         run: |
           cd bl && git log --oneline -1 && bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/bl-exp/chain-matching.ts ../harness-repo/harness/bl-exp/h3-variants.ts .
+          cp ../harness-repo/harness/bl-exp/chain-matching.ts ../harness-repo/harness/bl-exp/h3-variants.ts ../harness-repo/harness/bl-exp/h3-joint.ts .
           M=../harness-repo/harness/bl-exp/matching
           gunzip -c $M/h3-phase-1.json.gz > p1.json; gunzip -c $M/h3-phase-2.json.gz > p2.json; mkdir -p out
-          timeout 1500 bun h3-variants.ts 2>&1 | grep -E "^VAR|rror" | cut -c1-400 || true
+          timeout 1500 bun h3-joint.ts 2>&1 | grep -E "^VAR|rror" | cut -c1-400 || true
       - name: Push outputs
         if: always()
         run: |
           cd harness-repo
           git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          git checkout -q --orphan diag/h3-byte1; git rm -rq --cached .; git clean -fdq
+          git checkout -q --orphan diag/h3-joint; git rm -rq --cached .; git clean -fdq
           cp ../bl/out/* . && git add -A && git commit -qm out && git push -f origin HEAD
