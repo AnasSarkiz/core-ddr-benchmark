@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        branch: [repro/stm32mp157-longest-net-closed, fix/promote-net-without-path]
+        branch: [fix/promote-net-without-path]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -31,10 +31,10 @@ jobs:
           cd bga
           bun install > /dev/null 2>&1
           rm -f tests/__snapshots__/stm32mp157-core-handoff-net-order.snap.svg
-          BUN_UPDATE_SNAPSHOTS=1 bun test tests/stm32mp157-core-handoff-net-order.test.ts --timeout 9999999 2>&1 | tail -8
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/stm32mp157-core-handoff-net-order.test.ts --timeout 9999999 2>&1 | grep -vE '^\s*$' | tail -40
           echo "=====FULL====="; bun test --timeout 9999999 2>&1 | tail -6
           echo "=====TSC====="; bunx tsc --noEmit 2>&1 | tail -5; echo "tsc=$?"
-          echo "=====FMT====="; bun run format:check 2>&1 | tail -5
+          echo "=====FMT====="; bun run format:check 2>&1 | head -60
       - name: Push the snapshot
         if: always()
         run: |
