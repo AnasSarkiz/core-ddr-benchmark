@@ -1,4 +1,4 @@
-name: STM32MP157 BGA escape failure diagnosis
+name: STM32MP157 remaining phase with BGA net promotion
 
 on:
   push:
@@ -18,6 +18,7 @@ jobs:
         circuit: [stmp157]
         input: [coremain]
         ref: [dc19141b]
+        bga: [base, promote]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -35,15 +36,8 @@ jobs:
           cd autorouter
           git checkout -q ${{ matrix.ref }} && git log --oneline -1
           bun install > /dev/null 2>&1
+          if [ "${{ matrix.bga }}" = promote ]; then cp ../harness-repo/harness/bga-exp/BgaEscapeRoutingSolver.ts node_modules/@tscircuit/bga-escape-routing-solver/lib/bga-escape-routing/; fi
           cp ../harness-repo/harness/diag/phase-fail.ts ../harness-repo/harness/diag/bga-fail.ts .
           gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.circuit }}-${{ matrix.input }}.srj.json.gz > in.srj.json
-          bun bga-fail.ts in.srj.json /tmp/bga-graphics.json > p.log 2>&1 || true
-          grep -E "^BGA" p.log | cut -c1-900; tail -5 p.log | cut -c1-400
-      - name: Push graphics
-        if: always()
-        run: |
-          cd harness-repo
-          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          B=diag/bga-${{ matrix.circuit }}
-          git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
-          gzip -c /tmp/bga-graphics.json > g.json.gz && git add g.json.gz && git commit -qm graphics && git push -f origin $B
+          bun phase-fail.ts in.srj.json ${{ matrix.circuit }}/${{ matrix.bga }} > p.log 2>&1 || true
+          grep -E "^PHASE" p.log | grep -v " stage " | cut -c1-700; grep " stage " p.log | tr '\n' ' ' | cut -c1-900; echo; tail -3 p.log | cut -c1-300
