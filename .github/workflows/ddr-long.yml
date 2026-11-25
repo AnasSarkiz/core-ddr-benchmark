@@ -1,4 +1,4 @@
-name: Slow DDR boards through Core with a long limit
+name: Ten DDR boards on current Core main
 
 on:
   push:
@@ -15,8 +15,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h616]
-        buslanes: [core]
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
+        core: [main, main-5586]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -30,13 +30,11 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
-      - name: Core main with #5586
+      - name: Core under test
         run: |
           cd core
-          git checkout -q 701339c13c9f1cba5c71bf9801fac787a60de937
-          git fetch -q origin fix/h3-phase-future-intent
-          git -c user.name=ci -c user.email=ci@example.com merge --no-edit -q FETCH_HEAD
-          git log --oneline -2
+          if [ "${{ matrix.core }}" = main-5586 ]; then git fetch -q origin fix/h3-phase-future-intent && git -c user.name=ci -c user.email=ci@example.com merge --no-edit -q FETCH_HEAD && echo "MERGED 5586" || { echo "MERGE 5586 FAILED"; git merge --abort; exit 1; }; fi
+          echo "CORE $(git log --oneline -1)"
           bun install --ignore-scripts > /dev/null
       - uses: actions/checkout@v4
         with:
@@ -49,8 +47,7 @@ jobs:
           cd solver
           bun install > /dev/null 2>&1
           bun run build 2>&1 | tail -2
-          if [ "${{ matrix.buslanes }}" = pin ]; then cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js; fi
-          echo "BUSLANES ${{ matrix.buslanes }} core-installed=$(grep '"version"' ../core/node_modules/@tscircuit/bus-lanes-solver/package.json)"
+          echo "BUSLANES core-installed=$(grep '"version"' ../core/node_modules/@tscircuit/bus-lanes-solver/package.json)"
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
@@ -70,15 +67,6 @@ jobs:
       - name: Route
         run: |
           cd core
-          python3 - <<'PYEOF'
-          p="lib/components/primitive-components/Group/Group.ts"; s=open(p).read()
-          old="""      this.root?.emit("autorouting:start", {
-                  type: "autorouting:start","""
-          new="""      console.error(`STAGE phase=${routingPhasePlan.phaseName} usesPrev=${usesPreviousStageOutput} phased=${hasPhasedAutorouting} reroute=${isReroutePhase} outputTraces=${outputTraces.length} srjTraces=${simpleRouteJson.traces?.length ?? 0} obstacles=${simpleRouteJson.obstacles.length} tiles=${simpleRouteJson.obstacles.filter((o: any) => !o.circuitJsonMetadata).length} baseTraces=${baseSimpleRouteJson.traces?.length ?? 0} baseObstacles=${baseSimpleRouteJson.obstacles.length}`)
-                this.root?.emit("autorouting:start", {
-                  type: "autorouting:start","""
-          assert s.count(old)==1, s.count(old); s=s.replace(old,new); open(p,"w").write(s)
-          PYEOF
           bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 900 > route.log 2>&1 || true
           tail -12 route.log
           grep -h "P9DIAG" ddr-benchmark-results/${{ matrix.circuit }}/render.log | cut -c1-220 | head -300
@@ -91,8 +79,6 @@ jobs:
           echo "=====END-REPORT====="
           grep -iE "No path|ran out|AutorouterError" route.log | cut -c1-300 | head -5
           cd ddr-benchmark-results/${{ matrix.circuit }}
-          echo "=====PRESERVE====="
-          grep -h "STAGE" render.log | sort | uniq -c | sort -rn | cut -c1-260 | head -30
           echo "=====PHASES====="
           bun -e 'const p=JSON.parse(require("fs").readFileSync("progress.json","utf8")); for (const x of p.phases) console.log(`PHASE ${x.phase} | ${x.stage} | ${x.solver} | ${x.status} | start=${(x.startedMs/1000).toFixed(1)}s | dur=${x.durationMs==null?"-":(x.durationMs/1000).toFixed(1)+"s"} | conns=${x.connections} | cache=${x.cacheStatus}`); console.log(`ERRORS ${JSON.stringify(p.errors).slice(0,400)}`); console.log(`EVENTS ${p.solverEvents.length} last=${JSON.stringify(p.solverEvents.slice(-3)).slice(0,600)}`)'
           mkdir -p ../../../out; tar -czf ../../../out/phases.tgz progress.json $(ls phase-*.srj.json 2>/dev/null) assessment.json 2>/dev/null || true
@@ -101,6 +87,6 @@ jobs:
         run: |
           cd harness-repo
           git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          B=phases/${{ matrix.circuit }}-${{ matrix.buslanes }}
+          B=phases/${{ matrix.circuit }}-core-${{ matrix.core }}
           git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
           cp ../out/phases.tgz . && git add phases.tgz && git commit -qm "phase files" && git push -f origin $B
