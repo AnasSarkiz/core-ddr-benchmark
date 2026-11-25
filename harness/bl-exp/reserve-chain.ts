@@ -72,7 +72,7 @@ const segDist = (a: Pt, b: Pt, x: number, y: number): number => {
   return Math.hypot(x - a.x - t * dx, y - a.y - t * dy)
 }
 
-type Access = { open: boolean; sites: (Pt & { d: number })[]; wireFree: Uint8Array; n: number; x0: number; y0: number }
+type Access = { open: boolean; sites: (Pt & { d: number; k: number })[]; parents: Int32Array; n: number; x0: number; y0: number; start: number }
 const RES = 0.01, HALF = 1.2
 function access(input: any, p: Pending, traces: any[]): Access {
   const w = input.minTraceWidth
@@ -117,52 +117,53 @@ function access(input: any, p: Pending, traces: any[]): Access {
   }
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) if (rectDist(p.pad, x0 + i * RES, y0 + j * RES) <= 0) wireFree[j * n + i] = 1
   const seen = new Uint8Array(n * n)
+  const parents = new Int32Array(n * n).fill(-1)
+  const steps = new Int32Array(n * n)
   const start = Math.floor(n / 2) * n + Math.floor(n / 2)
   const queue = [start]
   seen[start] = 1
   let open = false
-  const sites: (Pt & { d: number })[] = []
-  while (queue.length) {
-    const k = queue.pop()!
+  const sites: (Pt & { d: number; k: number })[] = []
+  for (let head = 0; head < queue.length; head++) {
+    const k = queue[head]!
     const i = k % n, j = Math.floor(k / n)
     if (i === 0 || j === 0 || i === n - 1 || j === n - 1) open = true
-    if (viaFree[k]) sites.push({ x: x0 + i * RES, y: y0 + j * RES, d: Math.hypot(x0 + i * RES - cx, y0 + j * RES - cy) })
+    if (viaFree[k]) sites.push({ x: x0 + i * RES, y: y0 + j * RES, d: steps[k]!, k })
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const a = i + di, b = j + dj
       if (a < 0 || b < 0 || a >= n || b >= n) continue
       const q = b * n + a
-      if (wireFree[q] && !seen[q]) { seen[q] = 1; queue.push(q) }
+      if (wireFree[q] && !seen[q]) { seen[q] = 1; parents[q] = k; steps[q] = steps[k]! + 1; queue.push(q) }
     }
   }
-  return { open: open || sites.length > 0, sites, wireFree, n, x0, y0 }
+  return { open: open || sites.length > 0, sites, parents, n, x0, y0, start }
 }
 
 function reservation(input: any, p: Pending, acc: Access, id: string): any | undefined {
-  const { pad } = p
-  const sorted = [...acc.sites].sort((a, b) => a.d - b.d)
-  for (const s of sorted) {
-    let clear = true
-    for (let t = 0; t <= 1 && clear; t += 0.02) {
-      const x = pad.center.x + t * (s.x - pad.center.x), y = pad.center.y + t * (s.y - pad.center.y)
-      const i = Math.round((x - acc.x0) / RES), j = Math.round((y - acc.y0) / RES)
-      if (!acc.wireFree[j * acc.n + i]) clear = false
-    }
-    if (!clear) continue
-    const last = input.layerCount > 2 ? "bottom" : "bottom"
-    const other = p.layer === "top" ? last : "top"
-    return {
-      type: "pcb_trace",
-      pcb_trace_id: id,
-      connection_name: [...p.aliases].find((a) => a.startsWith("source_trace")) ?? [...p.aliases][0],
-      source_trace_id: [...p.aliases].find((a) => a.startsWith("source_trace")),
-      route: [
-        { route_type: "wire", x: pad.center.x, y: pad.center.y, width: input.minTraceWidth, layer: p.layer },
-        { route_type: "wire", x: s.x, y: s.y, width: input.minTraceWidth, layer: p.layer },
-        { route_type: "via", x: s.x, y: s.y, from_layer: p.layer, to_layer: other },
-      ],
-    }
+  const site = [...acc.sites].sort((a, b) => a.d - b.d)[0]
+  if (!site) return undefined
+  // Walk the shortest flood path back to the pad and keep its corners.
+  const cells: Pt[] = []
+  for (let k = site.k; k !== -1; k = acc.parents[k]!) cells.push({ x: acc.x0 + (k % acc.n) * RES, y: acc.y0 + Math.floor(k / acc.n) * RES })
+  cells.reverse()
+  const corners = cells.filter((c, i) => {
+    if (i === 0 || i === cells.length - 1) return true
+    const a = cells[i - 1]!, b = cells[i + 1]!
+    return Math.abs((c.x - a.x) * (b.y - c.y) - (c.y - a.y) * (b.x - c.x)) > 1e-9
+  })
+  const other = p.layer === "top" ? "bottom" : "top"
+  const width = input.minTraceWidth
+  return {
+    type: "pcb_trace",
+    pcb_trace_id: id,
+    connection_name: [...p.aliases].find((a) => a.startsWith("source_trace")) ?? [...p.aliases][0],
+    source_trace_id: [...p.aliases].find((a) => a.startsWith("source_trace")),
+    route: [
+      { route_type: "wire", x: p.pad.center.x, y: p.pad.center.y, width, layer: p.layer },
+      ...corners.map((c) => ({ route_type: "wire", x: c.x, y: c.y, width, layer: p.layer })),
+      { route_type: "via", x: site.x, y: site.y, from_layer: p.layer, to_layer: other },
+    ],
   }
-  return undefined
 }
 
 function route(input: any): { ok: boolean; traces: any[]; error: string; seconds: number } {
@@ -202,7 +203,7 @@ for (const [index, path] of phasePaths.entries()) {
   acc = result.traces.filter((t: any) => !String(t.pcb_trace_id).startsWith("reserved_escape_"))
 }
 const remaining = load(remainingPath!)
-remaining.traces = acc
+remaining.traces = acc.map((t: any) => ({ ...t, isFixed: true }))
 writeFileSync(outPath!, JSON.stringify(remaining))
 const finalPending = remaining.connections.flatMap((c: any) => c.pointsToConnect.map((q: any) => q.pcb_port_id))
 console.log(`CHAIN done traces=${acc.length} reservedTotal=${reserved.length} remainingEndpoints=${finalPending.length}`)

@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a13]
+        circuit: [a13, h3, a64]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
