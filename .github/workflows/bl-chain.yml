@@ -1,0 +1,57 @@
+name: Bus phases with reserved escapes for sealed pending pads
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/bl-chain.trigger']
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [a13, h3, a64]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: 69e2159483e062013728cd8ff256f9343224a90b
+          path: bl
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: dc19141bc92b21a52cb42aced8699e7ddb978924
+          path: autorouter
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Chain
+        run: |
+          cd bl && git log --oneline -1 && bun install > /dev/null 2>&1
+          cp ../harness-repo/harness/bl-exp/reserve-chain.ts .
+          D=../harness-repo/harness/bl-exp/chain; mkdir -p in
+          for f in $D/${{ matrix.circuit }}-phase-*-start.json.gz; do gunzip -c $f > in/$(basename $f .gz); done
+          ls in | sort -V > list; last=$(tail -1 list); bus=$(head -n -1 list | sed 's#^#in/#' | tr '\n' ' ')
+          bun reserve-chain.ts /tmp/remaining.json in/$last $bus 2>&1 | grep -E "^CHAIN|rror" | cut -c1-400
+      - name: Pipeline 9 on the remaining phase
+        run: |
+          cd autorouter && bun install > /dev/null 2>&1
+          cp ../harness-repo/harness/diag/phase-fail.ts .
+          bun phase-fail.ts /tmp/remaining.json ${{ matrix.circuit }} > p.log 2>&1 || true
+          grep -E "^PHASE" p.log | grep -v " stage " | cut -c1-500
+      - name: Push the remaining input
+        if: always()
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          git checkout -q --orphan chain/${{ matrix.circuit }}; git rm -rq --cached .; git clean -fdq
+          gzip -c /tmp/remaining.json > remaining.json.gz && git add -A && git commit -qm chain && git push -f origin HEAD
