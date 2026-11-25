@@ -15,8 +15,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a64, h3, stmp157]
-        buslanes: [core, pin]
+        circuit: [a13, h616, imx6]
+        buslanes: [core]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
