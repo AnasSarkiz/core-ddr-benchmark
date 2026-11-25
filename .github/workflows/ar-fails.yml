@@ -1,4 +1,4 @@
-name: Pipeline 9 on remaining phases, tiles vs traces
+name: Pipeline 9 on Core-main remaining phases
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         circuit: [a64, h3, stmp157, a13]
-        input: [remaining, remaining-traces]
+        input: [coremain]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
