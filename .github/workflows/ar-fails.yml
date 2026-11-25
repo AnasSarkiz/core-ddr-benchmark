@@ -1,9 +1,12 @@
-name: STM32MP157 remaining phase before and after the BGA-first selection
+name: STM32MP157 BGA escape failure diagnosis
 
 on:
   push:
     branches: [ci/a13-validation]
     paths: ['harness/ar-fails.trigger']
+
+permissions:
+  contents: write
 
 jobs:
   run:
@@ -14,7 +17,7 @@ jobs:
       matrix:
         circuit: [stmp157]
         input: [coremain]
-        ref: [03269ad3, dc19141b]
+        ref: [dc19141b]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -32,7 +35,15 @@ jobs:
           cd autorouter
           git checkout -q ${{ matrix.ref }} && git log --oneline -1
           bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/phase-fail.ts .
+          cp ../harness-repo/harness/diag/phase-fail.ts ../harness-repo/harness/diag/bga-fail.ts .
           gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.circuit }}-${{ matrix.input }}.srj.json.gz > in.srj.json
-          bun phase-fail.ts in.srj.json ${{ matrix.circuit }}/${{ matrix.ref }} > p.log 2>&1 || true
-          grep -E "^PHASE" p.log | cut -c1-600; tail -3 p.log | cut -c1-300
+          bun bga-fail.ts in.srj.json /tmp/bga-graphics.json > p.log 2>&1 || true
+          grep -E "^BGA" p.log | cut -c1-900; tail -5 p.log | cut -c1-400
+      - name: Push graphics
+        if: always()
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          B=diag/bga-${{ matrix.circuit }}
+          git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
+          gzip -c /tmp/bga-graphics.json > g.json.gz && git add g.json.gz && git commit -qm graphics && git push -f origin $B
