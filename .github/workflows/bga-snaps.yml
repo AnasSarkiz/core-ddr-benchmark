@@ -1,0 +1,45 @@
+name: BGA solver branch checks and snapshots
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/bga-snaps.trigger']
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [repro/stm32mp157-longest-net-closed, fix/promote-net-without-path]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bga-escape-routing-solver
+          ref: ${{ matrix.branch }}
+          path: bga
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - name: Checks
+        run: |
+          cd bga
+          bun install > /dev/null 2>&1
+          rm -f tests/__snapshots__/stm32mp157-core-handoff-net-order.snap.svg
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/stm32mp157-core-handoff-net-order.test.ts --timeout 9999999 2>&1 | tail -8
+          echo "=====FULL====="; bun test --timeout 9999999 2>&1 | tail -6
+          echo "=====TSC====="; bunx tsc --noEmit 2>&1 | tail -5; echo "tsc=$?"
+          echo "=====FMT====="; bun run format:check 2>&1 | tail -5
+      - name: Push the snapshot
+        if: always()
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          B=snaps/$(echo ${{ matrix.branch }} | tr / -)
+          git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
+          cp ../bga/tests/__snapshots__/stm32mp157-core-handoff-net-order.snap.svg . && git add -A && git commit -qm snap && git push -f origin $B
