@@ -17,7 +17,7 @@ jobs:
       matrix:
         circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
         core: [main]
-        lanes: [base]
+        buslanes: [core, main]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
-          ref: cbd27db2e7de5697d24fc63928c43fb92d3431d1
+          ref: 78113d216f4264abcdc05f3d9fedaf556047e280
           path: solver
           persist-credentials: false
       - name: Build bus-lanes main and place it in Core
@@ -51,6 +51,7 @@ jobs:
           bun install > /dev/null 2>&1
           bun run build 2>&1 | tail -2
           echo "BUSLANES core-installed=$(grep '"version"' ../core/node_modules/@tscircuit/bus-lanes-solver/package.json)"
+          if [ "${{ matrix.buslanes }}" = main ]; then cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js && echo "BUSLANES MAIN APPLIED $(git log --oneline -1)"; fi
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
@@ -94,6 +95,6 @@ jobs:
         run: |
           cd harness-repo
           git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          B=phases/${{ matrix.circuit }}-lanes-${{ matrix.lanes }}
+          B=phases/${{ matrix.circuit }}-bl-${{ matrix.buslanes }}
           git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
           cp ../out/phases.tgz . && git add phases.tgz && git commit -qm "phase files" && git push -f origin $B
