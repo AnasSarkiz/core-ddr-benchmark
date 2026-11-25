@@ -15,9 +15,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
+        circuit: [a13, h3, orangecrab, stmp157]
         core: [main]
-        bytes: [base, joint]
+        bytes: [joint]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }

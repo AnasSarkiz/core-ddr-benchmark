@@ -1,0 +1,19 @@
+name: Benchmark branch tests
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/bench-tests.trigger']
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/route-matched-bytes-together
+          lfs: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install > /dev/null 2>&1; bun test tests 2>&1 | tail -25
