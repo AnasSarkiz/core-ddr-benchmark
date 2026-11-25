@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a13, h616, imx6]
+        circuit: [h616]
         buslanes: [core]
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +70,15 @@ jobs:
       - name: Route
         run: |
           cd core
+          python3 - <<'PYEOF'
+p="lib/utils/autorouting/getPreservedRoutedSubcircuitTraces.ts"; s=open(p).read()
+old="""    .filter((trace) => {
+      if (!trace.subcircuit_id) return false"""
+new="""    .filter((trace) => {
+      console.error(`PRESERVE trace=${trace.pcb_trace_id} source=${trace.source_trace_id} subcircuit=${trace.subcircuit_id} component=${trace.pcb_component_id} relevant=${relevantSubcircuitIds === null ? "all" : [...relevantSubcircuitIds].join("|")}`)
+      if (!trace.subcircuit_id) return false"""
+assert old in s; s=s.replace(old,new); open(p,"w").write(s)
+PYEOF
           bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 900 > route.log 2>&1 || true
           tail -12 route.log
           grep -h "P9DIAG" ddr-benchmark-results/${{ matrix.circuit }}/render.log | cut -c1-220 | head -300
@@ -82,6 +91,8 @@ jobs:
           echo "=====END-REPORT====="
           grep -iE "No path|ran out|AutorouterError" route.log | cut -c1-300 | head -5
           cd ddr-benchmark-results/${{ matrix.circuit }}
+          echo "=====PRESERVE====="
+          grep -h "PRESERVE" render.log | sort | uniq -c | sort -rn | cut -c1-260 | head -30
           echo "=====PHASES====="
           bun -e 'const p=JSON.parse(require("fs").readFileSync("progress.json","utf8")); for (const x of p.phases) console.log(`PHASE ${x.phase} | ${x.stage} | ${x.solver} | ${x.status} | start=${(x.startedMs/1000).toFixed(1)}s | dur=${x.durationMs==null?"-":(x.durationMs/1000).toFixed(1)+"s"} | conns=${x.connections} | cache=${x.cacheStatus}`); console.log(`ERRORS ${JSON.stringify(p.errors).slice(0,400)}`); console.log(`EVENTS ${p.solverEvents.length} last=${JSON.stringify(p.solverEvents.slice(-3)).slice(0,600)}`)'
           mkdir -p ../../../out; tar -czf ../../../out/phases.tgz progress.json $(ls phase-*.srj.json 2>/dev/null) assessment.json 2>/dev/null || true
