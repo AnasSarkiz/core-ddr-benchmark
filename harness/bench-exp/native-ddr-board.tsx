@@ -1,7 +1,6 @@
 import type { ReactElement } from "react"
 import type { BoardProps, BusProps } from "@tscircuit/props"
 import { NativePart } from "./native-part"
-import { getDdrSkewGroups } from "./ddr-signals"
 import { getDdrRoutingBuses, getDdrReference } from "./ddr-constraints"
 
 type DdrSource = {
@@ -63,32 +62,17 @@ export function NativeDdrBoard({
   )
   const matchesAcrossBytes = matchLengths && (getDdrReference(source.id).constraints ?? []).some((constraint) =>
     !constraint.assessmentOnly && (constraint.severity ?? "error") === "error" && constraint.maxLengthSkew !== undefined && new Set(source.traces.filter((trace) => constraint.nets.includes(trace.nativeNet) && bytes.includes(trace.group)).map((trace) => trace.group)).size > 1)
-  if (source.routeByteGroupsTogether || matchesAcrossBytes) {
+  if (source.routeByteGroupsTogether || matchLengths) {
     for (const group of bytes) phaseNameByGroup.set(group, "bytes")
   }
   const groups = dataOnly ? bytes : [...preflight, ...bytes, "remaining"]
   const bytePhases = new Set(bytes.map((group) => phaseNameByGroup.get(group)!))
-  // A byte's physical lane is its RAM's DQ, mask and strobe balls. Route the
-  // lane's mask and strobe nets with its data so no lane closes its own pads.
-  // A lane through series resistors keeps each section with the byte group
-  // that holds the same section of its data.
-  const laneGroup = new Map<string, RoutingGroup>()
-  for (const lane of getDdrSkewGroups(source).filter((group) => / byte[01]$/.test(group.name))) {
-    const depth = lane.signals[0]?.sections.length ?? 0
-    if (!depth || !lane.signals.every((signal) => signal.sections.length === depth)) continue
-    for (let section = 0; section < depth; section++) {
-      const nets = lane.signals.map((signal) => signal.sections[section]![0])
-      const byte = activeTraces.find((trace) => nets.includes(trace.name) && bytes.includes(trace.group))?.group
-      if (byte) for (const net of nets) laneGroup.set(net, byte)
-    }
-  }
-  const routingGroup = (trace: (typeof activeTraces)[number]): RoutingGroup => laneGroup.get(trace.name) ?? trace.group
-  const tracePhases = new Map(activeTraces.map((trace) => [trace.name, phaseNameByGroup.get(routingGroup(trace))!]))
+  const tracePhases = new Map(activeTraces.map((trace) => [trace.name, phaseNameByGroup.get(trace.group)!]))
   const buses: ReturnType<typeof getDdrRoutingBuses> = matchLengths
     ? getDdrRoutingBuses({ ...source, traces: activeTraces }).filter((bus) => groups.includes(bus.group))
     : bytes.map((group) => ({
         name: `DDR_BUS_${group}`, group,
-        connections: activeTraces.filter((trace) => routingGroup(trace) === group).map((trace) => trace.path[0]),
+        connections: activeTraces.filter((trace) => trace.group === group).map((trace) => trace.path[0]),
       }))
   const busPhases = new Map(buses.map((bus) => [bus.name, phaseNameByGroup.get(bus.group)!]))
   const matchingPhases: string[] = []

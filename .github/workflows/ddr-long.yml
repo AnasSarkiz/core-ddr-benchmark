@@ -17,7 +17,7 @@ jobs:
       matrix:
         circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
         core: [main]
-        buslanes: [core, main]
+        bytes: [base, joint]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -38,7 +38,7 @@ jobs:
           echo "CORE $(git log --oneline -1)"
           echo "BENCH $(grep -o '"version": *"[^"]*"' node_modules/@tscircuit/core-ddr-benchmark/package.json 2>/dev/null)"
           bun install --ignore-scripts > /dev/null
-          if [ "${{ matrix.lanes }}" = full ]; then cp ../harness-repo/harness/bench-exp/native-ddr-board.tsx node_modules/@tscircuit/core-ddr-benchmark/circuits/ && echo "FULL LANES APPLIED"; fi
+          if [ "${{ matrix.bytes }}" = joint ]; then cp ../harness-repo/harness/bench-exp/native-ddr-board.tsx node_modules/@tscircuit/core-ddr-benchmark/circuits/ && echo "JOINT BYTES APPLIED"; fi
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
@@ -51,7 +51,6 @@ jobs:
           bun install > /dev/null 2>&1
           bun run build 2>&1 | tail -2
           echo "BUSLANES core-installed=$(grep '"version"' ../core/node_modules/@tscircuit/bus-lanes-solver/package.json)"
-          if [ "${{ matrix.buslanes }}" = main ]; then cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js && echo "BUSLANES MAIN APPLIED $(git log --oneline -1)"; fi
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
@@ -95,6 +94,6 @@ jobs:
         run: |
           cd harness-repo
           git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          B=phases/${{ matrix.circuit }}-bl-${{ matrix.buslanes }}
+          B=phases/${{ matrix.circuit }}-bytes-${{ matrix.bytes }}
           git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
           cp ../out/phases.tgz . && git add phases.tgz && git commit -qm "phase files" && git push -f origin $B
