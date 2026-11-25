@@ -11,13 +11,13 @@ permissions:
 jobs:
   board:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
         core: [main]
-        lanes: [base, full]
+        lanes: [base]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -70,7 +70,7 @@ jobs:
       - name: Route
         run: |
           cd core
-          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 900 > route.log 2>&1 || true
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 1800 > route.log 2>&1 || true
           tail -12 route.log
           grep -h "kept\|nets, " route.log | tail -3
           grep -h "P9DIAG" ddr-benchmark-results/${{ matrix.circuit }}/render.log | cut -c1-220 | head -300
@@ -83,9 +83,12 @@ jobs:
           echo "=====END-REPORT====="
           grep -iE "No path|ran out|AutorouterError" route.log | cut -c1-300 | head -5
           cd ddr-benchmark-results/${{ matrix.circuit }}
-          echo "=====PHASES====="
-          bun -e 'const p=JSON.parse(require("fs").readFileSync("progress.json","utf8")); for (const x of p.phases) console.log(`PHASE ${x.phase} | ${x.stage} | ${x.solver} | ${x.status} | start=${(x.startedMs/1000).toFixed(1)}s | dur=${x.durationMs==null?"-":(x.durationMs/1000).toFixed(1)+"s"} | conns=${x.connections} | cache=${x.cacheStatus}`); console.log(`ERRORS ${JSON.stringify(p.errors).slice(0,400)}`); console.log(`EVENTS ${p.solverEvents.length} last=${JSON.stringify(p.solverEvents.slice(-3)).slice(0,600)}`)'
-          mkdir -p ../../../out; tar -czf ../../../out/phases.tgz progress.json $(ls phase-*.srj.json 2>/dev/null) assessment.json 2>/dev/null || true
+          for a in routing matching; do
+            echo "=====ATTEMPT $a====="
+            [ -f attempts/$a/progress.json ] || { echo "ATTEMPT $a missing"; continue; }
+            A=$a bun -e 'const a=process.env.A; const p=JSON.parse(require("fs").readFileSync(`attempts/${a}/progress.json`,"utf8")); for (const x of p.phases) console.log(`ATTEMPT ${a} PHASE ${x.phase} | ${x.solver} | ${x.status} | dur=${x.durationMs==null?"-":(x.durationMs/1000).toFixed(1)+"s"} | conns=${x.connections}`); console.log(`ATTEMPT ${a} ERRORS ${JSON.stringify(p.errors).slice(0,300)}`)'
+          done
+          mkdir -p ../../../out; tar -czf ../../../out/phases.tgz attempts 2>/dev/null || true
       - name: Push the phase files to a branch
         if: always()
         run: |

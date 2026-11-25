@@ -70,12 +70,17 @@ export function NativeDdrBoard({
   const bytePhases = new Set(bytes.map((group) => phaseNameByGroup.get(group)!))
   // A byte's physical lane is its RAM's DQ, mask and strobe balls. Route the
   // lane's mask and strobe nets with its data so no lane closes its own pads.
+  // A lane through series resistors keeps each section with the byte group
+  // that holds the same section of its data.
   const laneGroup = new Map<string, RoutingGroup>()
   for (const lane of getDdrSkewGroups(source).filter((group) => / byte[01]$/.test(group.name))) {
-    if (!lane.signals.every((signal) => signal.sections.length === 1)) continue
-    const nets = lane.signals.flatMap((signal) => signal.sections.map(([net]) => net))
-    const byte = activeTraces.find((trace) => nets.includes(trace.name) && bytes.includes(trace.group))?.group
-    if (byte) for (const net of nets) laneGroup.set(net, byte)
+    const depth = lane.signals[0]?.sections.length ?? 0
+    if (!depth || !lane.signals.every((signal) => signal.sections.length === depth)) continue
+    for (let section = 0; section < depth; section++) {
+      const nets = lane.signals.map((signal) => signal.sections[section]![0])
+      const byte = activeTraces.find((trace) => nets.includes(trace.name) && bytes.includes(trace.group))?.group
+      if (byte) for (const net of nets) laneGroup.set(net, byte)
+    }
   }
   const routingGroup = (trace: (typeof activeTraces)[number]): RoutingGroup => laneGroup.get(trace.name) ?? trace.group
   const tracePhases = new Map(activeTraces.map((trace) => [trace.name, phaseNameByGroup.get(routingGroup(trace))!]))
