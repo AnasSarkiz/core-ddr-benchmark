@@ -71,14 +71,14 @@ jobs:
         run: |
           cd core
           python3 - <<'PYEOF'
-p="lib/utils/autorouting/getPreservedRoutedSubcircuitTraces.ts"; s=open(p).read()
-old="""    .filter((trace) => {
-      if (!trace.subcircuit_id) return false"""
-new="""    .filter((trace) => {
-      console.error(`PRESERVE trace=${trace.pcb_trace_id} source=${trace.source_trace_id} subcircuit=${trace.subcircuit_id} component=${trace.pcb_component_id} relevant=${relevantSubcircuitIds === null ? "all" : [...relevantSubcircuitIds].join("|")}`)
-      if (!trace.subcircuit_id) return false"""
-assert old in s; s=s.replace(old,new); open(p,"w").write(s)
-PYEOF
+          p="lib/utils/autorouting/getPreservedRoutedSubcircuitTraces.ts"; s=open(p).read()
+          old="""    .filter((trace) => {
+                if (!trace.subcircuit_id) return false"""
+          new="""    .filter((trace) => {
+                console.error(`PRESERVE trace=${trace.pcb_trace_id} source=${trace.source_trace_id} subcircuit=${trace.subcircuit_id} component=${trace.pcb_component_id} relevant=${relevantSubcircuitIds === null ? "all" : [...relevantSubcircuitIds].join("|")}`)
+                if (!trace.subcircuit_id) return false"""
+          assert old in s; s=s.replace(old,new); open(p,"w").write(s)
+          PYEOF
           bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 900 > route.log 2>&1 || true
           tail -12 route.log
           grep -h "P9DIAG" ddr-benchmark-results/${{ matrix.circuit }}/render.log | cut -c1-220 | head -300
