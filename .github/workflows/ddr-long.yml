@@ -16,7 +16,8 @@ jobs:
       fail-fast: false
       matrix:
         circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
-        core: [main, main-5586]
+        core: [main]
+        bga: [base, promote]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -60,6 +61,7 @@ jobs:
           cd autorouter
           git status --short
           bun install > /dev/null 2>&1
+          if [ "${{ matrix.bga }}" = promote ]; then cp ../harness-repo/harness/bga-exp/BgaEscapeRoutingSolver.ts node_modules/@tscircuit/bga-escape-routing-solver/lib/bga-escape-routing/ && echo "BGA PROMOTE APPLIED"; fi
           bun run build > build.log 2>&1; tail -3 build.log
           grep '"version"' ../core/node_modules/@tscircuit/capacity-autorouter/package.json
           rm -rf ../core/node_modules/@tscircuit/capacity-autorouter/dist
@@ -87,6 +89,6 @@ jobs:
         run: |
           cd harness-repo
           git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          B=phases/${{ matrix.circuit }}-core-${{ matrix.core }}
+          B=phases/${{ matrix.circuit }}-bga-${{ matrix.bga }}
           git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
           cp ../out/phases.tgz . && git add phases.tgz && git commit -qm "phase files" && git push -f origin $B
