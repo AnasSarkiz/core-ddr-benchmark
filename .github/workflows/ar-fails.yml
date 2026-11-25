@@ -1,4 +1,4 @@
-name: A13 via counts on current main
+name: Pipeline 9 on the failing remaining phases
 
 on:
   push:
@@ -9,23 +9,27 @@ jobs:
   run:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [a64, h3, stmp157]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
-          ref: a9da76b73d06403786f19374c2b66ff16c85b066
+          ref: dc19141bc92b21a52cb42aced8699e7ddb978924
           path: autorouter
           persist-credentials: false
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.4.3
-      - name: Count
+      - name: Run
         run: |
           cd autorouter
-          git apply --include='tests/fixtures/assets/a13-via-without-site/*' ../harness-repo/harness/ar-exp/via-repro-v1.patch
           bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/a13-via-count.ts .
-          bun a13-via-count.ts main > c.log 2>&1 || true
-          grep -E "^A13" c.log | cut -c1-250; tail -2 c.log | cut -c1-200
+          cp ../harness-repo/harness/diag/phase-fail.ts .
+          gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.circuit }}-remaining.srj.json.gz > in.srj.json
+          bun phase-fail.ts in.srj.json ${{ matrix.circuit }} > p.log 2>&1 || true
+          grep -E "^PHASE" p.log | cut -c1-600; tail -3 p.log | cut -c1-300
