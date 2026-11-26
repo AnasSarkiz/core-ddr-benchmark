@@ -15,9 +15,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a13, h3, orangecrab, stmp157]
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
         core: [main]
-        bytes: [joint]
+        bl: [main, fix]
+        bytes: [base]
+        include:
+          - { circuit: imx6, bl: main, bytes: joint }
+          - { circuit: imx6, bl: fix, bytes: joint }
+          - { circuit: icepi, bl: main, bytes: joint }
+          - { circuit: icepi, bl: fix, bytes: joint }
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -42,15 +48,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
-          ref: 78113d216f4264abcdc05f3d9fedaf556047e280
+          ref: 2718df9b52937392f648612ca4a31d6352b585a5
           path: solver
           persist-credentials: false
       - name: Build bus-lanes main and place it in Core
         run: |
           cd solver
           bun install > /dev/null 2>&1
+          if [ "${{ matrix.bl }}" = fix ]; then cp ../harness-repo/harness/bl-exp/fix/prepare-multi-terminal-fanouts.ts lib/ && echo "BL FIX APPLIED"; fi
           bun run build 2>&1 | tail -2
           echo "BUSLANES core-installed=$(grep '"version"' ../core/node_modules/@tscircuit/bus-lanes-solver/package.json)"
+          cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js && echo "BUSLANES BUILT $(git log --oneline -1)"
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
@@ -94,6 +102,6 @@ jobs:
         run: |
           cd harness-repo
           git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          B=phases/${{ matrix.circuit }}-bytes-${{ matrix.bytes }}
+          B=phases/${{ matrix.circuit }}-${{ matrix.bl }}-${{ matrix.bytes }}
           git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
           cp ../out/phases.tgz . && git add phases.tgz && git commit -qm "phase files" && git push -f origin $B
