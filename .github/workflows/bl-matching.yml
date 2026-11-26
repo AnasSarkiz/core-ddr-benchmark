@@ -36,16 +36,15 @@ jobs:
           M=../harness-repo/harness/bl-exp/matching
           gunzip -c $M/h3-phase-1.json.gz > p1.json; gunzip -c $M/h3-phase-2.json.gz > p2.json; mkdir -p out
           python3 - <<'PYEOF'
-          p = "lib/initial-signal-dogbones.ts"
+          p = "lib/prepare-multi-terminal-fanouts.ts"
           s = open(p).read()
-          old = "    const contextualError = (cause: Error, stage: string) =>\n      new Error("
+          old = "    const solver = new BusLanesPipelineSolver(\n"
           assert old in s
-          s = s.replace(old, "    const contextualError = (cause: Error, stage: string) =>\n      (console.error('DOGBONE_STACK ' + stage + ' ' + (new Error().stack ?? '').split('\\n').slice(1, 9).join(' <- ')), new Error(")
-          s = s.replace("{ cause },\n      )\n    let changed", "{ cause },\n      ))\n    let changed")
+          s = s.replace(old, "    require('fs').writeFileSync('out/branch-request.json', JSON.stringify({ connections: branches, traces }))\n" + old, 1)
           open(p, "w").write(s)
           PYEOF
           gunzip -c $M/imx6-bytes.json.gz > imx6.json
-          timeout 2400 bun imx6-branch.ts imx6.json 2>&1 | grep -E "^VAR|^ESCAPE|^PAIR|rror" | sed 's#/home/runner/work/[^ ]*/bl/##g' | cut -c1-900 | head -30 || true
+          timeout 2400 bun imx6-branch.ts imx6.json 2>&1 | grep -E "^VAR|rror" | sed 's#/home/runner/work/[^ ]*/bl/##g' | cut -c1-900 | head -30 || true
       - name: Push outputs
         if: always()
         run: |
