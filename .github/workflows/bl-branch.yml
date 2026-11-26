@@ -1,4 +1,4 @@
-name: Bus-lanes branch checks
+name: Bus-lanes repro snapshot
 
 on:
   push:
@@ -11,26 +11,29 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        branch: [repro/imx6-branch-via-layer, fix/imx6-branch-via-layer]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
-          ref: ${{ matrix.branch }}
+          ref: repro/imx6-branch-via-layer
           path: bl
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.3
-      - name: Checks
+      - name: Snapshot
         run: |
           cd bl && bun install > /dev/null 2>&1
-          echo "=====FOCUS====="; bun test tests/repros/imx6-branch-via-layer.test.ts --timeout 9999999 2>&1 | grep -vE '^\s*$' | tail -15
-          echo "=====TSC====="; bunx tsc --noEmit 2>&1 | tail -5; echo "tsc=${PIPESTATUS[0]}"
+          cp ../harness-repo/harness/bl-exp/repro-overlay/imx6-branch-via-layer.test.ts tests/repros/
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/repros/imx6-branch-via-layer.test.ts --timeout 120000 2>&1 | grep -E "^\((pass|fail)\)|error" | head
           echo "=====FMT====="; bun run format:check 2>&1 | tail -3
+          echo "=====TSC====="; bunx tsc --noEmit 2>&1 | tail -3; echo "tsc=${PIPESTATUS[0]}"
+      - name: Push the snapshot
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          git checkout -q --orphan snaps/repro-imx6-branch-via-layer; git rm -rq --cached .; git clean -fdq
+          cp ../bl/tests/repros/__snapshots__/imx6-branch-via-layer.snap.svg . && git add -A && git commit -qm snap && git push -f origin HEAD
