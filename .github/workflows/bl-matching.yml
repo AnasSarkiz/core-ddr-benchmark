@@ -1,30 +1,26 @@
-name: Bus-lanes matching phase diagnosis
+name: Bus-lanes address/command variants
 
 on:
   push:
     branches: [ci/a13-validation]
     paths: ['harness/bl-matching.trigger']
 
-permissions:
-  contents: write
-
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 55
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        circuit: [h3]
-        ref: [main]
-        variant: [base, fix]
+        circuit: [glider, h616]
+        variant: [as-given, no-targets, no-copper, neither]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
-          ref: ${{ matrix.ref }}
+          ref: main
           path: bl
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
@@ -33,16 +29,6 @@ jobs:
       - name: Route
         run: |
           cd bl && git log --oneline -1 && bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/bl-exp/chain-matching.ts ../harness-repo/harness/bl-exp/h3-variants.ts ../harness-repo/harness/bl-exp/h3-joint.ts ../harness-repo/harness/bl-exp/variants.ts ../harness-repo/harness/bl-exp/imx6.ts ../harness-repo/harness/bl-exp/imx6-branch.ts .
-          M=../harness-repo/harness/bl-exp/matching
-          gunzip -c $M/h3-phase-1.json.gz > p1.json; gunzip -c $M/h3-phase-2.json.gz > p2.json; mkdir -p out
-          if [ "${{ matrix.variant }}" = fix ]; then cp ../harness-repo/harness/bl-exp/fix/prepare-multi-terminal-fanouts.ts lib/ && git diff --stat; fi
-          gunzip -c $M/imx6-bytes.json.gz > imx6.json
-          (timeout 600 bun imx6-branch.ts imx6.json; timeout 1800 bun imx6.ts imx6.json) 2>&1 | grep -E "^VAR|rror" | sed 's#/home/runner/work/[^ ]*/bl/##g' | cut -c1-900 | head -30 || true
-      - name: Push outputs
-        if: always()
-        run: |
-          cd harness-repo
-          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          git checkout -q --orphan diag/imx6-${{ matrix.variant }}; git rm -rq --cached .; git clean -fdq
-          cp ../bl/out/* . 2>/dev/null; touch empty; git add -A && git commit -qm out && git push -f origin HEAD
+          cp ../harness-repo/harness/bl-exp/variant.ts .
+          gunzip -c ../harness-repo/harness/bl-exp/matching/${{ matrix.circuit }}-addrcmd.json.gz > in.json
+          timeout 2400 bun variant.ts in.json ${{ matrix.variant }} 2>&1 | grep -E "^VAR|rror" | cut -c1-400 || echo "VAR ${{ matrix.variant }} timed-out-40min"
