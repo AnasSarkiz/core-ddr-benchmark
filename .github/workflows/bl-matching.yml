@@ -32,11 +32,20 @@ jobs:
       - name: Route
         run: |
           cd bl && git log --oneline -1 && bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/bl-exp/chain-matching.ts ../harness-repo/harness/bl-exp/h3-variants.ts ../harness-repo/harness/bl-exp/h3-joint.ts ../harness-repo/harness/bl-exp/variants.ts .
+          cp ../harness-repo/harness/bl-exp/chain-matching.ts ../harness-repo/harness/bl-exp/h3-variants.ts ../harness-repo/harness/bl-exp/h3-joint.ts ../harness-repo/harness/bl-exp/variants.ts ../harness-repo/harness/bl-exp/imx6.ts .
           M=../harness-repo/harness/bl-exp/matching
           gunzip -c $M/h3-phase-1.json.gz > p1.json; gunzip -c $M/h3-phase-2.json.gz > p2.json; mkdir -p out
-          gunzip -c $M/h3-addrcmd.json.gz > ac.json
-          timeout 2400 bun variants.ts ac.json 2>&1 | grep -E "^VAR|rror" | cut -c1-400 || true
+          python3 - <<'PYEOF'
+          p = "lib/initial-signal-dogbones.ts"
+          s = open(p).read()
+          old = "    const contextualError = (cause: Error, stage: string) =>\n      new Error("
+          assert old in s
+          s = s.replace(old, "    const contextualError = (cause: Error, stage: string) =>\n      (console.error('DOGBONE_STACK ' + stage + ' ' + (new Error().stack ?? '').split('\\n').slice(1, 9).join(' <- ')), new Error(")
+          s = s.replace("{ cause },\n      )\n    let changed", "{ cause },\n      ))\n    let changed")
+          open(p, "w").write(s)
+          PYEOF
+          gunzip -c $M/imx6-bytes.json.gz > imx6.json
+          timeout 2400 bun imx6.ts imx6.json 2>&1 | grep -E "^VAR|^BUS|DOGBONE_STACK|rror" | sed 's#/home/runner/work/[^ ]*/bl/##g' | cut -c1-900 | head -30 || true
       - name: Push outputs
         if: always()
         run: |
