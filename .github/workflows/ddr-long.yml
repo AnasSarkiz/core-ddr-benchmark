@@ -17,13 +17,7 @@ jobs:
       matrix:
         circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
         core: [main]
-        bl: [main, fix]
-        bytes: [base]
-        include:
-          - { circuit: imx6, bl: main, bytes: joint }
-          - { circuit: imx6, bl: fix, bytes: joint }
-          - { circuit: icepi, bl: main, bytes: joint }
-          - { circuit: icepi, bl: fix, bytes: joint }
+        core: [main, pin]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -40,11 +34,11 @@ jobs:
       - name: Core under test
         run: |
           cd core
-          if [ "${{ matrix.core }}" = main-5586 ]; then git fetch -q origin fix/h3-phase-future-intent && git -c user.name=ci -c user.email=ci@example.com merge --no-edit -q FETCH_HEAD && echo "MERGED 5586" || { echo "MERGE 5586 FAILED"; git merge --abort; exit 1; }; fi
+          if [ "${{ matrix.core }}" = pin ]; then git fetch -q origin pin/bus-lanes-branch-via-layer && git checkout -q FETCH_HEAD; fi
           echo "CORE $(git log --oneline -1)"
           echo "BENCH $(grep -o '"version": *"[^"]*"' node_modules/@tscircuit/core-ddr-benchmark/package.json 2>/dev/null)"
           bun install --ignore-scripts > /dev/null
-          if [ "${{ matrix.bytes }}" = joint ]; then cp ../harness-repo/harness/bench-exp/native-ddr-board.tsx node_modules/@tscircuit/core-ddr-benchmark/circuits/ && echo "JOINT BYTES APPLIED"; fi
+          echo "PINS $(grep -o '"@tscircuit/bus-lanes-solver": "[^"]*"' package.json) $(grep -o 'core-ddr-benchmark#[0-9a-f]*' package.json)"
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/bus-lanes-solver
@@ -55,10 +49,8 @@ jobs:
         run: |
           cd solver
           bun install > /dev/null 2>&1
-          if [ "${{ matrix.bl }}" = fix ]; then cp ../harness-repo/harness/bl-exp/fix/prepare-multi-terminal-fanouts.ts lib/ && echo "BL FIX APPLIED"; fi
           bun run build 2>&1 | tail -2
           echo "BUSLANES core-installed=$(grep '"version"' ../core/node_modules/@tscircuit/bus-lanes-solver/package.json)"
-          cp dist/index.js ../core/node_modules/@tscircuit/bus-lanes-solver/dist/index.js && echo "BUSLANES BUILT $(git log --oneline -1)"
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
@@ -102,6 +94,6 @@ jobs:
         run: |
           cd harness-repo
           git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          B=phases/${{ matrix.circuit }}-${{ matrix.bl }}-${{ matrix.bytes }}
+          B=phases/${{ matrix.circuit }}-core-${{ matrix.core }}
           git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
           cp ../out/phases.tgz . && git add phases.tgz && git commit -qm "phase files" && git push -f origin $B
