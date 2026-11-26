@@ -5,6 +5,9 @@ on:
     branches: [ci/a13-validation]
     paths: ['harness/bl-matching.trigger']
 
+permissions:
+  contents: write
+
 jobs:
   run:
     runs-on: ubuntu-24.04
@@ -12,8 +15,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [glider, h616]
-        variant: [as-given, no-targets, no-copper, neither]
+        circuit: [h616]
+        variant: [no-copper]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -32,3 +35,9 @@ jobs:
           cp ../harness-repo/harness/bl-exp/variant.ts .
           gunzip -c ../harness-repo/harness/bl-exp/matching/${{ matrix.circuit }}-addrcmd.json.gz > in.json
           timeout 2400 bun variant.ts in.json ${{ matrix.variant }} 2>&1 | grep -E "^VAR|rror" | cut -c1-400 || echo "VAR ${{ matrix.variant }} timed-out-40min"
+      - name: Push output
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          git checkout -q --orphan diag/${{ matrix.circuit }}-addrcmd-free; git rm -rq --cached .; git clean -fdq
+          cp ../bl/out-*.json . && git add -A && git commit -qm out && git push -f origin HEAD
