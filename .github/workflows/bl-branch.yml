@@ -1,0 +1,45 @@
+name: Bus-lanes branch checks
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/bl-branch.trigger']
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [repro/imx6-branch-via-layer, fix/imx6-branch-via-layer]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: ${{ matrix.branch }}
+          path: bl
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Checks
+        run: |
+          cd bl && bun install > /dev/null 2>&1
+          echo "=====FOCUS====="; BUN_UPDATE_SNAPSHOTS=1 bun test tests/repros/imx6-branch-via-layer.test.ts --timeout 9999999 2>&1 | grep -vE '^\s*$' | tail -15
+          echo "=====TSC====="; bunx tsc --noEmit 2>&1 | tail -5; echo "tsc=${PIPESTATUS[0]}"
+          echo "=====FMT====="; bun run format:check 2>&1 | tail -4
+          echo "=====FULL====="; bun test 2>&1 | grep -E "^\(fail\)| pass$| fail$|^Ran " | tail -25
+      - name: Push the snapshot
+        if: always()
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          B=snaps/$(echo ${{ matrix.branch }} | tr / -)
+          git checkout -q --orphan $B; git rm -rq --cached .; git clean -fdq
+          cp ../bl/tests/repros/__snapshots__/imx6-branch-via-layer.snap.svg . 2>/dev/null; touch empty; git add -A && git commit -qm snap && git push -f origin $B
