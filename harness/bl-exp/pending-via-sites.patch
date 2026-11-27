@@ -1,0 +1,208 @@
+diff --git a/lib/pending-via-sites.ts b/lib/pending-via-sites.ts
+new file mode 100644
+index 0000000..5c364e8
+--- /dev/null
++++ b/lib/pending-via-sites.ts
+@@ -0,0 +1,132 @@
++import { getCopperLayerNames } from "@tscircuit/fanout-solver"
++import { getConnectedPadGroups } from "./connected-pad-groups"
++import { expandedSignalSites } from "./expanded-signal-sites"
++import { pointSegmentDistance, segmentDistance } from "./geometry"
++import type {
++  Obstacle,
++  Point,
++  SimpleRouteJson,
++  Terminal,
++  Trace,
++  Wire,
++} from "./types"
++
++type PortPad = Obstacle & { circuitJsonMetadata?: { pcb_port_id?: string } }
++
++/** A pad of a net that no connection or supplied trace in this request owns:
++ * a later request still has to escape from it. */
++export type PendingPad = { pad: Obstacle; port: string; owners: string[] }
++
++/** Pads of nets that join at least two native ports but that this request
++ * neither routes nor receives as supplied copper. */
++export function getPendingPads(input: SimpleRouteJson): PendingPad[] {
++  const assigned = new Set([
++    ...input.connections.flatMap((connection) => [
++      connection.name,
++      connection.source_trace_id,
++      ...connection.pointsToConnect.flatMap((point) => [
++        point.pointId,
++        point.pcb_port_id,
++      ]),
++    ]),
++    ...(input.traces ?? []).flatMap((trace) => [
++      trace.connection_name,
++      trace.source_trace_id,
++    ]),
++  ])
++  const result: PendingPad[] = []
++  for (const group of getConnectedPadGroups(
++    input.obstacles.filter((pad) => pad.componentId),
++  )) {
++    if (group.size < 2) continue
++    const owners = [...new Set([...group].flatMap((pad) => pad.connectedTo))]
++    if (owners.some((owner) => assigned.has(owner))) continue
++    const pads = [...group].flatMap((pad) => {
++      const port = (pad as PortPad).circuitJsonMetadata?.pcb_port_id
++      return port ? [{ pad, port, owners }] : []
++    })
++    if (new Set(pads.map((p) => p.port)).size >= 2) result.push(...pads)
++  }
++  return result
++}
++
++type Site = { via: Point; escape: Wire[] }
++
++/** Tuning is optional copper: it may use a pending pad's via sites only while
++ * that pad keeps at least one. Sites are the solver's own expanded signal
++ * sites, generated beside the copper already present (`traces` included).
++ * Board coordinates in mm, +X right, +Y up. */
++export function createPendingViaSiteGuard(
++  input: SimpleRouteJson,
++  traces: Trace[],
++): (path: Point[], layer: string, width: number) => boolean {
++  const pending = getPendingPads(input)
++  const physical = getCopperLayerNames(input.layerCount)
++  const targetLayer = physical.at(-1)!
++  const siteInput: SimpleRouteJson = {
++    ...input,
++    traces: [...(input.traces ?? []), ...traces],
++  }
++  const sites = new Map<PendingPad, Site[]>()
++  const sitesOf = (pending: PendingPad): Site[] => {
++    const cached = sites.get(pending)
++    if (cached) return cached
++    const { pad, port } = pending
++    const point: Terminal = {
++      x: pad.center.x,
++      y: pad.center.y,
++      layer: pad.layers[0],
++      layers: pad.layers,
++      pcb_port_id: port,
++    }
++    const connection = { name: port, pointsToConnect: [point, point] }
++    const search = expandedSignalSites({
++      input: { ...siteInput, connections: [connection] },
++      connection,
++      targetLayer,
++    })
++    let step = search.next()
++    while (!step.done) step = search.next()
++    const result = step.value[0].map((site) => ({
++      via: site.point,
++      // The surface stub ends at the via; only its wires occupy the pad layer.
++      escape: site.escape.route.filter(
++        (p): p is Wire => p.route_type === "wire",
++      ),
++    }))
++    sites.set(pending, result)
++    return result
++  }
++  const clearance =
++    input.minTraceToPadEdgeClearance ?? input.defaultObstacleMargin ?? 0.075
++  const viaRadius = (input.minViaPadDiameter ?? 0.3) / 2
++  return (path, layer, width) => {
++    const margin = width / 2 + clearance
++    const reach = 2.5 + viaRadius + margin
++    const minX = Math.min(...path.map((p) => p.x)) - reach,
++      maxX = Math.max(...path.map((p) => p.x)) + reach,
++      minY = Math.min(...path.map((p) => p.y)) - reach,
++      maxY = Math.max(...path.map((p) => p.y)) + reach
++    const segments = path.slice(1).map((p, i) => [path[i], p] as [Point, Point])
++    const blocks = (site: Site): boolean =>
++      segments.some(
++        (segment) =>
++          pointSegmentDistance(site.via, segment) < viaRadius + margin ||
++          (site.escape[0]?.layer === layer &&
++            site.escape
++              .slice(1)
++              .some(
++                (p, i) =>
++                  segmentDistance(segment, [site.escape[i], p]) <
++                  site.escape[i].width / 2 + margin,
++              )),
++      )
++    return pending.every((p) => {
++      const { x, y } = p.pad.center
++      if (x < minX || x > maxX || y < minY || y > maxY) return true
++      if (p.pad.layers.includes(targetLayer)) return true
++      const padSites = sitesOf(p)
++      return !padSites.length || padSites.some((site) => !blocks(site))
++    })
++  }
++}
+diff --git a/lib/smooth-length-tuning.ts b/lib/smooth-length-tuning.ts
+index 8f7565f..3b93ca3 100644
+--- a/lib/smooth-length-tuning.ts
++++ b/lib/smooth-length-tuning.ts
+@@ -10,6 +10,7 @@ import {
+   assertLengthTargets,
+ } from "./route-lengths"
+ import { distance, length, simplify, segmentDistance } from "./geometry"
++import { createPendingViaSiteGuard } from "./pending-via-sites"
+ import { VectorScene, fixedCopper, routeCopper } from "./vector-scene"
+ import type {
+   SimpleRouteJson,
+@@ -82,6 +83,7 @@ export function tuneSmoothLengths(
+   function* candidates(
+     t: Trace,
+     scene: VectorScene,
++    keepsPendingViaSites: ReturnType<typeof createPendingViaSiteGuard>,
+     fractionOfDeficit = 1,
+   ): Generator<Trace> {
+     const connection = input.connections.find(
+@@ -288,7 +290,12 @@ export function tuneSmoothLengths(
+                 continue
+               if (
+                 !terminalViaCopperIsClear(next) ||
+-                !tuningPathIsSelfClear(next, returnSpacing)
++                !tuningPathIsSelfClear(next, returnSpacing) ||
++                !keepsPendingViaSites(
++                  bump,
++                  connection.pointsToConnect[0].layer,
++                  width,
++                )
+               )
+                 continue
+               const candidate: Trace = {
+@@ -354,13 +361,19 @@ export function tuneSmoothLengths(
+         (result[index].route[0] as Wire).width,
+         [...fixed, ...result.flatMap(routeCopper)],
+       )
++      const keepsPendingViaSites = createPendingViaSiteGuard(input, result)
+       let next: Trace | undefined
+       if (!options.candidateScore)
+-        next = candidates(result[index], scene).next().value
++        next = candidates(result[index], scene, keepsPendingViaSites).next()
++          .value
+       else {
+         let best = Infinity,
+           evaluated = 0
+-        for (const candidate of candidates(result[index], scene)) {
++        for (const candidate of candidates(
++          result[index],
++          scene,
++          keepsPendingViaSites,
++        )) {
+           const score = options.candidateScore(candidate)
+           if (score < best) {
+             best = score
+@@ -375,7 +388,12 @@ export function tuneSmoothLengths(
+       // pending lane has exhausted those candidates.
+       if (!next && allowPartial && (partialBanks.get(index) ?? 0) < 8) {
+         for (const fraction of [0.5, 0.25]) {
+-          next = candidates(result[index], scene, fraction).next().value
++          next = candidates(
++            result[index],
++            scene,
++            keepsPendingViaSites,
++            fraction,
++          ).next().value
+           if (next) {
+             partialBanks.set(index, (partialBanks.get(index) ?? 0) + 1)
+             break

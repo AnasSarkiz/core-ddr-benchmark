@@ -9,6 +9,10 @@ jobs:
   run:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        patch: [none, pending-via-sites]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -24,6 +28,7 @@ jobs:
       - name: Escapes
         run: |
           cd bl && git log --oneline -1 && bun install > /dev/null 2>&1
+          [ "${{ matrix.patch }}" = none ] || git apply ../harness-repo/harness/bl-exp/${{ matrix.patch }}.patch
           cp ../harness-repo/harness/bl-exp/pad-escapes.ts tests/fixtures/
           cp ../harness-repo/harness/bl-exp/bs-escapes.ts .
           D=../harness-repo/harness/bl-exp/bs; for n in 1 2 3 5; do gunzip -c $D/phase-$n.json.gz > p$n.json; done
