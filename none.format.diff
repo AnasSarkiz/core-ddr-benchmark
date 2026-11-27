@@ -1,0 +1,17 @@
+diff --git a/tests/repros/butterstick-tuning-pending-via-sites.test.ts b/tests/repros/butterstick-tuning-pending-via-sites.test.ts
+index 84966aa..e46d86e 100644
+--- a/tests/repros/butterstick-tuning-pending-via-sites.test.ts
++++ b/tests/repros/butterstick-tuning-pending-via-sites.test.ts
+@@ -137,7 +137,11 @@ test("ButterStick address/command tuning takes the last via sites of two pending
+   const top = Math.max(...input.obstacles.map((o) => o.center.y + o.height / 2))
+   graphics.circles = [
+     ...(graphics.circles ?? []),
+-    ...lost.map((p) => ({ center: p.pad.center, radius: 0.45, stroke: "#dc2626" })),
++    ...lost.map((p) => ({
++      center: p.pad.center,
++      radius: 0.45,
++      stroke: "#dc2626",
++    })),
+   ]
+   graphics.texts = [
+     {
