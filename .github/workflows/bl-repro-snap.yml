@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        patch: [none, pending-via-sites]
+        patch: [repro, fix]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -31,9 +31,7 @@ jobs:
       - name: Test
         run: |
           cd bl && bun install > /dev/null 2>&1
-          [ "${{ matrix.patch }}" = none ] || git apply ../harness-repo/harness/bl-exp/${{ matrix.patch }}.patch
-          cp ../harness-repo/harness/bl-exp/repro/*.test.ts tests/repros/
-          mkdir -p tests/fixtures/butterstick-address-command-tuning && cp ../harness-repo/harness/bl-exp/repro/fixture/* tests/fixtures/butterstick-address-command-tuning/
+          git apply ../harness-repo/harness/bl-exp/${{ matrix.patch }}.patch
           BUN_UPDATE_SNAPSHOTS=1 bun test tests/repros/butterstick-tuning-pending-via-sites.test.ts --timeout 600000 2>&1 | tail -40
           mkdir -p ../out && cp tests/repros/__snapshots__/butterstick-tuning-pending-via-sites.snap.svg ../out/${{ matrix.patch }}.snap.svg || true
           git add -A && git commit -qm pre --no-verify -c user.name=x -c user.email=x@x 2>/dev/null || git -c user.name=x -c user.email=x@x commit -qm pre

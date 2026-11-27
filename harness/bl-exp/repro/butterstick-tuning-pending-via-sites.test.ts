@@ -137,25 +137,32 @@ test("ButterStick address/command tuning takes the last via sites of two pending
   const top = Math.max(...input.obstacles.map((o) => o.center.y + o.height / 2))
   graphics.circles = [
     ...(graphics.circles ?? []),
-    ...lost.map((p) => ({ center: p.pad.center, radius: 0.45, stroke: "#dc2626" })),
+    ...lost.map((p) => ({
+      center: p.pad.center,
+      radius: 0.5,
+      fill: "rgba(220, 38, 38, 0.45)",
+      label: `${p.net}: no via site left`,
+    })),
   ]
   graphics.texts = [
     {
       x: left,
-      y: top + 1,
+      y: top + 1.6,
       text: `U11 address/command bus routed and matched; its tuning leaves ${lost.length} pending RAM pads without a via site`,
       color: lost.length ? "#b91c1c" : "#166534",
       fontSize: 0.55,
       anchorSide: "bottom_left",
     },
-    ...lost.map((p, index) => ({
-      x: p.pad.center.x - 1,
-      y: top + 0.2 + index * 0.6,
-      text: `${p.net}: no via site left`,
-      color: "#b91c1c",
-      fontSize: 0.4,
-      anchorSide: "bottom_right" as const,
-    })),
+    {
+      x: left,
+      y: top + 0.8,
+      text: lost.length
+        ? `Filled red: ${lost.map((p) => p.net).join(", ")} (each had a via site before this bus)`
+        : "Every pending pad that had a via site before this bus keeps one",
+      color: "#374151",
+      fontSize: 0.45,
+      anchorSide: "bottom_left",
+    },
   ]
   await expect(
     getSvgFromGraphicsObject(graphics, { backgroundColor: "white" }),
