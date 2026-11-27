@@ -8,11 +8,12 @@ on:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 55
     strategy:
       fail-fast: false
       matrix:
         input: [butterstick-matching-remaining]
+        effort: [1, 2, 4]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -30,5 +31,5 @@ jobs:
           cd autorouter && git log --oneline -1 && bun install > /dev/null 2>&1
           cp ../harness-repo/harness/diag/phase-fail.ts .
           gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.input }}.srj.json.gz > in.srj.json
-          timeout 1800 bun phase-fail.ts in.srj.json ${{ matrix.input }} > p.log 2>&1 || true
+          timeout 3000 bun phase-fail.ts in.srj.json ${{ matrix.input }}-effort${{ matrix.effort }} ${{ matrix.effort }} > p.log 2>&1 || true
           grep -E "^PHASE" p.log | grep -v " stage " | cut -c1-700; grep " stage " p.log | tr '\n' ' ' | cut -c1-1500; echo; tail -4 p.log | cut -c1-400

@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs"
 import { AutoroutingPipelineSolver9_PreloadedTraceGraph } from "lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/AutoroutingPipelineSolver9_PreloadedTraceGraph"
 
-const [srjPath, label] = process.argv.slice(2)
+const [srjPath, label, effortArg] = process.argv.slice(2)
 const raw = JSON.parse(readFileSync(srjPath, "utf8"))
 const input = raw.simpleRouteJson ?? raw
-const solver: any = new AutoroutingPipelineSolver9_PreloadedTraceGraph(input, { cacheProvider: null })
+const solver: any = new AutoroutingPipelineSolver9_PreloadedTraceGraph(input, { cacheProvider: null, effort: Number(effortArg ?? 1) })
 const started = Date.now()
 let stageStarted = Date.now()
 let guard = 0
