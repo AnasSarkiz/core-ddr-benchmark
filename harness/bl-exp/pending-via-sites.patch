@@ -149,73 +149,24 @@ index 0000000..06fbde6
 +    })
 +  }
 +}
-diff --git a/lib/smooth-length-tuning.ts b/lib/smooth-length-tuning.ts
-index 8f7565f..3b93ca3 100644
---- a/lib/smooth-length-tuning.ts
-+++ b/lib/smooth-length-tuning.ts
-@@ -10,6 +10,7 @@ import {
-   assertLengthTargets,
- } from "./route-lengths"
- import { distance, length, simplify, segmentDistance } from "./geometry"
-+import { createPendingViaSiteGuard } from "./pending-via-sites"
- import { VectorScene, fixedCopper, routeCopper } from "./vector-scene"
- import type {
-   SimpleRouteJson,
-@@ -82,6 +83,7 @@ export function tuneSmoothLengths(
-   function* candidates(
-     t: Trace,
-     scene: VectorScene,
-+    keepsPendingViaSites: ReturnType<typeof createPendingViaSiteGuard>,
-     fractionOfDeficit = 1,
-   ): Generator<Trace> {
-     const connection = input.connections.find(
-@@ -288,7 +290,12 @@ export function tuneSmoothLengths(
-                 continue
-               if (
-                 !terminalViaCopperIsClear(next) ||
--                !tuningPathIsSelfClear(next, returnSpacing)
-+                !tuningPathIsSelfClear(next, returnSpacing) ||
-+                !keepsPendingViaSites(
-+                  bump,
-+                  connection.pointsToConnect[0].layer,
-+                  width,
-+                )
-               )
-                 continue
-               const candidate: Trace = {
-@@ -354,13 +361,19 @@ export function tuneSmoothLengths(
-         (result[index].route[0] as Wire).width,
-         [...fixed, ...result.flatMap(routeCopper)],
-       )
-+      const keepsPendingViaSites = createPendingViaSiteGuard(input, result)
-       let next: Trace | undefined
-       if (!options.candidateScore)
--        next = candidates(result[index], scene).next().value
-+        next = candidates(result[index], scene, keepsPendingViaSites).next()
-+          .value
-       else {
-         let best = Infinity,
-           evaluated = 0
--        for (const candidate of candidates(result[index], scene)) {
-+        for (const candidate of candidates(
-+          result[index],
-+          scene,
-+          keepsPendingViaSites,
-+        )) {
-           const score = options.candidateScore(candidate)
-           if (score < best) {
-             best = score
-@@ -375,7 +388,12 @@ export function tuneSmoothLengths(
-       // pending lane has exhausted those candidates.
-       if (!next && allowPartial && (partialBanks.get(index) ?? 0) < 8) {
-         for (const fraction of [0.5, 0.25]) {
--          next = candidates(result[index], scene, fraction).next().value
-+          next = candidates(
-+            result[index],
-+            scene,
-+            keepsPendingViaSites,
-+            fraction,
-+          ).next().value
-           if (next) {
-             partialBanks.set(index, (partialBanks.get(index) ?? 0) + 1)
-             break
+diff --git a/tests/repros/butterstick-tuning-pending-via-sites.test.ts b/tests/repros/butterstick-tuning-pending-via-sites.test.ts
+index 84966aa..82102c6 100644
+--- a/tests/repros/butterstick-tuning-pending-via-sites.test.ts
++++ b/tests/repros/butterstick-tuning-pending-via-sites.test.ts
+@@ -119,10 +119,16 @@ test("ButterStick address/command tuning takes the last via sites of two pending
+   expect(report!.aboveMinimumLength).toBe(true)
+   expect(report!.matched).toBe(true)
+ 
++<<<<<<< HEAD
+   // Pending: the next address/command bus and the remaining phase. A pad
+   // loses its escape via only if it had one before this bus.
+   const pending = getPendingPads(input)
+   expect(new Set(pending.map((p) => p.net)).size).toBe(36)
++=======
++  // A pad loses its escape via only if it had one before this bus.
++  const pending = getPendingPads(input)
++  expect(new Set(pending.map((p) => p.net)).size).toBe(33)
++>>>>>>> 979de1f (repro: ButterStick address/command tuning takes the last via sites of two pending RAM pads)
+   const routed = { ...input, traces }
+   const lost = pending.filter(
+     (p) => hasViaSite(input, p) && !hasViaSite(routed, p),

@@ -119,9 +119,10 @@ test("ButterStick address/command tuning takes the last via sites of two pending
   expect(report!.aboveMinimumLength).toBe(true)
   expect(report!.matched).toBe(true)
 
-  // A pad loses its escape via only if it had one before this bus.
+  // Pending: the next address/command bus and the remaining phase. A pad
+  // loses its escape via only if it had one before this bus.
   const pending = getPendingPads(input)
-  expect(new Set(pending.map((p) => p.net)).size).toBe(33)
+  expect(new Set(pending.map((p) => p.net)).size).toBe(36)
   const routed = { ...input, traces }
   const lost = pending.filter(
     (p) => hasViaSite(input, p) && !hasViaSite(routed, p),
