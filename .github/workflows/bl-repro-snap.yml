@@ -36,6 +36,9 @@ jobs:
           mkdir -p tests/fixtures/butterstick-address-command-tuning && cp ../harness-repo/harness/bl-exp/repro/fixture/* tests/fixtures/butterstick-address-command-tuning/
           BUN_UPDATE_SNAPSHOTS=1 bun test tests/repros/butterstick-tuning-pending-via-sites.test.ts --timeout 600000 2>&1 | tail -40
           mkdir -p ../out && cp tests/repros/__snapshots__/butterstick-tuning-pending-via-sites.snap.svg ../out/${{ matrix.patch }}.snap.svg || true
+          git add -A && git commit -qm pre --no-verify -c user.name=x -c user.email=x@x 2>/dev/null || git -c user.name=x -c user.email=x@x commit -qm pre
+          bun run format > /dev/null 2>&1; git diff > ../out/${{ matrix.patch }}.format.diff; wc -l ../out/${{ matrix.patch }}.format.diff
+          bunx tsc --noEmit 2>&1 | head -20; echo TSC_DONE
       - name: Publish
         run: |
           cd harness-repo
@@ -44,6 +47,6 @@ jobs:
             git fetch -q origin diag/repro-snaps 2>/dev/null && git checkout -q -B snaps FETCH_HEAD || git checkout -q --orphan snaps
             git rm -rq --cached . 2>/dev/null; find . -maxdepth 1 ! -name .git ! -name . -exec rm -rf {} +
             git checkout -q FETCH_HEAD -- . 2>/dev/null || true
-            cp ../out/*.svg . && git add -A && git commit -qm "${{ matrix.patch }}" && git push -q origin HEAD:diag/repro-snaps && break
+            cp ../out/* . && git add -A && git commit -qm "${{ matrix.patch }}" && git push -q origin HEAD:diag/repro-snaps && break
             sleep 5
           done
