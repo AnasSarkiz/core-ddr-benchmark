@@ -1,50 +1,34 @@
-name: Capture the STM32MP157 BGA solver input
+name: Pipeline 9 on a phase input
 
 on:
   push:
     branches: [ci/a13-validation]
     paths: ['harness/ar-fails.trigger']
 
-permissions:
-  contents: write
-
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        circuit: [stmp157]
-        input: [coremain]
-        ref: [dc19141b]
-        bga: [base]
+        input: [butterstick-matching-remaining]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
       - uses: actions/checkout@v4
         with:
           repository: tscircuit/tscircuit-autorouter
+          ref: main
           path: autorouter
-          fetch-depth: 0
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.3
       - name: Run
         run: |
-          cd autorouter
-          git checkout -q ${{ matrix.ref }} && git log --oneline -1
-          bun install > /dev/null 2>&1
-          if [ "${{ matrix.bga }}" = promote ]; then cp ../harness-repo/harness/bga-exp/BgaEscapeRoutingSolver.ts node_modules/@tscircuit/bga-escape-routing-solver/lib/bga-escape-routing/; fi
-          cp ../harness-repo/harness/diag/phase-fail.ts ../harness-repo/harness/diag/bga-fail.ts .
-          gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.circuit }}-${{ matrix.input }}.srj.json.gz > in.srj.json
-          cp ../harness-repo/harness/diag/bga-input.ts .
-          bun bga-input.ts in.srj.json /tmp/bga-input.json > p.log 2>&1 || true
-          grep -E "^PHASE" p.log | grep -v " stage " | cut -c1-700; grep " stage " p.log | tr '\n' ' ' | cut -c1-900; echo; tail -3 p.log | cut -c1-300
-      - name: Push the BGA input
-        run: |
-          cd harness-repo
-          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
-          git checkout -q --orphan diag/bga-input-${{ matrix.circuit }}; git rm -rq --cached .; git clean -fdq
-          cp /tmp/bga-input.json . && git add bga-input.json && git commit -qm input && git push -f origin HEAD
+          cd autorouter && git log --oneline -1 && bun install > /dev/null 2>&1
+          cp ../harness-repo/harness/diag/phase-fail.ts .
+          gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.input }}.srj.json.gz > in.srj.json
+          timeout 1800 bun phase-fail.ts in.srj.json ${{ matrix.input }} > p.log 2>&1 || true
+          grep -E "^PHASE" p.log | grep -v " stage " | cut -c1-700; grep " stage " p.log | tr '\n' ' ' | cut -c1-1500; echo; tail -4 p.log | cut -c1-400
