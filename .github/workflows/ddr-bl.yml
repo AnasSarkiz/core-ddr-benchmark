@@ -12,8 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        circuit: [a13, glider]
-        rep: [1, 2, 3]
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
         variant: [bl-base, bl-fix]
     steps:
       - uses: actions/checkout@v4
