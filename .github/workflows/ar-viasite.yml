@@ -1,0 +1,33 @@
+name: Pipeline 9 via-site refinement dump
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/ar-viasite.trigger']
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/tscircuit-autorouter
+          ref: main
+          path: autorouter
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Run
+        run: |
+          cd autorouter && git log --oneline -1 && bun install > /dev/null 2>&1
+          cp ../harness-repo/harness/diag/viasite.ts .
+          gunzip -c ../harness-repo/harness/phase-inputs/butterstick-matching-remaining.srj.json.gz > in.srj.json
+          bun viasite.ts in.srj.json ../viasite.json.gz 2>&1 | grep VIASITE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viasite
+          path: viasite.json.gz
