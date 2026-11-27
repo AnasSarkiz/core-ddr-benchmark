@@ -1,0 +1,30 @@
+diff --git a/lib/smooth-length-tuning.ts b/lib/smooth-length-tuning.ts
+index 8f7565f..7a072ed 100644
+--- a/lib/smooth-length-tuning.ts
++++ b/lib/smooth-length-tuning.ts
+@@ -79,6 +79,8 @@ export function tuneSmoothLengths(
+   let allowFolded = false
+   let allowClearanceBends = false
+   const fixed = fixedCopper(input)
++  // Ball fields stay free for escapes of pads routed by later phases.
++  const fields = packageApproachRegions(input, 0).map((r) => r.pads)
+   function* candidates(
+     t: Trace,
+     scene: VectorScene,
+@@ -270,6 +272,16 @@ export function tuneSmoothLengths(
+               )
+               if (
+                 !lobes ||
++                (!pair &&
++                  lobes.some((p) =>
++                    fields.some(
++                      (f) =>
++                        p.x > f.minX &&
++                        p.x < f.maxX &&
++                        p.y > f.minY &&
++                        p.y < f.maxY,
++                    ),
++                  )) ||
+                 (regions.length &&
+                   !regions.some((r) =>
+                     lobes.every((p) => pointInBox(p, r.copper)),
