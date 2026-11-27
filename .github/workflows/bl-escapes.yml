@@ -1,0 +1,30 @@
+name: ButterStick pending pad escapes around phase 3
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/bl-escapes.trigger']
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: main
+          path: bl
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Escapes
+        run: |
+          cd bl && git log --oneline -1 && bun install > /dev/null 2>&1
+          cp ../harness-repo/harness/bl-exp/pad-escapes.ts tests/fixtures/
+          cp ../harness-repo/harness/bl-exp/bs-escapes.ts .
+          D=../harness-repo/harness/bl-exp/bs; for n in 1 2 3 5; do gunzip -c $D/phase-$n.json.gz > p$n.json; done
+          timeout 2000 bun bs-escapes.ts p1.json p2.json p3.json p5.json 2>&1 | grep -E "^ESC|rror" | cut -c1-300
