@@ -5,6 +5,9 @@ on:
     branches: [ci/a13-validation]
     paths: ['harness/ar-fails.trigger']
 
+permissions:
+  contents: write
+
 jobs:
   run:
     runs-on: ubuntu-24.04
@@ -12,9 +15,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        input: [butterstick-routing-remaining, butterstick-matching-remaining, butterstick-matching-remaining-bytesonly]
+        input: [butterstick-matching-remaining-bytesonly]
         effort: [1]
-        ref: [main, 93818dcfe4b9174c4cf120e72957b5b88c6aed26]
+        ref: [main]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -30,7 +33,14 @@ jobs:
       - name: Run
         run: |
           cd autorouter && git log --oneline -1 && bun install > /dev/null 2>&1
-          cp ../harness-repo/harness/diag/phase-fail.ts ../harness-repo/harness/diag/planner-stuck.ts .
+          cp ../harness-repo/harness/diag/hd-node.ts .
           gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.input }}.srj.json.gz > in.srj.json
-          timeout 3000 bun phase-fail.ts in.srj.json ${{ matrix.input }} ${{ matrix.effort }} > q.log 2>&1 || true
-          grep -E "^PHASE .*(solved=|error=|failingStage)" q.log | cut -c1-400
+          mkdir -p out; timeout 1500 bun hd-node.ts in.srj.json out > q.log 2>&1 || true
+          grep -E "^HD" q.log | cut -c1-400; tail -3 q.log | cut -c1-300
+      - name: Push node
+        if: always()
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          git checkout -q --orphan diag/bs-hd-node; git rm -rq --cached .; git clean -fdq
+          cp ../autorouter/out/* . 2>/dev/null; touch empty; git add -A && git commit -qm node && git push -f origin HEAD
