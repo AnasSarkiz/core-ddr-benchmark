@@ -31,7 +31,7 @@ jobs:
         run: |
           cd core && git log --oneline -1 && grep bus-lanes-solver package.json
           bun install --ignore-scripts > /dev/null
-          grep '"version"' node_modules/@tscircuit/bus-lanes-solver/package.json; grep -c keepPendingViaSites node_modules/@tscircuit/bus-lanes-solver/dist/index.js || true
+          grep '"version"' node_modules/@tscircuit/bus-lanes-solver/package.json; grep -c MAX_SITE_SURFACE_LENGTH node_modules/@tscircuit/bus-lanes-solver/dist/index.js || true
       - name: Route
         run: |
           cd core
