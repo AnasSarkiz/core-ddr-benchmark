@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        input: [butterstick-matching-remaining]
+        input: [butterstick-matching-remaining, butterstick-matching-remaining-bytesonly, butterstick-matching-remaining-addrcmdonly, butterstick-matching-remaining-notraces, butterstick-routing-remaining]
         ref: [main]
     steps:
       - uses: actions/checkout@v4

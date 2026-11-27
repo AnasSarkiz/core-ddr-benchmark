@@ -31,7 +31,8 @@ while (!pipeline.solved && !pipeline.failed) {
   const graph: any = tiny?.getSolver?.("solveGraph")
   if (!graph) continue
   if (graph !== graphSeen) {
-    events.push(`new solveGraph instance at pipelineStep=${steps}`)
+    if (graphSeen) events.push(`end solveGraph instance iterations=${graphSeen.iterations} solved=${graphSeen.solved} failed=${graphSeen.failed} unrouted=${graphSeen.state?.unroutedRoutes?.length} current=${graphSeen.state?.currentRouteId} error=${String(graphSeen.error).slice(0, 120)}`)
+    events.push(`new solveGraph instance at pipelineStep=${steps} phase=${pipeline.portPointPathingSolver?.candidatePortfolioPhase}`)
     graphSeen = graph
     lastIter = graph.iterations
     lastRoute = undefined
@@ -66,10 +67,13 @@ const describe = (r: number): string => {
     `${p}@(${topology.portX[p].toFixed(2)},${topology.portY[p].toFixed(2)},z${topology.portZ[p]}) ${topology.portMetadata?.[p]?.serializedPortId ?? ""}`
   return `route=${r} conn=${meta.connectionId} net=${problem.routeNet[r]} fixed=${problem.routeIsFixed?.[r] ?? 0} start=${port(problem.routeStartPort[r])} end=${port(problem.routeEndPort[r])} startRegion=${meta.startRegionId} endRegion=${meta.endRegionId}`
 }
-console.log(`ROUTES iterations=${graph.iterations} max=${graph.MAX_ITERATIONS} routeCount=${problem.routeCount}`)
+console.log(`ROUTES iterations=${graph.iterations} max=${graph.MAX_ITERATIONS} solved=${graph.solved} routeCount=${problem.routeCount} portCount=${topology.portCount} regionCount=${topology.regionCount} initialAssignments=${problem.initialAssignments?.length ?? 0} fixedRoutes=${problem.routeIsFixed ? problem.routeIsFixed.reduce((a: number, b: number) => a + b, 0) : 0}`)
+const perAttempt = [...itersByRoute.entries()].map(([r, n]) => n / (attemptsByRoute.get(r) ?? 1)).sort((a, b) => a - b)
+const q = (f: number): number => Math.round(perAttempt[Math.floor(f * (perAttempt.length - 1))] ?? 0)
+console.log(`ROUTES perAttempt routes=${perAttempt.length} p10=${q(0.1)} p50=${q(0.5)} p90=${q(0.9)} max=${q(1)} sumIters=${[...itersByRoute.values()].reduce((a, b) => a + b, 0)}`)
+console.log(`ROUTES plannerPhase=${pipeline.portPointPathingSolver?.candidatePortfolioPhase} stats=${JSON.stringify(pipeline.portPointPathingSolver?.stats ?? {}).slice(0, 1200)}`)
 const top = [...itersByRoute.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15)
 for (const [r, n] of top) console.log(`ROUTES top iters=${n} attempts=${attemptsByRoute.get(r)} ${describe(r)}`)
 for (const r of [3, 5, 10, 19]) console.log(`ROUTES named ${describe(r)} iters=${itersByRoute.get(r)} attempts=${attemptsByRoute.get(r)}`)
 console.log(`ROUTES events=${events.length}`)
-for (const e of events.slice(0, 40)) console.log(`ROUTES event ${e}`)
-if (events.length > 40) for (const e of events.slice(-40)) console.log(`ROUTES event ${e}`)
+for (const e of events.length > 80 ? [...events.slice(0, 40), "...", ...events.slice(-40)] : events) console.log(`ROUTES event ${e}`)
