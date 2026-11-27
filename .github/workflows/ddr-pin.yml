@@ -1,0 +1,52 @@
+name: Ten DDR boards through Core main vs pinned bus-lanes fix
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/ddr-pin.trigger']
+
+jobs:
+  board:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [h3, a64, stmp157, a13, orangecrab, h616, glider, imx6, icepi, butterstick]
+        variant: [main, pin/bus-lanes-pending-via-sites]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/core
+          ref: ${{ matrix.variant }}
+          path: core
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - name: Core main
+        run: |
+          cd core && git log --oneline -1 && grep bus-lanes-solver package.json
+          bun install --ignore-scripts > /dev/null
+          grep '"version"' node_modules/@tscircuit/bus-lanes-solver/package.json; grep -c keepPendingViaSites node_modules/@tscircuit/bus-lanes-solver/dist/index.js || true
+      - name: Route
+        run: |
+          cd core
+          bun run benchmark:ddr --circuit ${{ matrix.circuit }} --timeout 300 > route.log 2>&1 || true
+          tail -12 route.log
+          grep -h "P9DIAG" ddr-benchmark-results/${{ matrix.circuit }}/render.log | cut -c1-220 | head -300
+      - name: Print the report
+        if: always()
+        run: |
+          cd core
+          echo "=====REPORT====="
+          cat ddr-benchmark-results/report.md
+          echo "=====END-REPORT====="
+          grep -iE "No path|ran out|AutorouterError" route.log | cut -c1-300 | head -5
+          cd ddr-benchmark-results/${{ matrix.circuit }}
+          echo "=====TARBALL-BEGIN====="
+          tar -czf - progress.json assessment.json findings.json $(ls phase-*.srj.json 2>/dev/null) | base64 -w 160
+          echo "=====TARBALL-END====="
