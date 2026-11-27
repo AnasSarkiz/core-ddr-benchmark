@@ -1,0 +1,49 @@
+name: Bus-lanes repro snapshots
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/bl-repro-snap.trigger']
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        patch: [none, pending-via-sites]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: main
+          path: bl
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Test
+        run: |
+          cd bl && bun install > /dev/null 2>&1
+          [ "${{ matrix.patch }}" = none ] || git apply ../harness-repo/harness/bl-exp/${{ matrix.patch }}.patch
+          cp ../harness-repo/harness/bl-exp/repro/*.test.ts tests/repros/
+          cp ../harness-repo/harness/bl-exp/bs/phase-3.json.gz tests/fixtures/butterstick-address-command-tuning.srj.json.gz
+          BUN_UPDATE_SNAPSHOTS=1 bun test tests/repros/butterstick-tuning-pending-via-sites.test.ts --timeout 600000 2>&1 | tail -40
+          mkdir -p ../out && cp tests/repros/__snapshots__/butterstick-tuning-pending-via-sites.snap.svg ../out/${{ matrix.patch }}.snap.svg || true
+      - name: Publish
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          for i in 1 2 3; do
+            git fetch -q origin diag/repro-snaps 2>/dev/null && git checkout -q -B snaps FETCH_HEAD || git checkout -q --orphan snaps
+            git rm -rq --cached . 2>/dev/null; find . -maxdepth 1 ! -name .git ! -name . -exec rm -rf {} +
+            git checkout -q FETCH_HEAD -- . 2>/dev/null || true
+            cp ../out/*.svg . && git add -A && git commit -qm "${{ matrix.patch }}" && git push -q origin HEAD:diag/repro-snaps && break
+            sleep 5
+          done
