@@ -15,7 +15,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        input: [butterstick-matching-remaining, butterstick-matching-remaining-bytesonly, butterstick-matching-remaining-addrcmdonly, butterstick-matching-remaining-notraces, butterstick-routing-remaining]
+        input: [butterstick-matching-remaining]
+        scale: [1, 2, 4]
         ref: [main]
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +33,8 @@ jobs:
       - name: Run
         run: |
           cd autorouter && git log --oneline -1 && bun install > /dev/null 2>&1
+          sed -i 's/MAX_ITERATIONS: Math.ceil(2_000_000 \* effortScale \* graphScale)/MAX_ITERATIONS: Math.ceil(2_000_000 * effortScale * graphScale * ${{ matrix.scale }})/' lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
+          grep -n 'graphScale \*' lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver.ts
           cp ../harness-repo/harness/diag/planner-routes.ts .
           gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.input }}.srj.json.gz > in.srj.json
           timeout 4200 bun planner-routes.ts in.srj.json 1 > q.log 2>&1 || true

@@ -23,6 +23,7 @@ let lastRip = 0
 let lastGlobal = 0
 let lastSelective = 0
 let steps = 0
+let instance = 0
 
 while (!pipeline.solved && !pipeline.failed) {
   pipeline.step()
@@ -31,12 +32,21 @@ while (!pipeline.solved && !pipeline.failed) {
   const graph: any = tiny?.getSolver?.("solveGraph")
   if (!graph) continue
   if (graph !== graphSeen) {
+    if (graphSeen) {
+      const per = [...itersByRoute.entries()].map(([r, n]) => [r, n, attemptsByRoute.get(r) ?? 0]).sort((a, b) => b[1] - a[1])
+      events.push(`instance ${instance} routesTouched=${per.length} top=${JSON.stringify(per.slice(0, 12))}`)
+    }
     if (graphSeen) events.push(`end solveGraph instance iterations=${graphSeen.iterations} solved=${graphSeen.solved} failed=${graphSeen.failed} unrouted=${graphSeen.state?.unroutedRoutes?.length} current=${graphSeen.state?.currentRouteId} error=${String(graphSeen.error).slice(0, 120)}`)
     events.push(`new solveGraph instance at pipelineStep=${steps} phase=${pipeline.portPointPathingSolver?.candidatePortfolioPhase}`)
     graphSeen = graph
+    instance++
+    itersByRoute.clear()
+    attemptsByRoute.clear()
     lastIter = graph.iterations
     lastRoute = undefined
   }
+  if (Math.floor(graph.iterations / 100_000) !== Math.floor(lastIter / 100_000))
+    events.push(`checkpoint iter=${graph.iterations} unrouted=${graph.state?.unroutedRoutes?.length} current=${graph.state?.currentRouteId} rip=${graph.state?.ripCount}`)
   const route: number | undefined = graph.state?.currentRouteId
   const delta = graph.iterations - lastIter
   lastIter = graph.iterations
