@@ -15,9 +15,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        input: [butterstick-matching-remaining]
-        scale: [1, 2, 4]
-        ref: [main]
+        input: [butterstick-matching-remaining-minus26, butterstick-matching-remaining-minus24, butterstick-matching-remaining-minus47, butterstick-matching-remaining-minus25]
+        scale: [1]
+        ref: [main, refs/pull/4168/head]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -38,5 +38,5 @@ jobs:
           cp ../harness-repo/harness/diag/planner-routes.ts .
           gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.input }}.srj.json.gz > in.srj.json
           timeout 4200 bun planner-routes.ts in.srj.json 1 > q.log 2>&1 || true
-          grep -E "^ROUTES" q.log | cut -c1-600
+          grep -E "^ROUTES (pipelineError|iterations)" q.log | cut -c1-400
           tail -5 q.log | cut -c1-400
