@@ -12,8 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        input: [butterstick-matching-remaining]
-        effort: [2, 4]
+        input: [butterstick-matching-remaining-notraces, butterstick-matching-remaining-bytesonly, butterstick-matching-remaining-addrcmdonly]
+        effort: [1]
     steps:
       - uses: actions/checkout@v4
         with: { path: harness-repo }
@@ -29,10 +29,7 @@ jobs:
       - name: Run
         run: |
           cd autorouter && git log --oneline -1 && bun install > /dev/null 2>&1
-          sed -i 's/effort: Math.min(1, pipeline.effort),/effort: pipeline.effort,/' lib/autorouter-pipelines/AutoroutingPipeline9_PreloadedTraceGraph/getPipeline9PortPointPathingInput.ts && git diff --stat
           cp ../harness-repo/harness/diag/phase-fail.ts ../harness-repo/harness/diag/planner-stuck.ts .
           gunzip -c ../harness-repo/harness/phase-inputs/${{ matrix.input }}.srj.json.gz > in.srj.json
-          timeout 3000 bun planner-stuck.ts in.srj.json ${{ matrix.effort }} > p.log 2>&1 || true
-          grep -E "^STUCK (pipelineError|planner|tinyPipeline|solveGraph (iterations|ripCount))" p.log | cut -c1-400; tail -2 p.log | cut -c1-300
-          timeout 3000 bun phase-fail.ts in.srj.json uncapped-effort${{ matrix.effort }} ${{ matrix.effort }} > q.log 2>&1 || true
+          timeout 3000 bun phase-fail.ts in.srj.json ${{ matrix.input }} ${{ matrix.effort }} > q.log 2>&1 || true
           grep -E "^PHASE .*(solved=|error=|failingStage)" q.log | cut -c1-400
