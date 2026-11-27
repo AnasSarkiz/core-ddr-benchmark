@@ -1,0 +1,34 @@
+name: Bus-lanes focused tests base vs fix
+
+on:
+  push:
+    branches: [ci/a13-validation]
+    paths: ['harness/bl-tests.trigger']
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        patch: [repro, fix]
+        test: [tests/am3352-collective-escape-pruning.test.ts, tests/am3352-ordinary-escape-fix.test.ts, tests/am3352-sequential-native-ddr.test.ts, tests/repros/butterstick-tuning-pending-via-sites.test.ts]
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: harness-repo }
+      - uses: actions/checkout@v4
+        with:
+          repository: tscircuit/bus-lanes-solver
+          ref: main
+          path: bl
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Test
+        run: |
+          cd bl && bun install > /dev/null 2>&1
+          git apply ../harness-repo/harness/bl-exp/${{ matrix.patch }}.patch
+          timeout 3000 bun test ${{ matrix.test }} --timeout 2000000 2>&1 | grep -E "\(pass\)|\(fail\)|error:|Expected|Received" | head -20
+          bunx tsc --noEmit 2>&1 | head; bun run format:check 2>&1 | tail -3

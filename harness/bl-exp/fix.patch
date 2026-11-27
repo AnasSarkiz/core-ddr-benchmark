@@ -67,10 +67,10 @@ index 1b1c990..08e12ce 100644
        )!
 diff --git a/lib/pending-via-sites.ts b/lib/pending-via-sites.ts
 new file mode 100644
-index 0000000..35b4264
+index 0000000..5d79619
 --- /dev/null
 +++ b/lib/pending-via-sites.ts
-@@ -0,0 +1,166 @@
+@@ -0,0 +1,187 @@
 +import { getCopperLayerNames } from "@tscircuit/fanout-solver"
 +import { getConnectedPadGroups } from "./connected-pad-groups"
 +import { expandedSignalSites } from "./expanded-signal-sites"
@@ -124,12 +124,12 @@ index 0000000..35b4264
 +}
 +
 +type Site = { via: Point; escape: Wire[] }
-+type Segment = { a: Point; b: Point; layer: string; radius: number }
++/** Copper that can block a site. `layer: null` is a through via. */
++type Segment = { a: Point; b: Point; layer: string | null; radius: number }
 +
-+// Sites depend on the native pads, the supplied copper and the design rules.
-+// Key on the two arrays, which spread requests keep sharing, then the rules.
-+const siteCache = new WeakMap<object, WeakMap<object, Map<string, Site[]>>>()
-+const noTraces = {}
++// Sites beside the native pads alone depend only on the pads and the design
++// rules, so one board computes each pad once however its requests are spread.
++const siteCache = new WeakMap<object, Map<string, Site[]>>()
 +const requestCollections = new Set([
 +  "obstacles",
 +  "traces",
@@ -138,18 +138,15 @@ index 0000000..35b4264
 +  "differentialPairs",
 +])
 +
-+/** Via sites of one pending pad beside the request's supplied copper, from
-+ * the solver's own expanded signal site generator. */
++/** Via sites of one pending pad beside the native pads, from the solver's own
++ * expanded signal site generator. Copper is checked against them separately. */
 +function pendingViaSites(
 +  input: SimpleRouteJson,
 +  rules: string,
 +  pending: PendingPad,
 +): Site[] {
-+  const byTraces = siteCache.get(input.obstacles) ?? new WeakMap()
-+  siteCache.set(input.obstacles, byTraces)
-+  const traces = input.traces ?? noTraces
-+  const cache = byTraces.get(traces) ?? new Map<string, Site[]>()
-+  byTraces.set(traces, cache)
++  const cache = siteCache.get(input.obstacles) ?? new Map<string, Site[]>()
++  siteCache.set(input.obstacles, cache)
 +  const key = `${rules}|${pending.port}`
 +  const cached = cache.get(key)
 +  if (cached) return cached
@@ -163,7 +160,7 @@ index 0000000..35b4264
 +  }
 +  const connection = { name: port, pointsToConnect: [point, point] }
 +  const search = expandedSignalSites({
-+    input: { ...input, connections: [connection] },
++    input: { ...input, connections: [connection], traces: [] },
 +    connection,
 +    targetLayer: getCopperLayerNames(input.layerCount).at(-1)!,
 +  })
@@ -178,17 +175,27 @@ index 0000000..35b4264
 +  return result
 +}
 +
++/** Wires and vias of `traces` as blocking copper. */
++function traceSegments(traces: Trace[], viaRadius: number): Segment[] {
++  return traces.flatMap((trace) =>
++    trace.route.flatMap((p, i) => {
++      if (p.route_type === "via")
++        return [{ a: p, b: p, layer: null, radius: viaRadius }]
++      const a = trace.route[i - 1]
++      return a?.route_type === "wire"
++        ? [{ a, b: p, layer: a.layer, radius: a.width / 2 }]
++        : []
++    }),
++  )
++}
++
 +/** Tuning is optional copper: it may use a pending pad's via sites only while
 + * that pad keeps at least one. A site counts while neither the supplied copper
-+ * nor `traces` already blocks it. Board coordinates in mm, +X right, +Y up. */
++ * nor `traces` blocks it. Board coordinates in mm, +X right, +Y up. */
 +export function createPendingViaSiteGuard(
 +  input: SimpleRouteJson,
 +  traces: Trace[],
 +): (path: Point[], layer: string, width: number) => boolean {
-+  const pending = getPendingPads(input)
-+  const rules = JSON.stringify(
-+    Object.entries(input).filter(([name]) => !requestCollections.has(name)),
-+  )
 +  const targetLayer = getCopperLayerNames(input.layerCount).at(-1)!
 +  const clearance =
 +    input.minTraceToPadEdgeClearance ?? input.defaultObstacleMargin ?? 0.075
@@ -198,7 +205,7 @@ index 0000000..35b4264
 +      ({ a, b, layer, radius }) =>
 +        pointSegmentDistance(site.via, [a, b]) <
 +          viaRadius + radius + clearance ||
-+        (site.escape[0]?.layer === layer &&
++        ((layer === null || site.escape[0]?.layer === layer) &&
 +          site.escape
 +            .slice(1)
 +            .some(
@@ -207,15 +214,22 @@ index 0000000..35b4264
 +                site.escape[i].width / 2 + radius + clearance,
 +            )),
 +    )
-+  const placed: Segment[] = traces.flatMap((trace) =>
-+    trace.route.slice(1).flatMap((p, i) => {
-+      const a = trace.route[i]
-+      return a.route_type === "wire" && p.route_type === "wire"
-+        ? [{ a, b: p, layer: a.layer, radius: a.width / 2 }]
-+        : []
-+    }),
-+  )
++  // Most banks are rejected by cheaper checks first: prepare on first use.
++  let prepared:
++    | { pending: PendingPad[]; rules: string; placed: Segment[] }
++    | undefined
++  const openSites = new Map<PendingPad, Site[]>()
 +  return (path, layer, width) => {
++    prepared ??= {
++      pending: getPendingPads(input).filter(
++        (p) => !p.pad.layers.includes(targetLayer),
++      ),
++      rules: JSON.stringify(
++        Object.entries(input).filter(([name]) => !requestCollections.has(name)),
++      ),
++      placed: traceSegments([...(input.traces ?? []), ...traces], viaRadius),
++    }
++    const { pending, rules, placed } = prepared
 +    // Sites and their surface stubs stay within 2 mm of their pad, so a bank
 +    // farther away than that plus its clearance cannot block any of them.
 +    const reach = 2.5 + viaRadius + width / 2 + clearance
@@ -223,16 +237,23 @@ index 0000000..35b4264
 +      .slice(1)
 +      .map((b, i) => ({ a: path[i], b, layer, radius: width / 2 }))
 +    return pending.every((p) => {
-+      if (p.pad.layers.includes(targetLayer)) return true
 +      if (
 +        bank.every(
 +          ({ a, b }) => pointSegmentDistance(p.pad.center, [a, b]) > reach,
 +        )
 +      )
 +        return true
-+      const open = pendingViaSites(input, rules, p).filter(
-+        (site) => !blocks(site, placed),
-+      )
++      let open = openSites.get(p)
++      if (!open) {
++        const near = placed.filter(
++          ({ a, b, radius }) =>
++            pointSegmentDistance(p.pad.center, [a, b]) < reach + radius,
++        )
++        open = pendingViaSites(input, rules, p).filter(
++          (site) => !blocks(site, near),
++        )
++        openSites.set(p, open)
++      }
 +      return !open.length || open.some((site) => !blocks(site, bank))
 +    })
 +  }
