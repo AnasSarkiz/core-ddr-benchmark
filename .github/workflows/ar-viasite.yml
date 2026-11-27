@@ -1,5 +1,8 @@
 name: Pipeline 9 via-site refinement dump
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [ci/a13-validation]
@@ -27,7 +30,9 @@ jobs:
           cp ../harness-repo/harness/diag/viasite.ts .
           gunzip -c ../harness-repo/harness/phase-inputs/butterstick-matching-remaining.srj.json.gz > in.srj.json
           bun viasite.ts in.srj.json ../viasite.json.gz 2>&1 | grep VIASITE
-      - uses: actions/upload-artifact@v4
-        with:
-          name: viasite
-          path: viasite.json.gz
+      - name: Publish
+        run: |
+          cd harness-repo
+          git config user.name harness-bot; git config user.email harness-bot@users.noreply.github.com
+          git checkout -q --orphan diag/butterstick-viasite; git rm -rq --cached .; git clean -fdq
+          cp ../viasite.json.gz . && git add -A && git commit -qm out && git push -f origin HEAD
