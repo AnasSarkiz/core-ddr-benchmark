@@ -1,0 +1,45 @@
+diff --git a/lib/pending-via-sites.ts b/lib/pending-via-sites.ts
+index 1542942..fe3b17e 100644
+--- a/lib/pending-via-sites.ts
++++ b/lib/pending-via-sites.ts
+@@ -61,7 +61,12 @@ function pendingViaSites(input: SimpleRouteJson, pending: PendingPad): Site[] {
+   const cache = siteCache.get(input) ?? new Map<string, Site[]>()
+   siteCache.set(input, cache)
+   const cached = cache.get(pending.port)
++  const g = ((globalThis as any).__pvs ??= { miss: 0, ms: 0, guards: 0, calls: 0, callMs: 0, inputs: new WeakSet(), distinctInputs: 0 })
+   if (cached) return cached
++  g.miss++
++  if (!g.inputs.has(input)) { g.inputs.add(input); g.distinctInputs++ }
++  const t0 = performance.now()
++  try {
+   const { pad, port } = pending
+   const point: Terminal = {
+     x: pad.center.x,
+@@ -85,6 +90,7 @@ function pendingViaSites(input: SimpleRouteJson, pending: PendingPad): Site[] {
+   }))
+   cache.set(pending.port, result)
+   return result
++  } finally { g.ms += performance.now() - t0 }
+ }
+ 
+ /** Tuning is optional copper: it may use a pending pad's via sites only while
+@@ -121,7 +127,12 @@ export function createPendingViaSiteGuard(
+         : []
+     }),
+   )
++  ;((globalThis as any).__pvs ??= { miss: 0, ms: 0, guards: 0, calls: 0, callMs: 0, inputs: new WeakSet(), distinctInputs: 0 }).guards++
+   return (path, layer, width) => {
++    const g = (globalThis as any).__pvs
++    g.calls++
++    const t0 = performance.now()
++    try {
+     const reach = 2.5 + viaRadius + width / 2 + clearance
+     const minX = Math.min(...path.map((p) => p.x)) - reach,
+       maxX = Math.max(...path.map((p) => p.x)) + reach,
+@@ -139,5 +150,6 @@ export function createPendingViaSiteGuard(
+       )
+       return !open.length || open.some((site) => !blocks(site, bank))
+     })
++    } finally { g.callMs += performance.now() - t0 }
+   }
+ }

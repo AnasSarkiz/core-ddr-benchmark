@@ -15,6 +15,8 @@ for (const [index, path] of paths.slice(0, -1).entries()) {
   const started = performance.now()
   const solver: any = new BusLanesPipelineSolver(structuredClone(input))
   solver.solve()
+  const pvs = (globalThis as any).__pvs
+  if (pvs) console.log(`CHAIN pvs phase=${index + 1} miss=${pvs.miss} siteMs=${pvs.ms.toFixed(0)} guards=${pvs.guards} calls=${pvs.calls} callMs=${pvs.callMs.toFixed(0)} inputs=${pvs.distinctInputs}`)
   console.log(`CHAIN ${variant} phase=${index + 1} conns=${input.connections.length} solved=${solver.solved} t=${((performance.now() - started) / 1000).toFixed(1)}s ${String(solver.error ?? "").slice(0, 120)}`)
   if (!solver.solved) process.exit(0)
   traces = solver.getOutput().traces
