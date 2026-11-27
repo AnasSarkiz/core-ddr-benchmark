@@ -36,7 +36,7 @@ jobs:
       - name: Bus phases
         run: |
           cd bl && git log --oneline -1 && bun install > /dev/null 2>&1
-          [ "${{ matrix.patch }}" = none ] || git apply ../harness-repo/harness/bl-exp/${{ matrix.patch }}.patch && git apply ../harness-repo/harness/bl-exp/pvs-instrument.patch
+          [ "${{ matrix.patch }}" = none ] || git apply ../harness-repo/harness/bl-exp/${{ matrix.patch }}.patch
           cp ../harness-repo/harness/bl-exp/bs-chain.ts .
           D=../harness-repo/harness/bl-exp/bs; for n in 1 2 3 4 5; do gunzip -c $D/phase-$n.json.gz > p$n.json; done
           timeout 1800 bun bs-chain.ts ${{ matrix.variant }} /tmp/remaining.json p1.json p2.json p3.json p4.json p5.json 2>&1 | grep -E "^CHAIN|rror" | cut -c1-300; cp /tmp/remaining.json ../remaining.json 2>/dev/null || true
