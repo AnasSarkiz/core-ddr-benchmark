@@ -30,7 +30,7 @@ index dea915b..2660914 100644
      | { pending: PendingPad[]; rules: string; placed: Segment[] }
      | undefined
    const openSites = new Map<PendingPad, Site[]>()
-+  ((globalThis as any).__pvs ??= (() => { const g = { miss: 0, ms: 0, guards: 0, prepared: 0, calls: 0, callMs: 0, obstacleArrays: 0 }; process.on("exit", () => console.log("PVS " + JSON.stringify(g))); return g })()).guards++
++  ;((globalThis as any).__pvs ??= (() => { const g = { miss: 0, ms: 0, guards: 0, prepared: 0, calls: 0, callMs: 0, obstacleArrays: 0 }; process.on("exit", () => console.log("PVS " + JSON.stringify(g))); return g })()).guards++
    return (path, layer, width) => {
 +    const g = (globalThis as any).__pvs
 +    g.calls++
