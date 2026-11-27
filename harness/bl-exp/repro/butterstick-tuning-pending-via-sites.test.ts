@@ -3,33 +3,40 @@ import { expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { gunzipSync } from "node:zlib"
 import {
-  getCopperLayerNames,
   validateOriginalEndpointConnectivity,
   validateRoutedCopperDrc,
 } from "@tscircuit/fanout-solver"
 import { getSvgFromGraphicsObject } from "graphics-debug"
-import { BusLanesPipelineSolver, BusLanesSolver, busLengthReports } from "../../lib"
+import {
+  BusLanesPipelineSolver,
+  BusLanesSolver,
+  busLengthReports,
+  type Connection,
+  type SimpleRouteJson,
+} from "../../lib"
 import { getConnectedPadGroups } from "../../lib/connected-pad-groups"
-import { expandedSignalSites } from "../../lib/expanded-signal-sites"
-import type { Obstacle, SimpleRouteJson, Trace } from "../../lib/types"
+import type { Obstacle } from "../../lib/types"
+import { nativeValidationSrj } from "../fixtures/expect-completed-routing"
+import { getPadEscape } from "../fixtures/pad-escapes"
 
 type PortPad = Obstacle & { circuitJsonMetadata?: { pcb_port_id?: string } }
-type PendingPad = { pad: PortPad; port: string; net: string }
+type PendingPad = { pad: PortPad; net: string; connection: Connection }
 
 // ButterStick DDR3, Core's `matching` attempt: the request Core hands to the
 // solver for the U11 address/command bus, with both completed byte phases
 // supplied as traces. Board coordinates in mm, +X right, +Y up. The ECP5 is
 // on the left, U11 (RAM0) top right and the second RAM bottom right.
+const fixtureUrl = (name: string): URL =>
+  new URL(
+    `../fixtures/butterstick-address-command-tuning/${name}`,
+    import.meta.url,
+  )
 const input = JSON.parse(
-  gunzipSync(
-    readFileSync(
-      new URL(
-        "../fixtures/butterstick-address-command-tuning.srj.json.gz",
-        import.meta.url,
-      ),
-    ),
-  ).toString(),
-) as SimpleRouteJson & { traces: (Trace & { connection_name: string })[] }
+  gunzipSync(readFileSync(fixtureUrl("input.srj.json.gz"))).toString(),
+) as SimpleRouteJson
+const fixedConnections = JSON.parse(
+  readFileSync(fixtureUrl("fixed-connections.json"), "utf8"),
+) as Connection[]
 
 /** Native pads of nets that join at least two ports but that this request
  * neither routes nor receives as copper: the remaining phase routes them. */
@@ -46,35 +53,38 @@ function getPendingPads(request: SimpleRouteJson): PendingPad[] {
     const net = aliases.find((alias) => alias.startsWith("source_net_"))
     if (!net || pads.length < 2 || aliases.some((a) => assigned.has(a)))
       return []
-    return pads.flatMap((pad) => {
-      const port = pad.circuitJsonMetadata?.pcb_port_id
-      return port ? [{ pad, port, net }] : []
-    })
+    const points = pads.map((pad) => ({
+      x: pad.center.x,
+      y: pad.center.y,
+      layer: pad.layers[0],
+      layers: pad.layers,
+      pcb_port_id: pad.circuitJsonMetadata!.pcb_port_id!,
+    }))
+    return pads.map((pad, index) => ({
+      pad,
+      net,
+      // The oracle inspects the first terminal; keep every other terminal.
+      connection: {
+        name: net,
+        pointsToConnect: [
+          points[index],
+          ...points.filter((_, other) => other !== index),
+        ],
+      },
+    }))
   })
 }
 
-/** How many via sites the solver's own site generator still finds for a
- * pad beside the copper in `request`. */
-function countViaSites(request: SimpleRouteJson, pending: PendingPad): number {
-  const point = {
-    x: pending.pad.center.x,
-    y: pending.pad.center.y,
-    layer: pending.pad.layers[0],
-    layers: pending.pad.layers,
-    pcb_port_id: pending.port,
-  }
-  const connection = { name: pending.port, pointsToConnect: [point, point] }
-  const search = expandedSignalSites({
-    input: { ...request, connections: [connection] },
-    connection,
-    targetLayer: getCopperLayerNames(request.layerCount).at(-1)!,
-  })
-  let step = search.next()
-  while (!step.done) step = search.next()
-  return step.value[0].length
-}
+const hasViaSite = (request: SimpleRouteJson, pending: PendingPad): boolean =>
+  getPadEscape({
+    input: request,
+    connection: pending.connection,
+    end: 0,
+    viaTargetLayer: "bottom",
+  }) === "via_site"
 
 test("ButterStick address/command tuning takes the last via sites of two pending RAM pads", async (): Promise<void> => {
+  // Core hands each phase request to the solver without options.
   const original = structuredClone(input)
   const solver = new BusLanesPipelineSolver(input)
   solver.solve()
@@ -82,32 +92,39 @@ test("ButterStick address/command tuning takes the last via sites of two pending
   expect(solver.solved).toBe(true)
   expect(input).toEqual(original)
 
-  const traces = solver.getOutput().traces.map((trace) => {
-    if (!trace.connection_name) throw Error("Completed DDR trace has no owner")
-    return { ...trace, connection_name: trace.connection_name }
-  })
-  expect(traces.slice(0, input.traces.length)).toEqual(input.traces)
-  const context = { inputSrj: input, routedSrj: { ...input, traces } }
-  const connectivity = validateOriginalEndpointConnectivity(context)
-  expect(connectivity.connectedConnectionCount).toBe(3)
+  const output = solver.getOutput()
+  const traces = output.traces!
+  expect(traces).toHaveLength(input.traces!.length + 3)
+  expect(traces.slice(0, input.traces!.length)).toEqual(input.traces!)
+  const native = {
+    inputSrj: nativeValidationSrj({
+      ...input,
+      connections: [...input.connections, ...fixedConnections],
+    }),
+    routedSrj: nativeValidationSrj({
+      ...output,
+      connections: [...output.connections, ...fixedConnections],
+    }),
+  }
+  const connectivity = validateOriginalEndpointConnectivity(native)
   expect(connectivity.valid).toBe(true)
+  expect(connectivity.connectedConnectionCount).toBe(19)
   expect(
     validateRoutedCopperDrc({
-      ...context,
+      ...native,
       clearance: input.minTraceToPadEdgeClearance!,
-      allowBlindAndBuriedVias: false,
-    }).issues,
-  ).toEqual([])
+    }).valid,
+  ).toBe(true)
   const [report] = busLengthReports(input, traces)
   expect(report!.aboveMinimumLength).toBe(true)
   expect(report!.matched).toBe(true)
 
-  // A pad loses its escape via only if it had a site before this bus.
+  // A pad loses its escape via only if it had one before this bus.
   const pending = getPendingPads(input)
   expect(new Set(pending.map((p) => p.net)).size).toBe(33)
   const routed = { ...input, traces }
   const lost = pending.filter(
-    (p) => countViaSites(input, p) > 0 && countViaSites(routed, p) === 0,
+    (p) => hasViaSite(input, p) && !hasViaSite(routed, p),
   )
   expect(lost.map((p) => p.net).sort()).toEqual([
     "source_net_52",
@@ -115,35 +132,29 @@ test("ButterStick address/command tuning takes the last via sites of two pending
   ])
 
   const graphics = new BusLanesSolver(routed).visualize()
-  graphics.title =
-    "ButterStick U11 address/command: net 26's tuning takes the last via sites of two pending RAM pads"
+  const left = Math.min(...input.obstacles.map((o) => o.center.x - o.width / 2))
+  const top = Math.max(...input.obstacles.map((o) => o.center.y + o.height / 2))
   graphics.circles = [
     ...(graphics.circles ?? []),
-    ...lost.map((p) => ({
-      center: p.pad.center,
-      radius: 0.45,
-      stroke: "#dc2626",
-      label: `${p.net}: no via site left`,
-    })),
+    ...lost.map((p) => ({ center: p.pad.center, radius: 0.45, stroke: "#dc2626" })),
   ]
   graphics.texts = [
-    ...(graphics.texts ?? []),
-    ...lost.map((p, index) => ({
-      x: p.pad.center.x - 6,
-      y: p.pad.center.y + 2 + index * 0.8,
-      text: `${p.net}: no via site left`,
-      color: "#dc2626",
-      fontSize: 0.5,
-      anchorSide: "bottom_left" as const,
-    })),
     {
-      x: Math.min(...input.obstacles.map((o) => o.center.x - o.width / 2)),
-      y: Math.max(...input.obstacles.map((o) => o.center.y + o.height / 2)) + 1,
-      text: graphics.title,
-      color: "#111827",
-      fontSize: 0.8,
-      anchorSide: "bottom_left" as const,
+      x: left,
+      y: top + 1,
+      text: `U11 address/command bus routed and matched; its tuning leaves ${lost.length} pending RAM pads without a via site`,
+      color: lost.length ? "#b91c1c" : "#166534",
+      fontSize: 0.55,
+      anchorSide: "bottom_left",
     },
+    ...lost.map((p, index) => ({
+      x: p.pad.center.x - 1,
+      y: top + 0.2 + index * 0.6,
+      text: `${p.net}: no via site left`,
+      color: "#b91c1c",
+      fontSize: 0.4,
+      anchorSide: "bottom_right" as const,
+    })),
   ]
   await expect(
     getSvgFromGraphicsObject(graphics, { backgroundColor: "white" }),

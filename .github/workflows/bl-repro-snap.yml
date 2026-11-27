@@ -33,7 +33,7 @@ jobs:
           cd bl && bun install > /dev/null 2>&1
           [ "${{ matrix.patch }}" = none ] || git apply ../harness-repo/harness/bl-exp/${{ matrix.patch }}.patch
           cp ../harness-repo/harness/bl-exp/repro/*.test.ts tests/repros/
-          cp ../harness-repo/harness/bl-exp/bs/phase-3.json.gz tests/fixtures/butterstick-address-command-tuning.srj.json.gz
+          mkdir -p tests/fixtures/butterstick-address-command-tuning && cp ../harness-repo/harness/bl-exp/repro/fixture/* tests/fixtures/butterstick-address-command-tuning/
           BUN_UPDATE_SNAPSHOTS=1 bun test tests/repros/butterstick-tuning-pending-via-sites.test.ts --timeout 600000 2>&1 | tail -40
           mkdir -p ../out && cp tests/repros/__snapshots__/butterstick-tuning-pending-via-sites.snap.svg ../out/${{ matrix.patch }}.snap.svg || true
       - name: Publish
