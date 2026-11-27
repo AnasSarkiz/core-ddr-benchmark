@@ -67,7 +67,7 @@ index 1b1c990..08e12ce 100644
        )!
 diff --git a/lib/pending-via-sites.ts b/lib/pending-via-sites.ts
 new file mode 100644
-index 0000000..5d79619
+index 0000000..dea915b
 --- /dev/null
 +++ b/lib/pending-via-sites.ts
 @@ -0,0 +1,187 @@
@@ -178,7 +178,7 @@ index 0000000..5d79619
 +/** Wires and vias of `traces` as blocking copper. */
 +function traceSegments(traces: Trace[], viaRadius: number): Segment[] {
 +  return traces.flatMap((trace) =>
-+    trace.route.flatMap((p, i) => {
++    trace.route.flatMap((p, i): Segment[] => {
 +      if (p.route_type === "via")
 +        return [{ a: p, b: p, layer: null, radius: viaRadius }]
 +      const a = trace.route[i - 1]
